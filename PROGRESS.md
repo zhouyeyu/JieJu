@@ -27,6 +27,8 @@
   - `validated(against:)` 在双语请求下拦截 `translation` 与 `targetText` 完全相同。
 - **默认模型定为 1.5B**（AI-411）：`OllamaDefaults.model` 单一来源，
   CLI/App 设置/设置页展示全部引用同一常量，消除默认值重复定义。
+- **保存并恢复最近阅读页码**：新增 `ReadingPositionStore`（按文档路径存 UserDefaults），
+  打开文档时定位到上次页码，翻页即保存，关闭时兜底保存。
 
 ## 真实模型基线（2026-09-02，Qwen 2.5 冒烟集 20 条）
 
@@ -50,6 +52,7 @@
 
 1. **改设置会读丢正在读的 PDF**（TODO `PDF-112`）：`AppShellView` 的 `.id` 绑定含 `modelName`，
    输入模型名时每敲一键都会重建 `ReaderView`。
+   （已部分缓解：即使重建，重开时也会恢复上次页码。）
 2. **英文释义漏网**：AI-212 只拦截翻译与原文完全相同；同语言释义（paraphrase）仍能通过校验。
 3. 无障碍小项：学习记录删除仅 contextMenu；解释弹窗错误态仅靠红色。
 4. 翻译/语法/短语的人工评分（`Evaluation/report-*.md` Manual scoring）尚未填写。
@@ -73,9 +76,13 @@
 
 - 日期：2026-09-02
 - JieJuLanguage：**33 项离线测试通过**
+- **App 模块整体类型检查通过**（`swiftc -typecheck`，含全部 App 源码与本地包模块；
+  `#Preview` 宏展开除外，插件服务器受本工具沙箱限制）
+- **App 模块 `-emit-module -enable-testing` 通过**（测试目标可访问 `@testable import JieJu`）
+- 新增 `ReadingPositionStoreTests`（6 项）：类型检查通过，运行需开发者模式
+- 上一轮提交 `ca53263` 中的 `OllamaReadingAI.defaultModel` 泛型引用
+  在类型检查中被发现并修复为 `OllamaDefaults.model`（该错误此前无法编译验证）
 - CLI 与 Ollama 端到端：默认模型 1.5B 实测输出「火车在六点离开。」；0.5B 批量 45 秒、1.5B 82 秒跑完 20 条
-- App `xcodebuild build`：上一任记载为通过；WorkBuddy 工具环境**未能独立复验**
-  （解析本地 SwiftPM 依赖时 `sandbox_exec` 被拒，属环境限制）
 - App/UI 测试：**无法运行**，本机开发者模式关闭，Runner 卡在建立连接
 - 基线提交：`fbdf02f chore: create macOS project foundation`
 - 模块集成提交：`3529d0f feat: build parallel reader language and storage modules`

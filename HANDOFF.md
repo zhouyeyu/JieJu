@@ -19,6 +19,14 @@
 - 修复 `AI-212`：`validated(against:)` 在双语请求下拦截
   `translation` 与 `targetText` 完全相同（含大小写变体）；repair 提示补语言约束。
 - 跑通 0.5B 批量冒烟评测（20 条，45 秒），建立真实模型基线；1.5B 对照已启动。
+- **保存并恢复最近阅读页码**（`PDF` 阅读闭环补全）：
+  - 新增 `ReadingPositionStore`（UserDefaults，按文档标准化路径存页码）；
+  - `ReaderViewModel` 打开文档时恢复上次页码，翻页即保存，关闭时兜底保存；
+  - `PDFReaderView` 增加 `initialPageIndex`，`makeNSView`/文档切换时 `go(to:)` 定位；
+  - 新增 `ReadingPositionStoreTests`（6 项）。
+- **修复上一轮 `ca53263` 引入的编译错误**：`AppSettings`/`AppShellView` 中
+  `OllamaReadingAI.defaultModel` 是泛型静态成员、无法裸引用，
+  已改为非泛型常量 `OllamaDefaults.model`（此前该错误无法编译验证，本轮用类型检查抓到）。
 
 ## 验证
 
@@ -32,7 +40,7 @@
 
 ## 真实模型基线（2026-09-02，Qwen 2.5 冒烟集 20 条）
 
-### 0.5B（默认模型）
+### 0.5B（可在设置中选择）
 
 - 结构化成功率 **75%**（15/20），平均 2.2 秒 —— 未达 95% 门槛
 - 失败 5 条：3 条英文照抄被 AI-212 正确拦截（passive-01、ambiguity-02、literary-01），
@@ -75,7 +83,22 @@
 
 ## 环境注意事项
 
-- 本机 Ollama 已装可达（`:11434`），已拉取 `qwen2.5:0.5b-instruct`（默认）与 `qwen2.5:1.5b-instruct`。
+- **App 层编译验证的可行办法（重要，替代 xcodebuild）**：
+  本工具无法跑 `xcodebuild build`（本地 SwiftPM 解析时 `sandbox_exec` 被拒），
+  但可以用裸 `swiftc` 完成等效验证：
+  ```bash
+  # 1) 先构建本地包（--disable-sandbox）
+  cd Packages/JieJuLanguage && swift build --disable-sandbox
+  # 2) 整个 App 模块类型检查（先剥离 #Preview，宏插件服务器同样被沙箱挡）
+  xcrun swiftc -typecheck -sdk $(xcrun --show-sdk-path) -target arm64-apple-macosx14.0 \
+    -I Packages/JieJuLanguage/.build/arm64-apple-macosx/debug/Modules $(find JieJu -name '*.swift')
+  # 3) 测试目标：先 emit-module -enable-testing 出 JieJu 模块，再对测试文件 typecheck
+  #    （加 -F .../MacOSX.platform/Developer/Library/Frameworks 供 XCTest；
+  #     XCTAssertNil 等 C 宏在独立 swiftc 下报 "function like macros not supported"，属正常，Xcode 里没问题）
+  ```
+  用这个方法在 2026-09-02 实际抓出了 `ca53263` 里的泛型静态成员编译错误。
+- 本机 Ollama 已装可达（`:11434`），已拉取 `qwen2.5:0.5b-instruct` 与 `qwen2.5:1.5b-instruct`；
+  默认模型为 1.5B（`OllamaDefaults.model`），0.5B 可在设置中选择。
 - CLI 二进制：`Packages/JieJuLanguage/.build/arm64-apple-macosx/debug/JieJuAILab`
   - 单句：`JieJuAILab explain --text "..." [--before "..." ] [--after "..."] [--raw] [--model N] [--url U]`
   - 批量：`JieJuAILab batch --input X.jsonl --output Y.jsonl --report Z.md [--model N]`
