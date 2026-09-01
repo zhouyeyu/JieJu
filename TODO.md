@@ -9,6 +9,7 @@
 - [x] `AI-108` Ollama 服务、模型缺失与可用状态诊断
 - [x] `AI-201`～`AI-208` Qwen 0.5B Prompt、严格 JSON、一次重试与解析测试
 - [x] `AI-209` JSON 输入边界、temperature 0 与输出长度限制
+- [x] `AI-210` 目标句引用一致性校验、上下文串线拦截与语义修复重试
 - [x] `AI-301`～`AI-309` Swift CLI、单句/上下文/JSON/raw/model/url
 - [x] `AI-401`～`AI-402` JSONL 格式与 20 条冒烟评测句
 - [ ] `AI-403` 扩展到 100 条正式评测句
@@ -44,7 +45,7 @@
 ## 发布前关卡
 
 - [x] App 与本地 Swift Package 共同构建
-- [x] 语言引擎 25 项离线测试通过
+- [x] 语言引擎 29 项离线测试通过
 - [ ] 恢复当前机器的 macOS XCTest Runner 并重跑 App/UI 测试
 - [ ] 安装 Ollama 与默认模型后运行冒烟评测
 - [ ] 在 M1 8GB 和至少一台更高配置 Mac 上记录延迟

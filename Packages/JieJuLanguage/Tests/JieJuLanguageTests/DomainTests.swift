@@ -31,11 +31,49 @@ import Testing
         let second = try await MockReadingAI().explain(request)
         #expect(first == second)
     }
+
+    @Test func validatesSourceFragmentsAgainstTargetOnly() throws {
+        let request = ExplanationRequest(
+            targetText: "Although tired, she continued.",
+            precedingContext: "Her friends stopped to rest.",
+            followingContext: "They arrived after midnight."
+        )
+        #expect(try sampleExplanation.validated(against: request) == sampleExplanation)
+
+        let contextPhrase = Explanation(
+            translation: "x", sentenceCore: "x",
+            grammarPoints: [],
+            keyPhrases: [.init(text: "stopped to rest", meaning: "休息")]
+        )
+        #expect(throws: ReadingAIError.self) { try contextPhrase.validated(against: request) }
+
+        let contextGrammar = Explanation(
+            translation: "x", sentenceCore: "x",
+            grammarPoints: [.init(text: "after midnight", explanation: "介词短语")],
+            keyPhrases: []
+        )
+        #expect(throws: ReadingAIError.self) { try contextGrammar.validated(against: request) }
+
+        let partialWord = Explanation(
+            translation: "x", sentenceCore: "x", grammarPoints: [],
+            keyPhrases: [.init(text: "he", meaning: "他")]
+        )
+        #expect(throws: ReadingAIError.self) { try partialWord.validated(against: request) }
+    }
+
+    @Test func sourceMatchingToleratesCaseWidthAndPunctuation() throws {
+        let explanation = Explanation(
+            translation: "你好", sentenceCore: "hello world",
+            grammarPoints: [.init(text: "HELLO, world", explanation: "问候")],
+            keyPhrases: []
+        )
+        #expect(try explanation.validated(against: .init(targetText: "Hello—world!")) == explanation)
+    }
 }
 
 let sampleExplanation = Explanation(
     translation: "虽然很累，她仍继续前行。",
     sentenceCore: "she continued",
     grammarPoints: [.init(text: "Although tired", explanation: "让步状语从句的省略")],
-    keyPhrases: [.init(text: "continue", meaning: "继续")]
+    keyPhrases: [.init(text: "continued", meaning: "继续")]
 )

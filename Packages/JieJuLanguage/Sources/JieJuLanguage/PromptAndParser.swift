@@ -20,9 +20,10 @@ public enum QwenPrompt {
         return String(decoding: (try? encoder.encode(payload)) ?? Data("{}".utf8), as: UTF8.self)
     }
 
-    public static func repair(rawResponse: String) -> String {
+    public static func repair(request: ExplanationRequest, rawResponse: String) -> String {
         """
-        Convert the following failed response into valid JSON matching the exact schema. Do not add commentary or Markdown.
+        Repair the failed response using the original input below. Return valid JSON matching the exact schema. Explain only targetText. Every grammarPoints.text and keyPhrases.text must be an exact fragment from targetText, never from context. Replace invalid or out-of-target fragments. Do not add commentary or Markdown.
+        <ORIGINAL_INPUT>\(user(request))</ORIGINAL_INPUT>
         <FAILED_RESPONSE>\(rawResponse)</FAILED_RESPONSE>
         """
     }

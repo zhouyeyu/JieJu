@@ -95,6 +95,25 @@ public struct Explanation: Codable, Equatable, Sendable {
         }
         return self
     }
+
+    public func validated(against request: ExplanationRequest) throws -> Self {
+        _ = try validated()
+        let target = request.targetText.matchableSourceText
+
+        for point in grammarPoints {
+            let fragment = point.text.matchableSourceText
+            guard !fragment.isEmpty, " \(target) ".contains(" \(fragment) ") else {
+                throw ReadingAIError.invalidResponse("grammar fragment is absent from targetText: \(point.text)")
+            }
+        }
+        for phrase in keyPhrases {
+            let fragment = phrase.text.matchableSourceText
+            guard !fragment.isEmpty, " \(target) ".contains(" \(fragment) ") else {
+                throw ReadingAIError.invalidResponse("key phrase is absent from targetText: \(phrase.text)")
+            }
+        }
+        return self
+    }
 }
 
 public protocol ReadingAI: Sendable {
@@ -125,4 +144,14 @@ extension ReadingAIError: LocalizedError {
 
 private extension String {
     var isBlank: Bool { trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    var matchableSourceText: String {
+        folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
+            .unicodeScalars
+            .map { CharacterSet.alphanumerics.contains($0) ? String($0) : " " }
+            .joined()
+            .split(whereSeparator: { $0 == " " })
+            .map(String.init)
+            .joined(separator: " ")
+    }
 }

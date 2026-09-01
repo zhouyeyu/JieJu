@@ -78,9 +78,33 @@ actor StubHTTPClient: HTTPClient {
     @Test func retriesExactlyOnceAfterInvalidJSON() async throws {
         let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
         let client = StubHTTPClient([.success(tags), .success(chatEnvelope("not json")), .success(chatEnvelope(validJSON))])
-        let result = try await OllamaReadingAI(client: client).explain(.init(targetText: "Hello"))
+        let result = try await OllamaReadingAI(client: client).explain(.init(targetText: "Although tired, she continued."))
         #expect(result == sampleExplanation)
         #expect(await client.requests.count == 3)
+    }
+
+    @Test func retriesWhenValidJSONReferencesContextInsteadOfTarget() async throws {
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let offTarget = Explanation(
+            translation: "虽然很累，她仍继续前行。",
+            sentenceCore: "she continued",
+            grammarPoints: [],
+            keyPhrases: [.init(text: "went home", meaning: "回家")]
+        )
+        let offTargetJSON = String(decoding: try JSONEncoder().encode(offTarget), as: UTF8.self)
+        let client = StubHTTPClient([.success(tags), .success(chatEnvelope(offTargetJSON)), .success(chatEnvelope(validJSON))])
+        let request = ExplanationRequest(targetText: "Although tired, she continued.", precedingContext: "Her friends went home.")
+
+        let result = try await OllamaReadingAI(client: client).explain(request)
+
+        #expect(result == sampleExplanation)
+        let requests = await client.requests
+        #expect(requests.count == 3)
+        let repairBody = try #require(requests.last?.body)
+        let bodyJSON = try #require(JSONSerialization.jsonObject(with: repairBody) as? [String: Any])
+        let messages = try #require(bodyJSON["messages"] as? [[String: String]])
+        #expect(messages.last?["content"]?.contains("Although tired, she continued.") == true)
+        #expect(messages.last?["content"]?.contains("went home") == true)
     }
 
     @Test func failsAfterOneRetry() async {

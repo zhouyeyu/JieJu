@@ -26,6 +26,14 @@ import Testing
         #expect(prompt.contains(#""followingContext":"AFTER""#))
         #expect(QwenPrompt.system.contains("at most 3 grammarPoints and 4 keyPhrases"))
     }
+
+    @Test func repairPromptIncludesOriginalInputAndFailedResponse() {
+        let request = ExplanationRequest(targetText: "TARGET", precedingContext: "CONTEXT")
+        let prompt = QwenPrompt.repair(request: request, rawResponse: "FAILED")
+        #expect(prompt.contains(#""targetText":"TARGET""#))
+        #expect(prompt.contains("FAILED"))
+        #expect(prompt.contains("exact fragment from targetText"))
+    }
 }
 
 private var validJSON: String { String(decoding: try! JSONEncoder().encode(sampleExplanation), as: UTF8.self) }

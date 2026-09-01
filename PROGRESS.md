@@ -17,6 +17,7 @@
 - 建立 20 条语言冒烟评测集。
 - 增加 Ollama/模型诊断和设置页一键检查；
 - Prompt 改为 JSON 输入边界，并使用确定性生成参数。
+- 增加目标句内容一致性校验：拦截引用上下文或虚构片段的结构化输出，并带原始输入修复一次。
 
 ## 当前状态
 
@@ -33,7 +34,7 @@
 
 - 日期：2026-09-01
 - App `xcodebuild build`：通过
-- JieJuLanguage：25 项离线测试通过
+- JieJuLanguage：29 项离线测试通过
 - App 单元测试：集成前 6 项通过；新增 Persistence 测试已编译
 - App/UI 测试：当前机器的 Runner 卡在启动测试会话，待恢复后重跑
 - 基线提交：`fbdf02f chore: create macOS project foundation`

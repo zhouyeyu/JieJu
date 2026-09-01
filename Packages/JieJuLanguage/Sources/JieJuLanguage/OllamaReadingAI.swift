@@ -72,13 +72,13 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
             .init(role: "user", content: QwenPrompt.user(valid))
         ])
         do {
-            return (try ExplanationParser.parse(first), first)
+            return (try ExplanationParser.parse(first).validated(against: valid), first)
         } catch {
             let repaired = try await generate(messages: [
                 .init(role: "system", content: QwenPrompt.system),
-                .init(role: "user", content: QwenPrompt.repair(rawResponse: first))
+                .init(role: "user", content: QwenPrompt.repair(request: valid, rawResponse: first))
             ])
-            return (try ExplanationParser.parse(repaired), repaired)
+            return (try ExplanationParser.parse(repaired).validated(against: valid), repaired)
         }
     }
 
@@ -93,14 +93,14 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
             ])
             latestRaw = first
             do {
-                return .init(explanation: try ExplanationParser.parse(first), raw: first, jsonValid: true)
+                return .init(explanation: try ExplanationParser.parse(first).validated(against: valid), raw: first, jsonValid: true)
             } catch {
                 let repaired = try await generate(messages: [
                     .init(role: "system", content: QwenPrompt.system),
-                    .init(role: "user", content: QwenPrompt.repair(rawResponse: first))
+                    .init(role: "user", content: QwenPrompt.repair(request: valid, rawResponse: first))
                 ])
                 latestRaw = repaired
-                return .init(explanation: try ExplanationParser.parse(repaired), raw: repaired, jsonValid: true)
+                return .init(explanation: try ExplanationParser.parse(repaired).validated(against: valid), raw: repaired, jsonValid: true)
             }
         } catch {
             return .init(error: error.localizedDescription, raw: latestRaw, jsonValid: false)
