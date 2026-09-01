@@ -1,5 +1,18 @@
 # JieJu Decisions
 
+## 2026-09-02：默认模型定为 qwen2.5:1.5b-instruct
+
+冒烟集（20 条）实测对照：0.5B 结构化成功率 75%、翻译在被动/文学/指代消解等类别系统性失败；
+1.5B 结构化成功率 100%、全部翻译正确、语法/短语产出条目数是 0.5B 的 7 倍。
+单句延迟 0.5B 约 2.2 秒、1.5B 约 4.1 秒，MVP 为异步解句场景，延迟可接受。
+默认模型统一为 1.5B（`OllamaDefaults.model` 单一来源），0.5B 仍可在设置中选择。
+
+## 2026-09-02：模型输出字段语言绑定到请求
+
+Ollama JSON Schema 的字段描述必须携带 `explanationLanguage`/`sourceLanguage`，
+不能依赖全局 system prompt 指令；`translation` 等字段名本身对小模型构成词汇诱导，
+语言要求必须出现在字段描述最前。
+
 ## 2026-09-01：采用原生 macOS 技术栈
 
 使用 SwiftUI、AppKit 和 PDFKit，最低支持 macOS 14。第一阶段不引入第三方 UI 或 PDF 依赖，以降低工程和多 Agent 协作复杂度。
