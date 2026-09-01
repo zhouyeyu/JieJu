@@ -94,7 +94,7 @@ private struct AISettingsView: View {
                     .accessibilityIdentifier("settings.checkAI")
                 connectionStatus
             }
-            Text("默认模型：\(OllamaReadingAI.defaultModel)")
+            Text("默认模型：\(OllamaDefaults.model)")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)

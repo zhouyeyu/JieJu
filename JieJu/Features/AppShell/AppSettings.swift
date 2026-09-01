@@ -36,7 +36,7 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         provider = AIProviderChoice(rawValue: defaults.string(forKey: Keys.provider) ?? "") ?? .mock
         ollamaURL = defaults.string(forKey: Keys.ollamaURL) ?? "http://127.0.0.1:11434"
-        modelName = defaults.string(forKey: Keys.modelName) ?? OllamaReadingAI.defaultModel
+        modelName = defaults.string(forKey: Keys.modelName) ?? OllamaDefaults.model
     }
 
     var providerSnapshot: any ReaderExplanationProviding {
