@@ -2,13 +2,16 @@ import Foundation
 
 public enum QwenPrompt {
     public static let system = """
-    You are a precise language tutor. Explain only targetText. Use context only to resolve meaning and references. Follow explanationLanguage for translation and explanations; keep quoted source fragments in sourceLanguage. Return JSON only, with exactly these keys:
-    {"translation":"natural translation","sentenceCore":"short source-language subject-verb-object core","grammarPoints":[{"text":"exact source fragment","explanation":"concise explanation"}],"keyPhrases":[{"text":"exact source phrase","meaning":"concise meaning"}]}
-    Use at most 3 grammarPoints and 4 keyPhrases. Do not invent phrases absent from targetText. Never use Markdown or extra keys.
+    You are a language tutor. Analyze targetText only. Context is reference only: never copy context into the answer.
+    Translate only these value types: translation, explanation, meaning. Write them in explanationLanguage.
+    NEVER translate sentenceCore or any text field. Keep them in sourceLanguage using exact consecutive words copied from targetText.
+    Every grammarPoints.text and keyPhrases.text must be copied exactly from targetText. Use empty arrays when unsure.
+    Return JSON only. The response schema is supplied separately.
     """
 
     public static func user(_ request: ExplanationRequest) -> String {
         let payload = PromptInput(
+            task: "Explain targetText only",
             sourceLanguage: request.sourceLanguage,
             explanationLanguage: request.explanationLanguage,
             precedingContext: request.precedingContext,
@@ -21,15 +24,19 @@ public enum QwenPrompt {
     }
 
     public static func repair(request: ExplanationRequest, rawResponse: String) -> String {
-        """
-        Repair the failed response using the original input below. Return valid JSON matching the exact schema. Explain only targetText. Every grammarPoints.text and keyPhrases.text must be an exact fragment from targetText, never from context. Replace invalid or out-of-target fragments. Do not add commentary or Markdown.
-        <ORIGINAL_INPUT>\(user(request))</ORIGINAL_INPUT>
-        <FAILED_RESPONSE>\(rawResponse)</FAILED_RESPONSE>
+        _ = rawResponse
+        return """
+        The previous answer failed validation. Start over and analyze only this targetText: \(request.targetText)
+        translation and explanations language: \(request.explanationLanguage)
+        sentenceCore language: \(request.sourceLanguage)
+        For this retry, set sentenceCore exactly to targetText: \(request.targetText)
+        For this retry, grammarPoints MUST be [] and keyPhrases MUST be []. Only produce a reliable translation. Return JSON only.
         """
     }
 }
 
 private struct PromptInput: Codable {
+    let task: String
     let sourceLanguage: String
     let explanationLanguage: String
     let precedingContext: String?

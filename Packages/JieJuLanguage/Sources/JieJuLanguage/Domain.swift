@@ -100,6 +100,13 @@ public struct Explanation: Codable, Equatable, Sendable {
         _ = try validated()
         let target = request.targetText.matchableSourceText
 
+        let core = sentenceCore.matchableSourceText
+        let targetWords = Set(target.split(separator: " "))
+        let coreWords = Set(core.split(separator: " "))
+        guard !coreWords.isEmpty, coreWords.isSubset(of: targetWords) else {
+            throw ReadingAIError.invalidResponse("sentenceCore is absent from targetText: \(sentenceCore)")
+        }
+
         for point in grammarPoints {
             let fragment = point.text.matchableSourceText
             guard !fragment.isEmpty, " \(target) ".contains(" \(fragment) ") else {

@@ -54,6 +54,12 @@ import Testing
         )
         #expect(throws: ReadingAIError.self) { try contextGrammar.validated(against: request) }
 
+        let contextCore = Explanation(
+            translation: "x", sentenceCore: "They arrived after midnight",
+            grammarPoints: [], keyPhrases: []
+        )
+        #expect(throws: ReadingAIError.self) { try contextCore.validated(against: request) }
+
         let partialWord = Explanation(
             translation: "x", sentenceCore: "x", grammarPoints: [],
             keyPhrases: [.init(text: "he", meaning: "他")]

@@ -70,7 +70,7 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
         let first = try await generate(messages: [
             .init(role: "system", content: QwenPrompt.system),
             .init(role: "user", content: QwenPrompt.user(valid))
-        ])
+        ], minimumItems: 1)
         do {
             return (try ExplanationParser.parse(first).validated(against: valid), first)
         } catch {
@@ -78,7 +78,8 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
                 .init(role: "system", content: QwenPrompt.system),
                 .init(role: "user", content: QwenPrompt.repair(request: valid, rawResponse: first))
             ])
-            return (try ExplanationParser.parse(repaired).validated(against: valid), repaired)
+            let parsed = try ExplanationParser.parse(repaired)
+            return (try validatedRepair(parsed, request: valid), repaired)
         }
     }
 
@@ -90,7 +91,7 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
             let first = try await generate(messages: [
                 .init(role: "system", content: QwenPrompt.system),
                 .init(role: "user", content: QwenPrompt.user(valid))
-            ])
+            ], minimumItems: 1)
             latestRaw = first
             do {
                 return .init(explanation: try ExplanationParser.parse(first).validated(against: valid), raw: first, jsonValid: true)
@@ -100,20 +101,34 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
                     .init(role: "user", content: QwenPrompt.repair(request: valid, rawResponse: first))
                 ])
                 latestRaw = repaired
-                return .init(explanation: try ExplanationParser.parse(repaired).validated(against: valid), raw: repaired, jsonValid: true)
+                let parsed = try ExplanationParser.parse(repaired)
+                return .init(explanation: try validatedRepair(parsed, request: valid), raw: repaired, jsonValid: true)
             }
         } catch {
             return .init(error: error.localizedDescription, raw: latestRaw, jsonValid: false)
         }
     }
 
-    private func generate(messages: [ChatMessage]) async throws -> String {
+    private func validatedRepair(_ explanation: Explanation, request: ExplanationRequest) throws -> Explanation {
+        do {
+            return try explanation.validated(against: request)
+        } catch {
+            return try Explanation(
+                translation: explanation.translation,
+                sentenceCore: request.targetText,
+                grammarPoints: [],
+                keyPhrases: []
+            ).validated(against: request)
+        }
+    }
+
+    private func generate(messages: [ChatMessage], minimumItems: Int = 0) async throws -> String {
         let body = ChatRequest(
             model: model,
             messages: messages,
             stream: false,
-            format: "json",
-            options: .init(temperature: 0, numPredict: 700)
+            format: .explanation(minimumItems: minimumItems),
+            options: .init(temperature: 0, numPredict: 350)
         )
         let data = try JSONEncoder().encode(body)
         let response = try await send(path: "/api/chat", method: "POST", body: data)
@@ -145,14 +160,62 @@ private struct ChatOptions: Codable {
     let numPredict: Int
     enum CodingKeys: String, CodingKey { case temperature; case numPredict = "num_predict" }
 }
-private struct ChatRequest: Codable {
+private struct ChatRequest: Encodable {
     let model: String
     let messages: [ChatMessage]
     let stream: Bool
-    let format: String
+    let format: SchemaValue
     let options: ChatOptions
 }
 private struct ChatResponse: Codable { let message: ChatMessage }
+
+private indirect enum SchemaValue: Encodable {
+    case string(String)
+    case integer(Int)
+    case array([SchemaValue])
+    case object([String: SchemaValue])
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let value): try container.encode(value)
+        case .integer(let value): try container.encode(value)
+        case .array(let value): try container.encode(value)
+        case .object(let value): try container.encode(value)
+        }
+    }
+
+    static func explanation(minimumItems: Int) -> SchemaValue { .object([
+        "type": .string("object"),
+        "properties": .object([
+            "translation": .object(["type": .string("string"), "description": .string("Natural translation of targetText")]),
+            "sentenceCore": .object(["type": .string("string"), "description": .string("Source-language sentence core copied only from targetText")]),
+            "grammarPoints": .object([
+                "type": .string("array"), "minItems": .integer(minimumItems), "maxItems": .integer(3),
+                "items": .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "text": .object(["type": .string("string")]),
+                        "explanation": .object(["type": .string("string")])
+                    ]),
+                    "required": .array([.string("text"), .string("explanation")])
+                ])
+            ]),
+            "keyPhrases": .object([
+                "type": .string("array"), "minItems": .integer(minimumItems), "maxItems": .integer(4),
+                "items": .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "text": .object(["type": .string("string")]),
+                        "meaning": .object(["type": .string("string")])
+                    ]),
+                    "required": .array([.string("text"), .string("meaning")])
+                ])
+            ])
+        ]),
+        "required": .array([.string("translation"), .string("sentenceCore"), .string("grammarPoints"), .string("keyPhrases")])
+    ]) }
+}
 
 public extension OllamaReadingAI where Client == URLSessionHTTPClient {
     init(baseURL: URL = URL(string: "http://127.0.0.1:11434")!, model: String = Self.defaultModel, timeout: TimeInterval = 60) {

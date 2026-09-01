@@ -72,7 +72,10 @@ actor StubHTTPClient: HTTPClient {
         let bodyJSON = try #require(JSONSerialization.jsonObject(with: requestBody) as? [String: Any])
         let options = try #require(bodyJSON["options"] as? [String: Any])
         #expect(options["temperature"] as? Double == 0)
-        #expect(options["num_predict"] as? Int == 700)
+        #expect(options["num_predict"] as? Int == 350)
+        let format = try #require(bodyJSON["format"] as? [String: Any])
+        let required = try #require(format["required"] as? [String])
+        #expect(Set(required) == Set(["translation", "sentenceCore", "grammarPoints", "keyPhrases"]))
     }
 
     @Test func retriesExactlyOnceAfterInvalidJSON() async throws {
@@ -104,7 +107,27 @@ actor StubHTTPClient: HTTPClient {
         let bodyJSON = try #require(JSONSerialization.jsonObject(with: repairBody) as? [String: Any])
         let messages = try #require(bodyJSON["messages"] as? [[String: String]])
         #expect(messages.last?["content"]?.contains("Although tired, she continued.") == true)
-        #expect(messages.last?["content"]?.contains("went home") == true)
+        #expect(messages.last?["content"]?.contains("went home") == false)
+        #expect(messages.last?["content"]?.contains("grammarPoints MUST be []") == true)
+    }
+
+    @Test func safelyDropsOffTargetItemsFromRepairResponse() async throws {
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let offTarget = Explanation(
+            translation: "她继续了。", sentenceCore: "她继续了。",
+            grammarPoints: [.init(text: "她", explanation: "主语")],
+            keyPhrases: [.init(text: "她继续了", meaning: "继续")]
+        )
+        let raw = String(decoding: try JSONEncoder().encode(offTarget), as: UTF8.self)
+        let client = StubHTTPClient([.success(tags), .success(chatEnvelope(raw)), .success(chatEnvelope(raw))])
+        let request = ExplanationRequest(targetText: "She continued.")
+
+        let result = try await OllamaReadingAI(client: client).explain(request)
+
+        #expect(result.translation == "她继续了。")
+        #expect(result.sentenceCore == request.targetText)
+        #expect(result.grammarPoints.isEmpty)
+        #expect(result.keyPhrases.isEmpty)
     }
 
     @Test func failsAfterOneRetry() async {
