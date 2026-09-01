@@ -7,5 +7,7 @@ xcuserdata/
 .build/
 TestResults/
 *.epub
+!JieJuTests/Fixtures/
+!JieJuTests/Fixtures/*.epub
 Evaluation/results*.jsonl
 Evaluation/report*.md
