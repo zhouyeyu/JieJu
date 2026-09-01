@@ -27,6 +27,11 @@
 - **修复上一轮 `ca53263` 引入的编译错误**：`AppSettings`/`AppShellView` 中
   `OllamaReadingAI.defaultModel` 是泛型静态成员、无法裸引用，
   已改为非泛型常量 `OllamaDefaults.model`（此前该错误无法编译验证，本轮用类型检查抓到）。
+- **EPUB 解析核心**（`JieJu/Infrastructure/EPUB/EPUBCore.swift`，无第三方依赖）：
+  自研 ZIP 解包（系统 zlib）+ container/OPF + spine + 章节文本抽取（XML 模式/实体解码/正则回退）。
+  测试 fixture：`JieJuTests/Fixtures/{minimal,messy,nocontainer}.epub`（已入测试 Target 资源）。
+  实测 7 项测试通过、真实《挪威的森林》EPUB 解析成功（16 章 3169 段）。
+  **渲染与阅读界面尚未实现，待选方案（WebKit 排版 vs 重排文本），见 DECISIONS.md。**
 
 ## 验证
 
@@ -75,9 +80,10 @@
 
 ## 已知问题
 
-- 真实模型质量未达标（0.5B 75%，门槛 95%），默认模型待 `AI-411` 决定；
+- 真实模型质量未达标（0.5B 75%，门槛 95%）；默认模型 1.5B 已定档（DECISIONS.md）
+- EPUB：解析核心完成，**阅读界面未实现**（渲染方案待定）
 - 缺少固定测试 PDF 和完整 UI 流程；
-- 尚未恢复阅读页码和重新解释历史记录；
+- 尚未实现「重新解释已保存句子」（INT-009）与学习记录详情页；
 - 本机开发者模式关闭，App/UI 测试全线阻塞；
 - 工作区中的 `.workbuddy/` 未纳入版本控制，接手者不得擅自删除。
 

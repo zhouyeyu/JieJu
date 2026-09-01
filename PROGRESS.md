@@ -29,6 +29,10 @@
   CLI/App 设置/设置页展示全部引用同一常量，消除默认值重复定义。
 - **保存并恢复最近阅读页码**：新增 `ReadingPositionStore`（按文档路径存 UserDefaults），
   打开文档时定位到上次页码，翻页即保存，关闭时兜底保存。
+- **EPUB 解析核心**（`EPUBCore`，无第三方依赖）：
+  - 自研 ZIP 解包（系统 zlib）、container.xml/OPF 解析、spine 阅读顺序、导航文档跳过；
+  - 章节 XHTML → 段落文本（XML 模式 + 实体解码 + 非规范文件的正则回退）；
+  - 真实《挪威的森林》EPUB 实测：16 章、3169 段落、书名/作者正确。
 
 ## 真实模型基线（2026-09-02，Qwen 2.5 冒烟集 20 条）
 
@@ -76,8 +80,9 @@
 
 - 日期：2026-09-02
 - JieJuLanguage：**33 项离线测试通过**
-- **App 模块整体类型检查通过**（`swiftc -typecheck`，含全部 App 源码与本地包模块；
-  `#Preview` 宏展开除外，插件服务器受本工具沙箱限制）
+- **EPUB 解析核心：7 项测试实跑通过**（/tmp 探针包执行，fixture 为 minimal/messy/nocontainer）
+- **真实《挪威的森林》EPUB 解析成功**（16 章、3169 段落）
+- **App 模块整体类型检查通过**（`swiftc -typecheck`，含 EPUBCore；`#Preview` 宏除外）
 - **App 模块 `-emit-module -enable-testing` 通过**（测试目标可访问 `@testable import JieJu`）
 - 新增 `ReadingPositionStoreTests`（6 项）：类型检查通过，运行需开发者模式
 - 上一轮提交 `ca53263` 中的 `OllamaReadingAI.defaultModel` 泛型引用

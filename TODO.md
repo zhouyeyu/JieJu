@@ -69,7 +69,8 @@
 
 ## Later
 
-- [ ] EPUB
+- [x] EPUB 解析核心（ZIP 解包、container/OPF、spine、章节文本，见 `EPUBCore`）
+- [ ] EPUB 阅读界面（渲染方案待定：WebKit 排版 vs 重排文本）与选区解句
 - [ ] OCR
 - [ ] 1.5B 质量回退建议
 - [ ] 更多模型 Provider
