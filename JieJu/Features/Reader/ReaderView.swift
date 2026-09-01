@@ -41,6 +41,7 @@ struct ReaderView: View {
                 ZStack(alignment: .topLeading) {
                     PDFReaderView(
                         document: document,
+                        initialPageIndex: model.restoredPageIndex,
                         onSelectionChange: model.updateSelection,
                         onPageChange: model.updateCurrentPage
                     )

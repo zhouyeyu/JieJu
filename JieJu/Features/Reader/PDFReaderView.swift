@@ -3,6 +3,7 @@ import SwiftUI
 
 struct PDFReaderView: NSViewRepresentable {
     let document: PDFDocument
+    var initialPageIndex: Int?
     let onSelectionChange: (ReaderSelection?) -> Void
     let onPageChange: (Int) -> Void
 
@@ -18,13 +19,22 @@ struct PDFReaderView: NSViewRepresentable {
         view.displaysPageBreaks = true
         context.coordinator.attach(to: view)
         view.document = document
+        goToInitialPageIfNeeded(in: view)
         return view
     }
 
     func updateNSView(_ view: PDFView, context: Context) {
         context.coordinator.onSelectionChange = onSelectionChange
         context.coordinator.onPageChange = onPageChange
-        if view.document !== document { view.document = document }
+        if view.document !== document {
+            view.document = document
+            goToInitialPageIfNeeded(in: view)
+        }
+    }
+
+    private func goToInitialPageIfNeeded(in view: PDFView) {
+        guard let initialPageIndex, let page = document.page(at: initialPageIndex) else { return }
+        view.go(to: page)
     }
 
     static func dismantleNSView(_ view: PDFView, coordinator: Coordinator) {

@@ -11,16 +11,22 @@ final class ReaderViewModel: ObservableObject {
     @Published var explanationState: ReaderExplanationState = .idle
     @Published var isExplanationPresented = false
 
+    /// 打开文档时希望 PDFView 定位到的页码；为 nil 表示从第一页开始。
+    private(set) var restoredPageIndex: Int?
+
     private let explanationProvider: any ReaderExplanationProviding
     private let saveHandler: @MainActor (ReaderSavePayload) -> Void
+    private let positionStore: ReadingPositionStore
     private var explanationTask: Task<Void, Never>?
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
-        saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in }
+        saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in },
+        positionStore: ReadingPositionStore = ReadingPositionStore()
     ) {
         self.explanationProvider = explanationProvider
         self.saveHandler = saveHandler
+        self.positionStore = positionStore
     }
 
     var pageLabel: String? {
@@ -55,24 +61,38 @@ final class ReaderViewModel: ObservableObject {
         }
 
         document = pdf
-        currentPageIndex = 0
         selection = nil
         explanationState = .idle
+        restoredPageIndex = nil
+        if let saved = positionStore.position(for: url), saved > 0, saved < pdf.pageCount {
+            currentPageIndex = saved
+            restoredPageIndex = saved
+        } else {
+            currentPageIndex = 0
+        }
         documentState = .loaded(.init(url: url, pageCount: pdf.pageCount))
     }
 
     func closeDocument() {
         explanationTask?.cancel()
+        if case let .loaded(metadata) = documentState {
+            positionStore.save(currentPageIndex, for: metadata.url)
+        }
         document = nil
         selection = nil
         currentPageIndex = 0
+        restoredPageIndex = nil
         explanationState = .idle
         isExplanationPresented = false
         documentState = .empty
     }
 
     func updateCurrentPage(_ index: Int) {
-        currentPageIndex = max(0, index)
+        let clamped = max(0, index)
+        currentPageIndex = clamped
+        if case let .loaded(metadata) = documentState {
+            positionStore.save(clamped, for: metadata.url)
+        }
     }
 
     func updateSelection(_ selection: ReaderSelection?) {
