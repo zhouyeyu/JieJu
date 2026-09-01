@@ -32,6 +32,8 @@
   测试 fixture：`JieJuTests/Fixtures/{minimal,messy,nocontainer}.epub`（已入测试 Target 资源）。
   实测 7 项测试通过、真实《挪威的森林》EPUB 解析成功（16 章 3169 段）。
   **渲染与阅读界面尚未实现，待选方案（WebKit 排版 vs 重排文本），见 DECISIONS.md。**
+- **可配置解释语言**（`INT-012`）：设置页选择解释语言（预设 6 种 + 自定义），
+  `AppSettings.explanationLanguage` 持久化；请求与学习记录使用实际语言。
 
 ## 验证
 
