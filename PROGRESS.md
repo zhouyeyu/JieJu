@@ -25,5 +25,7 @@ Phase 0：工程基础。
 ## 最近验证
 
 - 日期：2026-09-01
-- 自动构建与测试：等待首次执行
-
+- `./scripts/test-all.sh`：通过
+- 单元测试：1 项通过
+- UI 测试：1 项通过
+- 基线提交：`fbdf02f chore: create macOS project foundation`

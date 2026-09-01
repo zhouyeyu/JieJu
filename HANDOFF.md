@@ -5,8 +5,8 @@
 - 日期：2026-09-01
 - Agent：Codex
 - 阶段：Phase 0 工程基础
-- 分支：待 Git 初始化后记录
-- 提交：待首次提交后记录
+- 分支：`main`
+- 基线提交：`fbdf02f chore: create macOS project foundation`
 
 ## 完成内容
 
@@ -16,7 +16,9 @@
 
 ## 验证
 
-- `./scripts/test-all.sh`：等待首次执行
+- `./scripts/test-all.sh`：通过
+- 单元测试：1 项通过
+- UI 测试：1 项通过
 - Xcode 人工启动：待用户确认
 
 ## 已知问题
@@ -28,4 +30,3 @@
 ## 下一任务建议
 
 实现 PDF 阅读器空状态和系统文件打开入口。任务结束后更新本文件，不要只把交接信息留在聊天中。
-
