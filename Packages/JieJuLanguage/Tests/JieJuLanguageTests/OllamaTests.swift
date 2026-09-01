@@ -76,6 +76,34 @@ actor StubHTTPClient: HTTPClient {
         let format = try #require(bodyJSON["format"] as? [String: Any])
         let required = try #require(format["required"] as? [String])
         #expect(Set(required) == Set(["translation", "sentenceCore", "grammarPoints", "keyPhrases"]))
+        let properties = try #require(format["properties"] as? [String: Any])
+        let translation = try #require(properties["translation"] as? [String: Any])
+        let translationDescription = try #require(translation["description"] as? String)
+        #expect(translationDescription.localizedCaseInsensitiveContains("Chinese"))
+        #expect(translationDescription.localizedCaseInsensitiveContains("never in English"))
+        let sentenceCore = try #require(properties["sentenceCore"] as? [String: Any])
+        let coreDescription = try #require(sentenceCore["description"] as? String)
+        #expect(coreDescription.localizedCaseInsensitiveContains("English"))
+    }
+
+    @Test func schemaCarriesRequestLanguages() async throws {
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let client = StubHTTPClient([.success(tags), .success(chatEnvelope(validJSON))])
+        let request = ExplanationRequest(
+            targetText: "Although tired, she continued.",
+            sourceLanguage: "German", explanationLanguage: "Japanese"
+        )
+        _ = try await OllamaReadingAI(client: client).explain(request)
+        let body = try #require((await client.requests).last?.body)
+        let bodyJSON = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let format = try #require(bodyJSON["format"] as? [String: Any])
+        let properties = try #require(format["properties"] as? [String: Any])
+        let translation = try #require(properties["translation"] as? [String: Any])
+        let translationDescription = try #require(translation["description"] as? String)
+        #expect(translationDescription.localizedCaseInsensitiveContains("Japanese"))
+        let sentenceCore = try #require(properties["sentenceCore"] as? [String: Any])
+        let coreDescription = try #require(sentenceCore["description"] as? String)
+        #expect(coreDescription.localizedCaseInsensitiveContains("German"))
     }
 
     @Test func retriesExactlyOnceAfterInvalidJSON() async throws {

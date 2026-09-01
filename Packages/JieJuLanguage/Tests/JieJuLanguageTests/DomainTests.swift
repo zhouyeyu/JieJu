@@ -75,6 +75,30 @@ import Testing
         )
         #expect(try explanation.validated(against: .init(targetText: "Hello—world!")) == explanation)
     }
+
+    @Test func rejectsTranslationIdenticalToTarget() {
+        let request = ExplanationRequest(targetText: "The train leaves at six.")
+        let echo = Explanation(
+            translation: "The train leaves at six.", sentenceCore: "The train leaves at six.",
+            grammarPoints: [], keyPhrases: []
+        )
+        #expect(throws: ReadingAIError.self) { try echo.validated(against: request) }
+
+        let caseEcho = Explanation(
+            translation: "THE TRAIN LEAVES AT SIX.", sentenceCore: "The train leaves at six.",
+            grammarPoints: [], keyPhrases: []
+        )
+        #expect(throws: ReadingAIError.self) { try caseEcho.validated(against: request) }
+    }
+
+    @Test func allowsIdenticalTextWhenLanguagesMatch() throws {
+        let request = ExplanationRequest(targetText: "The train leaves at six.", sourceLanguage: "English", explanationLanguage: "English")
+        let echo = Explanation(
+            translation: "The train leaves at six.", sentenceCore: "The train leaves at six.",
+            grammarPoints: [], keyPhrases: []
+        )
+        #expect(try echo.validated(against: request) == echo)
+    }
 }
 
 let sampleExplanation = Explanation(

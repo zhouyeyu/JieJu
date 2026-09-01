@@ -29,6 +29,7 @@ public enum QwenPrompt {
         The previous answer failed validation. Start over and analyze only this targetText: \(request.targetText)
         translation and explanations language: \(request.explanationLanguage)
         sentenceCore language: \(request.sourceLanguage)
+        translation must be written in \(request.explanationLanguage) and must not be identical to targetText.
         For this retry, set sentenceCore exactly to targetText: \(request.targetText)
         For this retry, grammarPoints MUST be [] and keyPhrases MUST be []. Only produce a reliable translation. Return JSON only.
         """

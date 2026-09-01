@@ -100,6 +100,13 @@ public struct Explanation: Codable, Equatable, Sendable {
         _ = try validated()
         let target = request.targetText.matchableSourceText
 
+        let languagesDiffer = request.explanationLanguage
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .caseInsensitiveCompare(request.sourceLanguage.trimmingCharacters(in: .whitespacesAndNewlines)) != .orderedSame
+        if languagesDiffer, translation.matchableSourceText == target {
+            throw ReadingAIError.invalidResponse("translation is not in \(request.explanationLanguage): \(translation)")
+        }
+
         let core = sentenceCore.matchableSourceText
         let targetWords = Set(target.split(separator: " "))
         let coreWords = Set(core.split(separator: " "))

@@ -70,14 +70,14 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
         let first = try await generate(messages: [
             .init(role: "system", content: QwenPrompt.system),
             .init(role: "user", content: QwenPrompt.user(valid))
-        ], minimumItems: 1)
+        ], request: valid, minimumItems: 1)
         do {
             return (try ExplanationParser.parse(first).validated(against: valid), first)
         } catch {
             let repaired = try await generate(messages: [
                 .init(role: "system", content: QwenPrompt.system),
                 .init(role: "user", content: QwenPrompt.repair(request: valid, rawResponse: first))
-            ])
+            ], request: valid)
             let parsed = try ExplanationParser.parse(repaired)
             return (try validatedRepair(parsed, request: valid), repaired)
         }
@@ -91,7 +91,7 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
             let first = try await generate(messages: [
                 .init(role: "system", content: QwenPrompt.system),
                 .init(role: "user", content: QwenPrompt.user(valid))
-            ], minimumItems: 1)
+            ], request: valid, minimumItems: 1)
             latestRaw = first
             do {
                 return .init(explanation: try ExplanationParser.parse(first).validated(against: valid), raw: first, jsonValid: true)
@@ -99,7 +99,7 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
                 let repaired = try await generate(messages: [
                     .init(role: "system", content: QwenPrompt.system),
                     .init(role: "user", content: QwenPrompt.repair(request: valid, rawResponse: first))
-                ])
+                ], request: valid)
                 latestRaw = repaired
                 let parsed = try ExplanationParser.parse(repaired)
                 return .init(explanation: try validatedRepair(parsed, request: valid), raw: repaired, jsonValid: true)
@@ -122,12 +122,12 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
         }
     }
 
-    private func generate(messages: [ChatMessage], minimumItems: Int = 0) async throws -> String {
+    private func generate(messages: [ChatMessage], request: ExplanationRequest, minimumItems: Int = 0) async throws -> String {
         let body = ChatRequest(
             model: model,
             messages: messages,
             stream: false,
-            format: .explanation(minimumItems: minimumItems),
+            format: .explanation(minimumItems: minimumItems, request: request),
             options: .init(temperature: 0, numPredict: 350)
         )
         let data = try JSONEncoder().encode(body)
@@ -185,36 +185,58 @@ private indirect enum SchemaValue: Encodable {
         }
     }
 
-    static func explanation(minimumItems: Int) -> SchemaValue { .object([
-        "type": .string("object"),
-        "properties": .object([
-            "translation": .object(["type": .string("string"), "description": .string("Natural translation of targetText")]),
-            "sentenceCore": .object(["type": .string("string"), "description": .string("Source-language sentence core copied only from targetText")]),
-            "grammarPoints": .object([
-                "type": .string("array"), "minItems": .integer(minimumItems), "maxItems": .integer(3),
-                "items": .object([
-                    "type": .string("object"),
-                    "properties": .object([
-                        "text": .object(["type": .string("string")]),
-                        "explanation": .object(["type": .string("string")])
-                    ]),
-                    "required": .array([.string("text"), .string("explanation")])
+    static func explanation(minimumItems: Int, request: ExplanationRequest) -> SchemaValue {
+        let explanation = request.explanationLanguage
+        let source = request.sourceLanguage
+        return .object([
+            "type": .string("object"),
+            "properties": .object([
+                "translation": .object([
+                    "type": .string("string"),
+                    "description": .string("Translate targetText into \(explanation). Write the translation in \(explanation), never in \(source).")
+                ]),
+                "sentenceCore": .object([
+                    "type": .string("string"),
+                    "description": .string("Core sentence in \(source), copied exactly from targetText. Do not translate.")
+                ]),
+                "grammarPoints": .object([
+                    "type": .string("array"), "minItems": .integer(minimumItems), "maxItems": .integer(3),
+                    "items": .object([
+                        "type": .string("object"),
+                        "properties": .object([
+                            "text": .object([
+                                "type": .string("string"),
+                                "description": .string("Exact consecutive words copied from targetText, in \(source)")
+                            ]),
+                            "explanation": .object([
+                                "type": .string("string"),
+                                "description": .string("Grammar explanation written in \(explanation), concise and accurate")
+                            ])
+                        ]),
+                        "required": .array([.string("text"), .string("explanation")])
+                    ])
+                ]),
+                "keyPhrases": .object([
+                    "type": .string("array"), "minItems": .integer(minimumItems), "maxItems": .integer(4),
+                    "items": .object([
+                        "type": .string("object"),
+                        "properties": .object([
+                            "text": .object([
+                                "type": .string("string"),
+                                "description": .string("Exact consecutive words copied from targetText, in \(source)")
+                            ]),
+                            "meaning": .object([
+                                "type": .string("string"),
+                                "description": .string("Meaning of the phrase written in \(explanation)")
+                            ])
+                        ]),
+                        "required": .array([.string("text"), .string("meaning")])
+                    ])
                 ])
             ]),
-            "keyPhrases": .object([
-                "type": .string("array"), "minItems": .integer(minimumItems), "maxItems": .integer(4),
-                "items": .object([
-                    "type": .string("object"),
-                    "properties": .object([
-                        "text": .object(["type": .string("string")]),
-                        "meaning": .object(["type": .string("string")])
-                    ]),
-                    "required": .array([.string("text"), .string("meaning")])
-                ])
-            ])
-        ]),
-        "required": .array([.string("translation"), .string("sentenceCore"), .string("grammarPoints"), .string("keyPhrases")])
-    ]) }
+            "required": .array([.string("translation"), .string("sentenceCore"), .string("grammarPoints"), .string("keyPhrases")])
+        ])
+    }
 }
 
 public extension OllamaReadingAI where Client == URLSessionHTTPClient {
