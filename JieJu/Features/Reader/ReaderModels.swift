@@ -53,8 +53,8 @@ struct ReaderSelection: Equatable, Sendable {
     let anchorRect: CGRect
 
     func explanationRequest(
-        sourceLanguage: String = "en",
-        explanationLanguage: String = "zh-Hans"
+        sourceLanguage: String = "English",
+        explanationLanguage: String = "Chinese"
     ) -> ReaderExplanationRequest {
         ReaderExplanationRequest(
             targetText: targetText,
@@ -78,6 +78,8 @@ struct ReaderSavePayload: Sendable {
     let pageIndex: Int
     let selection: ReaderSelection
     let explanation: ReaderExplanation
+    let sourceLanguage: String
+    let explanationLanguage: String
 }
 
 enum ReaderExplanationState: Equatable, Sendable {

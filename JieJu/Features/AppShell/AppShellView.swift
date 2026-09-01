@@ -41,9 +41,10 @@ struct AppShellView: View {
                     explanationProvider: settings.providerSnapshot,
                     saveHandler: { payload in
                         Task { await library.save(payload, modelName: settings.provider == .ollama ? settings.modelName : "mock") }
-                    }
+                    },
+                    explanationLanguage: settings.explanationLanguage
                 )
-                .id("\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)")
+                .id("\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)")
             case .records:
                 LearningRecordsView(model: library)
             case .settings:
@@ -78,6 +79,8 @@ private struct LearningRecordsView: View {
 
 private struct AISettingsView: View {
     @ObservedObject var settings: AppSettings
+    @State private var editingCustomLanguage = false
+    private static let customTag = "__custom__"
 
     var body: some View {
         Form {
@@ -88,6 +91,16 @@ private struct AISettingsView: View {
                 .disabled(settings.provider != .ollama)
             TextField("模型名称", text: $settings.modelName)
                 .disabled(settings.provider != .ollama)
+            Picker("解释语言", selection: languageBinding) {
+                ForEach(AppSettings.presetExplanationLanguages, id: \.self) { language in
+                    Text(AppSettings.localizedName(of: language)).tag(language)
+                }
+                Text("自定义…").tag(Self.customTag)
+            }
+            if editingCustomLanguage || !AppSettings.presetExplanationLanguages.contains(settings.explanationLanguage) {
+                TextField("自定义语言（英文名，如 Arabic）", text: $settings.explanationLanguage)
+                    .accessibilityIdentifier("settings.explanationLanguage")
+            }
             HStack {
                 Button("检查连接") { Task { await settings.checkConnection() } }
                     .disabled(settings.connectionState == .checking)
@@ -100,6 +113,20 @@ private struct AISettingsView: View {
         .formStyle(.grouped)
         .padding()
         .navigationTitle("设置")
+    }
+
+    private var languageBinding: Binding<String> {
+        Binding(
+            get: { settings.explanationLanguage },
+            set: { newValue in
+                if newValue == Self.customTag {
+                    editingCustomLanguage = true
+                } else {
+                    editingCustomLanguage = false
+                    settings.explanationLanguage = newValue
+                }
+            }
+        )
     }
 
     @ViewBuilder

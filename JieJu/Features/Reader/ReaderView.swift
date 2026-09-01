@@ -5,9 +5,14 @@ struct ReaderView: View {
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
-        saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in }
+        saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in },
+        explanationLanguage: String = "Chinese"
     ) {
-        _model = StateObject(wrappedValue: ReaderViewModel(explanationProvider: explanationProvider, saveHandler: saveHandler))
+        _model = StateObject(wrappedValue: ReaderViewModel(
+            explanationProvider: explanationProvider,
+            saveHandler: saveHandler,
+            explanationLanguage: explanationLanguage
+        ))
     }
 
     var body: some View {

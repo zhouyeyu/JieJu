@@ -17,16 +17,22 @@ final class ReaderViewModel: ObservableObject {
     private let explanationProvider: any ReaderExplanationProviding
     private let saveHandler: @MainActor (ReaderSavePayload) -> Void
     private let positionStore: ReadingPositionStore
+    private let sourceLanguage: String
+    private let explanationLanguage: String
     private var explanationTask: Task<Void, Never>?
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
         saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in },
-        positionStore: ReadingPositionStore = ReadingPositionStore()
+        positionStore: ReadingPositionStore = ReadingPositionStore(),
+        sourceLanguage: String = "English",
+        explanationLanguage: String = "Chinese"
     ) {
         self.explanationProvider = explanationProvider
         self.saveHandler = saveHandler
         self.positionStore = positionStore
+        self.sourceLanguage = sourceLanguage
+        self.explanationLanguage = explanationLanguage
     }
 
     var pageLabel: String? {
@@ -104,7 +110,10 @@ final class ReaderViewModel: ObservableObject {
     }
 
     func requestExplanation() {
-        guard let request = selection?.explanationRequest() else { return }
+        guard let request = selection?.explanationRequest(
+            sourceLanguage: sourceLanguage,
+            explanationLanguage: explanationLanguage
+        ) else { return }
         explanationTask?.cancel()
         isExplanationPresented = true
         explanationState = .loading
@@ -133,7 +142,14 @@ final class ReaderViewModel: ObservableObject {
             case let .loaded(metadata) = documentState,
             let selection
         else { return }
-        saveHandler(.init(documentURL: metadata.url, pageIndex: currentPageIndex, selection: selection, explanation: explanation))
+        saveHandler(.init(
+            documentURL: metadata.url,
+            pageIndex: currentPageIndex,
+            selection: selection,
+            explanation: explanation,
+            sourceLanguage: sourceLanguage,
+            explanationLanguage: explanationLanguage
+        ))
     }
 
     private func fail(_ error: ReaderDocumentError) {

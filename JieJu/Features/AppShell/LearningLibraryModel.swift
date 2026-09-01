@@ -28,8 +28,8 @@ final class LearningLibraryModel: ObservableObject {
                 targetText: payload.selection.targetText,
                 precedingContext: payload.selection.precedingContext,
                 followingContext: payload.selection.followingContext,
-                sourceLanguage: "English",
-                explanationLanguage: "Chinese"
+                sourceLanguage: payload.sourceLanguage,
+                explanationLanguage: payload.explanationLanguage
             ),
             explanation: PersistedExplanation(
                 translation: payload.explanation.translation,

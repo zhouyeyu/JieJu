@@ -19,6 +19,19 @@ enum AIProviderChoice: String, CaseIterable, Identifiable {
 
 @MainActor
 final class AppSettings: ObservableObject {
+    static let presetExplanationLanguages = ["Chinese", "English", "Japanese", "Korean", "French", "German"]
+
+    static func localizedName(of language: String) -> String {
+        switch language {
+        case "Chinese": "中文"
+        case "English": "English"
+        case "Japanese": "日本語"
+        case "Korean": "한국어"
+        case "French": "Français"
+        case "German": "Deutsch"
+        default: language
+        }
+    }
     @Published private(set) var connectionState: AIConnectionState = .idle
     @Published var provider: AIProviderChoice {
         didSet { defaults.set(provider.rawValue, forKey: Keys.provider) }
@@ -29,6 +42,9 @@ final class AppSettings: ObservableObject {
     @Published var modelName: String {
         didSet { defaults.set(modelName, forKey: Keys.modelName) }
     }
+    @Published var explanationLanguage: String {
+        didSet { defaults.set(explanationLanguage, forKey: Keys.explanationLanguage) }
+    }
 
     private let defaults: UserDefaults
 
@@ -37,6 +53,7 @@ final class AppSettings: ObservableObject {
         provider = AIProviderChoice(rawValue: defaults.string(forKey: Keys.provider) ?? "") ?? .mock
         ollamaURL = defaults.string(forKey: Keys.ollamaURL) ?? "http://127.0.0.1:11434"
         modelName = defaults.string(forKey: Keys.modelName) ?? OllamaDefaults.model
+        explanationLanguage = defaults.string(forKey: Keys.explanationLanguage) ?? "Chinese"
     }
 
     var providerSnapshot: any ReaderExplanationProviding {
@@ -81,5 +98,6 @@ final class AppSettings: ObservableObject {
         static let provider = "ai.provider"
         static let ollamaURL = "ai.ollamaURL"
         static let modelName = "ai.modelName"
+        static let explanationLanguage = "ai.explanationLanguage"
     }
 }
