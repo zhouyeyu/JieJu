@@ -35,3 +35,4 @@
 - App 单元测试：集成前 6 项通过；新增 Persistence 测试已编译
 - App/UI 测试：当前机器的 Runner 卡在启动测试会话，待恢复后重跑
 - 基线提交：`fbdf02f chore: create macOS project foundation`
+- 模块集成提交：`3529d0f feat: build parallel reader language and storage modules`

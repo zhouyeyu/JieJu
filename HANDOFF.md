@@ -7,6 +7,7 @@
 - 阶段：并行模块首轮集成
 - 分支：`main`
 - 基线提交：`fbdf02f chore: create macOS project foundation`
+- 模块集成提交：`3529d0f feat: build parallel reader language and storage modules`
 
 ## 完成内容
 
