@@ -1,4 +1,13 @@
 import Foundation
+import JieJuLanguage
+
+enum AIConnectionState: Equatable {
+    case idle
+    case checking
+    case ready(String)
+    case modelMissing(String)
+    case unavailable(String)
+}
 
 enum AIProviderChoice: String, CaseIterable, Identifiable {
     case mock
@@ -10,6 +19,7 @@ enum AIProviderChoice: String, CaseIterable, Identifiable {
 
 @MainActor
 final class AppSettings: ObservableObject {
+    @Published private(set) var connectionState: AIConnectionState = .idle
     @Published var provider: AIProviderChoice {
         didSet { defaults.set(provider.rawValue, forKey: Keys.provider) }
     }
@@ -40,10 +50,36 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    func checkConnection() async {
+        guard provider == .ollama else {
+            connectionState = .ready("Mock 可用")
+            return
+        }
+        guard let url = URL(string: ollamaURL), let scheme = url.scheme,
+              ["http", "https"].contains(scheme), url.host != nil else {
+            connectionState = .unavailable("Ollama 地址无效")
+            return
+        }
+        guard !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            connectionState = .modelMissing("模型名称不能为空")
+            return
+        }
+
+        connectionState = .checking
+        let diagnostic = await OllamaReadingAI(baseURL: url, model: modelName, timeout: 5).diagnose()
+        switch diagnostic {
+        case .ready(let model, let count):
+            connectionState = .ready("已连接：\(model)（本地共 \(count) 个模型）")
+        case .modelMissing(let required, _):
+            connectionState = .modelMissing("未安装 \(required)，请运行 ollama pull \(required)")
+        case .serviceUnavailable(let message):
+            connectionState = .unavailable("无法连接 Ollama：\(message)")
+        }
+    }
+
     private enum Keys {
         static let provider = "ai.provider"
         static let ollamaURL = "ai.ollamaURL"
         static let modelName = "ai.modelName"
     }
 }
-

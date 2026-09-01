@@ -2,19 +2,22 @@ import Foundation
 
 public enum QwenPrompt {
     public static let system = """
-    You are a precise language tutor. Explain only TARGET using CONTEXT only for disambiguation. Return JSON only, with exactly these keys:
-    {"translation":"natural Chinese translation","sentenceCore":"short subject-verb-object core","grammarPoints":[{"text":"source fragment","explanation":"concise Chinese explanation"}],"keyPhrases":[{"text":"source phrase","meaning":"concise Chinese meaning"}]}
-    Use at most 3 grammarPoints and 4 keyPhrases. Never use Markdown.
+    You are a precise language tutor. Explain only targetText. Use context only to resolve meaning and references. Follow explanationLanguage for translation and explanations; keep quoted source fragments in sourceLanguage. Return JSON only, with exactly these keys:
+    {"translation":"natural translation","sentenceCore":"short source-language subject-verb-object core","grammarPoints":[{"text":"exact source fragment","explanation":"concise explanation"}],"keyPhrases":[{"text":"exact source phrase","meaning":"concise meaning"}]}
+    Use at most 3 grammarPoints and 4 keyPhrases. Do not invent phrases absent from targetText. Never use Markdown or extra keys.
     """
 
     public static func user(_ request: ExplanationRequest) -> String {
-        """
-        SOURCE_LANGUAGE: \(request.sourceLanguage)
-        EXPLANATION_LANGUAGE: \(request.explanationLanguage)
-        <BEFORE>\(request.precedingContext ?? "")</BEFORE>
-        <TARGET>\(request.targetText)</TARGET>
-        <AFTER>\(request.followingContext ?? "")</AFTER>
-        """
+        let payload = PromptInput(
+            sourceLanguage: request.sourceLanguage,
+            explanationLanguage: request.explanationLanguage,
+            precedingContext: request.precedingContext,
+            targetText: request.targetText,
+            followingContext: request.followingContext
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        return String(decoding: (try? encoder.encode(payload)) ?? Data("{}".utf8), as: UTF8.self)
     }
 
     public static func repair(rawResponse: String) -> String {
@@ -23,6 +26,14 @@ public enum QwenPrompt {
         <FAILED_RESPONSE>\(rawResponse)</FAILED_RESPONSE>
         """
     }
+}
+
+private struct PromptInput: Codable {
+    let sourceLanguage: String
+    let explanationLanguage: String
+    let precedingContext: String?
+    let targetText: String
+    let followingContext: String?
 }
 
 public enum ExplanationParser {

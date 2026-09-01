@@ -18,11 +18,12 @@
 - PDF Reader、文本选择和解释弹窗；
 - JSON 存储与学习记录；
 - Mock/Ollama Provider 设置与 App 集成。
+- Ollama 服务诊断、模型缺失提示和确定性 0.5B Prompt 参数。
 
 ## 验证
 
 - `xcodebuild build`：通过
-- JieJuLanguage：24 项测试通过
+- JieJuLanguage：25 项测试通过
 - macOS App/UI 测试：Runner 启动会话卡住，最后一次完整运行被中止
 - Xcode 人工启动：待用户确认
 

@@ -87,6 +87,12 @@ private struct AISettingsView: View {
                 .disabled(settings.provider != .ollama)
             TextField("模型名称", text: $settings.modelName)
                 .disabled(settings.provider != .ollama)
+            HStack {
+                Button("检查连接") { Task { await settings.checkConnection() } }
+                    .disabled(settings.connectionState == .checking)
+                    .accessibilityIdentifier("settings.checkAI")
+                connectionStatus
+            }
             Text("默认模型：qwen2.5:0.5b-instruct")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -94,5 +100,21 @@ private struct AISettingsView: View {
         .padding()
         .navigationTitle("设置")
     }
-}
 
+    @ViewBuilder
+    private var connectionStatus: some View {
+        switch settings.connectionState {
+        case .idle:
+            Text("尚未检查").foregroundStyle(.secondary)
+        case .checking:
+            ProgressView().controlSize(.small)
+            Text("正在检查…").foregroundStyle(.secondary)
+        case .ready(let message):
+            Label(message, systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+        case .modelMissing(let message):
+            Label(message, systemImage: "arrow.down.circle").foregroundStyle(.orange)
+        case .unavailable(let message):
+            Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+        }
+    }
+}

@@ -21,9 +21,9 @@ import Testing
 
     @Test func promptClearlySeparatesTargetAndContext() {
         let prompt = QwenPrompt.user(.init(targetText: "TARGET", precedingContext: "BEFORE", followingContext: "AFTER"))
-        #expect(prompt.contains("<TARGET>TARGET</TARGET>"))
-        #expect(prompt.contains("<BEFORE>BEFORE</BEFORE>"))
-        #expect(prompt.contains("<AFTER>AFTER</AFTER>"))
+        #expect(prompt.contains(#""targetText":"TARGET""#))
+        #expect(prompt.contains(#""precedingContext":"BEFORE""#))
+        #expect(prompt.contains(#""followingContext":"AFTER""#))
         #expect(QwenPrompt.system.contains("at most 3 grammarPoints and 4 keyPhrases"))
     }
 }

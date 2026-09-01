@@ -35,6 +35,23 @@ actor StubHTTPClient: HTTPClient {
         }
     }
 
+    @Test func diagnosisDistinguishesReadyMissingAndOffline() async {
+        let readyTags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"},{"name":"other:latest"}]}"#)
+        let ready = await OllamaReadingAI(client: StubHTTPClient([.success(readyTags)])).diagnose()
+        #expect(ready == .ready(model: "qwen2.5:0.5b-instruct", installedModelCount: 2))
+
+        let missingTags = response(200, #"{"models":[{"name":"other:latest"}]}"#)
+        let missing = await OllamaReadingAI(client: StubHTTPClient([.success(missingTags)])).diagnose()
+        #expect(missing == .modelMissing(required: "qwen2.5:0.5b-instruct", installedModels: ["other:latest"]))
+
+        let offline = await OllamaReadingAI(client: StubHTTPClient([.failure(ReadingAIError.transport("offline"))])).diagnose()
+        guard case .serviceUnavailable(let message) = offline else {
+            Issue.record("Expected unavailable diagnostic")
+            return
+        }
+        #expect(message.contains("offline"))
+    }
+
     @Test func mapsTransportAndTimeoutErrors() async {
         let timeout = OllamaReadingAI(client: StubHTTPClient([.failure(ReadingAIError.timeout)]))
         await #expect(throws: ReadingAIError.timeout) { try await timeout.models() }
@@ -51,6 +68,11 @@ actor StubHTTPClient: HTTPClient {
         let requests = await client.requests
         #expect(requests.last?.method == "POST")
         #expect(requests.last?.headers["Content-Type"] == "application/json")
+        let requestBody = try #require(requests.last?.body)
+        let bodyJSON = try #require(JSONSerialization.jsonObject(with: requestBody) as? [String: Any])
+        let options = try #require(bodyJSON["options"] as? [String: Any])
+        #expect(options["temperature"] as? Double == 0)
+        #expect(options["num_predict"] as? Int == 700)
     }
 
     @Test func retriesExactlyOnceAfterInvalidJSON() async throws {

@@ -5,6 +5,12 @@ public struct OllamaModel: Codable, Equatable, Sendable {
     public init(name: String) { self.name = name }
 }
 
+public enum OllamaDiagnostic: Equatable, Sendable {
+    case ready(model: String, installedModelCount: Int)
+    case modelMissing(required: String, installedModels: [String])
+    case serviceUnavailable(message: String)
+}
+
 public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
     public static var defaultModel: String { "qwen2.5:0.5b-instruct" }
     public let baseURL: URL
@@ -39,6 +45,18 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
     public func hasModel(_ requestedModel: String? = nil) async throws -> Bool {
         let wanted = requestedModel ?? model
         return try await models().contains { $0.name == wanted || $0.name == "\(wanted):latest" }
+    }
+
+    public func diagnose() async -> OllamaDiagnostic {
+        do {
+            let installed = try await models().map(\.name).sorted()
+            let found = installed.contains { $0 == model || $0 == "\(model):latest" }
+            return found
+                ? .ready(model: model, installedModelCount: installed.count)
+                : .modelMissing(required: model, installedModels: installed)
+        } catch {
+            return .serviceUnavailable(message: error.localizedDescription)
+        }
     }
 
     public func explain(_ request: ExplanationRequest) async throws -> Explanation {
@@ -90,7 +108,13 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
     }
 
     private func generate(messages: [ChatMessage]) async throws -> String {
-        let body = ChatRequest(model: model, messages: messages, stream: false, format: "json")
+        let body = ChatRequest(
+            model: model,
+            messages: messages,
+            stream: false,
+            format: "json",
+            options: .init(temperature: 0, numPredict: 700)
+        )
         let data = try JSONEncoder().encode(body)
         let response = try await send(path: "/api/chat", method: "POST", body: data)
         guard (200..<300).contains(response.statusCode) else {
@@ -116,7 +140,18 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
 
 private struct ModelList: Codable { let models: [OllamaModel] }
 private struct ChatMessage: Codable { let role: String; let content: String }
-private struct ChatRequest: Codable { let model: String; let messages: [ChatMessage]; let stream: Bool; let format: String }
+private struct ChatOptions: Codable {
+    let temperature: Double
+    let numPredict: Int
+    enum CodingKeys: String, CodingKey { case temperature; case numPredict = "num_predict" }
+}
+private struct ChatRequest: Codable {
+    let model: String
+    let messages: [ChatMessage]
+    let stream: Bool
+    let format: String
+    let options: ChatOptions
+}
 private struct ChatResponse: Codable { let message: ChatMessage }
 
 public extension OllamaReadingAI where Client == URLSessionHTTPClient {
