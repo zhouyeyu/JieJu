@@ -41,7 +41,7 @@ public struct CLIOptions: Equatable, Sendable {
             throw ReadingAIError.invalidInput("--url must be an absolute HTTP(S) URL")
         }
         baseURL = url
-        model = values["--model"] ?? "qwen2.5:0.5b-instruct"
+        model = values["--model"] ?? OllamaDefaults.model
         guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ReadingAIError.invalidInput("--model must not be empty")
         }
@@ -105,7 +105,7 @@ public struct BatchCLIOptions: Equatable, Sendable {
         self.input = input
         self.output = output
         self.report = report
-        model = values["--model"] ?? "qwen2.5:0.5b-instruct"
+        model = values["--model"] ?? OllamaDefaults.model
         baseURL = url
     }
 }

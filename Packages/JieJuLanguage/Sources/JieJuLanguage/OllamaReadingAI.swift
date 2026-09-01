@@ -11,8 +11,12 @@ public enum OllamaDiagnostic: Equatable, Sendable {
     case serviceUnavailable(message: String)
 }
 
+public enum OllamaDefaults {
+    public static let model = "qwen2.5:1.5b-instruct"
+}
+
 public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
-    public static var defaultModel: String { "qwen2.5:0.5b-instruct" }
+    public static var defaultModel: String { OllamaDefaults.model }
     public let baseURL: URL
     public let model: String
     public let client: Client

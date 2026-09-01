@@ -7,5 +7,5 @@ xcuserdata/
 .build/
 TestResults/
 *.epub
-Evaluation/results.jsonl
-Evaluation/report.md
+Evaluation/results*.jsonl
+Evaluation/report*.md

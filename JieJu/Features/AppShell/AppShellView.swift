@@ -1,4 +1,5 @@
 import SwiftUI
+import JieJuLanguage
 
 private enum AppSection: String, CaseIterable, Identifiable {
     case reader
@@ -93,7 +94,7 @@ private struct AISettingsView: View {
                     .accessibilityIdentifier("settings.checkAI")
                 connectionStatus
             }
-            Text("默认模型：qwen2.5:0.5b-instruct")
+            Text("默认模型：\(OllamaReadingAI.defaultModel)")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .formStyle(.grouped)

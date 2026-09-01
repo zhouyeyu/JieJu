@@ -17,11 +17,11 @@ actor StubHTTPClient: HTTPClient {
 
 @Suite struct OllamaTests {
     @Test func healthModelsAndExistence() async throws {
-        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
         let client = StubHTTPClient([.success(tags), .success(tags), .success(tags)])
         let provider = OllamaReadingAI(client: client)
         #expect(try await provider.isHealthy())
-        #expect(try await provider.models() == [.init(name: "qwen2.5:0.5b-instruct")])
+        #expect(try await provider.models() == [.init(name: "qwen2.5:1.5b-instruct")])
         #expect(try await provider.hasModel())
     }
 
@@ -30,19 +30,19 @@ actor StubHTTPClient: HTTPClient {
         await #expect(throws: ReadingAIError.self) { try await unavailable.models() }
 
         let missing = OllamaReadingAI(client: StubHTTPClient([.success(response(200, #"{"models":[]}"#))]))
-        await #expect(throws: ReadingAIError.modelMissing("qwen2.5:0.5b-instruct")) {
+        await #expect(throws: ReadingAIError.modelMissing("qwen2.5:1.5b-instruct")) {
             try await missing.explain(.init(targetText: "Hello"))
         }
     }
 
     @Test func diagnosisDistinguishesReadyMissingAndOffline() async {
-        let readyTags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"},{"name":"other:latest"}]}"#)
+        let readyTags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"},{"name":"other:latest"}]}"#)
         let ready = await OllamaReadingAI(client: StubHTTPClient([.success(readyTags)])).diagnose()
-        #expect(ready == .ready(model: "qwen2.5:0.5b-instruct", installedModelCount: 2))
+        #expect(ready == .ready(model: "qwen2.5:1.5b-instruct", installedModelCount: 2))
 
         let missingTags = response(200, #"{"models":[{"name":"other:latest"}]}"#)
         let missing = await OllamaReadingAI(client: StubHTTPClient([.success(missingTags)])).diagnose()
-        #expect(missing == .modelMissing(required: "qwen2.5:0.5b-instruct", installedModels: ["other:latest"]))
+        #expect(missing == .modelMissing(required: "qwen2.5:1.5b-instruct", installedModels: ["other:latest"]))
 
         let offline = await OllamaReadingAI(client: StubHTTPClient([.failure(ReadingAIError.transport("offline"))])).diagnose()
         guard case .serviceUnavailable(let message) = offline else {
@@ -60,7 +60,7 @@ actor StubHTTPClient: HTTPClient {
     }
 
     @Test func explainsUsingStrictJSON() async throws {
-        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
         let envelope = chatEnvelope(validJSON)
         let client = StubHTTPClient([.success(tags), .success(envelope)])
         let result = try await OllamaReadingAI(client: client).explain(.init(targetText: "Although tired, she continued."))
@@ -87,7 +87,7 @@ actor StubHTTPClient: HTTPClient {
     }
 
     @Test func schemaCarriesRequestLanguages() async throws {
-        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
         let client = StubHTTPClient([.success(tags), .success(chatEnvelope(validJSON))])
         let request = ExplanationRequest(
             targetText: "Although tired, she continued.",
@@ -107,7 +107,7 @@ actor StubHTTPClient: HTTPClient {
     }
 
     @Test func retriesExactlyOnceAfterInvalidJSON() async throws {
-        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
         let client = StubHTTPClient([.success(tags), .success(chatEnvelope("not json")), .success(chatEnvelope(validJSON))])
         let result = try await OllamaReadingAI(client: client).explain(.init(targetText: "Although tired, she continued."))
         #expect(result == sampleExplanation)
@@ -115,7 +115,7 @@ actor StubHTTPClient: HTTPClient {
     }
 
     @Test func retriesWhenValidJSONReferencesContextInsteadOfTarget() async throws {
-        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
         let offTarget = Explanation(
             translation: "虽然很累，她仍继续前行。",
             sentenceCore: "she continued",
@@ -140,7 +140,7 @@ actor StubHTTPClient: HTTPClient {
     }
 
     @Test func safelyDropsOffTargetItemsFromRepairResponse() async throws {
-        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
         let offTarget = Explanation(
             translation: "她继续了。", sentenceCore: "她继续了。",
             grammarPoints: [.init(text: "她", explanation: "主语")],
@@ -159,7 +159,7 @@ actor StubHTTPClient: HTTPClient {
     }
 
     @Test func failsAfterOneRetry() async {
-        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
         let client = StubHTTPClient([.success(tags), .success(chatEnvelope("bad")), .success(chatEnvelope("still bad"))])
         await #expect(throws: ReadingAIError.self) {
             try await OllamaReadingAI(client: client).explain(.init(targetText: "Hello"))
@@ -168,7 +168,7 @@ actor StubHTTPClient: HTTPClient {
     }
 
     @Test func batchAttemptPreservesInvalidRawAfterRetry() async {
-        let tags = response(200, #"{"models":[{"name":"qwen2.5:0.5b-instruct"}]}"#)
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
         let client = StubHTTPClient([.success(tags), .success(chatEnvelope("bad")), .success(chatEnvelope("still bad"))])
         let attempt = await OllamaReadingAI(client: client).attemptExplanation(.init(targetText: "Hello"))
         #expect(!attempt.jsonValid)
