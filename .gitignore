@@ -6,4 +6,6 @@ xcuserdata/
 .swiftpm/
 .build/
 TestResults/
-
+*.epub
+Evaluation/results.jsonl
+Evaluation/report.md

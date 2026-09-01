@@ -5,12 +5,11 @@ final class JieJuUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testWelcomeScreenAppears() {
+    func testReaderEmptyStateAppears() {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["JieJu"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["从真实阅读中学习语言"].exists)
+        XCTAssertTrue(app.buttons["reader.openPDF"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["打开一份 PDF 开始阅读"].exists)
     }
 }
-

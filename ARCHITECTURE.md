@@ -50,6 +50,12 @@ protocol ReadingAI: Sendable {
 
 模型输入只包含选中文本、前后有限上下文、文档元数据、目标语言和学习水平。输出使用可校验的结构化数据。
 
+语言能力位于本地 Swift Package `Packages/JieJuLanguage`：library 提供领域类型、Mock、Ollama、Prompt、解析与批量评测，`JieJuAILab` executable 提供单句调试和 JSONL 批量评测。Reader、Persistence 与语言包可独立开发，App 通过协议适配器完成转换。
+
+## 本地数据
+
+学习记录和阅读进度写入 Application Support 下的版本化 `library.json`。存储使用 actor 隔离、原子替换和损坏文件备份。持久化 DTO 不直接依赖模型 Provider。
+
 ## 测试策略
 
 - 单元测试：句子切分、上下文截取、请求构造、响应解析、数据保存；
@@ -65,4 +71,3 @@ protocol ReadingAI: Sendable {
 - 新增第三方依赖前记录到 `DECISIONS.md`；
 - 业务逻辑不得绑定单一模型、网络协议或持久化方案；
 - 测试资源放在测试 Target 内，不读取用户真实文档。
-

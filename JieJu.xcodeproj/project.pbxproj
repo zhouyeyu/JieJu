@@ -11,6 +11,20 @@
 		AA0000000000000000000002 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000012 /* WelcomeView.swift */; };
 		AA0000000000000000000003 /* JieJuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000013 /* JieJuTests.swift */; };
 		AA0000000000000000000004 /* JieJuUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000014 /* JieJuUITests.swift */; };
+		AA0000000000000000000005 /* ReaderModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000018 /* ReaderModels.swift */; };
+		AA0000000000000000000006 /* ReaderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000019 /* ReaderViewModel.swift */; };
+		AA0000000000000000000007 /* PDFReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000001A /* PDFReaderView.swift */; };
+		AA0000000000000000000008 /* ReaderTextProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000001B /* ReaderTextProcessor.swift */; };
+		AA0000000000000000000009 /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000001C /* ReaderView.swift */; };
+		AA000000000000000000000A /* ReaderTextProcessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000001D /* ReaderTextProcessorTests.swift */; };
+		AA000000000000000000000B /* JieJuLanguage in Frameworks */ = {isa = PBXBuildFile; productRef = AA00000000000000000000F2 /* JieJuLanguage */; };
+		AA000000000000000000000C /* PersistenceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000001E /* PersistenceModels.swift */; };
+		AA000000000000000000000D /* JSONPersistenceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000001F /* JSONPersistenceStore.swift */; };
+		AA000000000000000000000E /* JSONPersistenceStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000020 /* JSONPersistenceStoreTests.swift */; };
+		AA000000000000000000000F /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000025 /* AppSettings.swift */; };
+		AA0000000000000000000010 /* OllamaReaderExplanationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000026 /* OllamaReaderExplanationProvider.swift */; };
+		AA0000000000000000000030 /* LearningLibraryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000027 /* LearningLibraryModel.swift */; };
+		AB0000000000000000000001 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000028 /* AppShellView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,10 +52,23 @@
 		AA0000000000000000000015 /* JieJu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JieJu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000016 /* JieJuTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JieJuTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000017 /* JieJuUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = JieJuUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000018 /* ReaderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderModels.swift; sourceTree = "<group>"; };
+		AA0000000000000000000019 /* ReaderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderViewModel.swift; sourceTree = "<group>"; };
+		AA000000000000000000001A /* PDFReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFReaderView.swift; sourceTree = "<group>"; };
+		AA000000000000000000001B /* ReaderTextProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderTextProcessor.swift; sourceTree = "<group>"; };
+		AA000000000000000000001C /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
+		AA000000000000000000001D /* ReaderTextProcessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderTextProcessorTests.swift; sourceTree = "<group>"; };
+		AA000000000000000000001E /* PersistenceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceModels.swift; sourceTree = "<group>"; };
+		AA000000000000000000001F /* JSONPersistenceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONPersistenceStore.swift; sourceTree = "<group>"; };
+		AA0000000000000000000020 /* JSONPersistenceStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONPersistenceStoreTests.swift; sourceTree = "<group>"; };
+		AA0000000000000000000025 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		AA0000000000000000000026 /* OllamaReaderExplanationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaReaderExplanationProvider.swift; sourceTree = "<group>"; };
+		AA0000000000000000000027 /* LearningLibraryModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningLibraryModel.swift; sourceTree = "<group>"; };
+		AA0000000000000000000028 /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		AA0000000000000000000051 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		AA0000000000000000000051 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (AA000000000000000000000B /* JieJuLanguage in Frameworks */); runOnlyForDeploymentPostprocessing = 0; };
 		AA0000000000000000000052 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		AA0000000000000000000053 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
@@ -62,6 +89,7 @@
 			children = (
 				AA0000000000000000000063 /* App */,
 				AA0000000000000000000064 /* Features */,
+				AA000000000000000000006B /* Infrastructure */,
 			);
 			path = JieJu;
 			sourceTree = "<group>";
@@ -74,7 +102,7 @@
 		};
 		AA0000000000000000000064 /* Features */ = {
 			isa = PBXGroup;
-			children = (AA0000000000000000000065 /* Welcome */);
+			children = (AA0000000000000000000065 /* Welcome */, AA0000000000000000000069 /* Reader */, AA000000000000000000006E /* AppShell */);
 			path = Features;
 			sourceTree = "<group>";
 		};
@@ -86,7 +114,7 @@
 		};
 		AA0000000000000000000066 /* JieJuTests */ = {
 			isa = PBXGroup;
-			children = (AA0000000000000000000013 /* JieJuTests.swift */);
+			children = (AA0000000000000000000013 /* JieJuTests.swift */, AA000000000000000000006A /* Reader */, AA000000000000000000006D /* Persistence */);
 			path = JieJuTests;
 			sourceTree = "<group>";
 		};
@@ -106,6 +134,42 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		AA0000000000000000000069 /* Reader */ = {
+			isa = PBXGroup;
+			children = (AA0000000000000000000018, AA0000000000000000000019, AA000000000000000000001A, AA000000000000000000001B, AA000000000000000000001C);
+			path = Reader;
+			sourceTree = "<group>";
+		};
+		AA000000000000000000006A /* Reader */ = {
+			isa = PBXGroup;
+			children = (AA000000000000000000001D);
+			path = Reader;
+			sourceTree = "<group>";
+		};
+		AA000000000000000000006B /* Infrastructure */ = {
+			isa = PBXGroup;
+			children = (AA000000000000000000006C /* Persistence */);
+			path = Infrastructure;
+			sourceTree = "<group>";
+		};
+		AA000000000000000000006C /* Persistence */ = {
+			isa = PBXGroup;
+			children = (AA000000000000000000001E, AA000000000000000000001F);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		AA000000000000000000006D /* Persistence */ = {
+			isa = PBXGroup;
+			children = (AA0000000000000000000020);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		AA000000000000000000006E /* AppShell */ = {
+			isa = PBXGroup;
+			children = (AA0000000000000000000025, AA0000000000000000000026, AA0000000000000000000027, AA0000000000000000000028);
+			path = AppShell;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -118,6 +182,7 @@
 			name = JieJu;
 			productName = JieJu;
 			productReference = AA0000000000000000000015 /* JieJu.app */;
+			packageProductDependencies = (AA00000000000000000000F2 /* JieJuLanguage */);
 			productType = "com.apple.product-type.application";
 		};
 		AA0000000000000000000042 /* JieJuTests */ = {
@@ -166,6 +231,7 @@
 			productRefGroup = AA0000000000000000000068 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (AA00000000000000000000F1 /* XCLocalSwiftPackageReference "JieJuLanguage" */);
 			targets = (AA0000000000000000000041 /* JieJu */, AA0000000000000000000042 /* JieJuTests */, AA0000000000000000000043 /* JieJuUITests */);
 		};
 /* End PBXProject section */
@@ -177,8 +243,8 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AA0000000000000000000071 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000001 /* JieJuApp.swift in Sources */, AA0000000000000000000002 /* WelcomeView.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
-		AA0000000000000000000072 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000003 /* JieJuTests.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
+		AA0000000000000000000071 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000001 /* JieJuApp.swift in Sources */, AA0000000000000000000002 /* WelcomeView.swift in Sources */, AA0000000000000000000005, AA0000000000000000000006, AA0000000000000000000007, AA0000000000000000000008, AA0000000000000000000009, AA000000000000000000000C, AA000000000000000000000D, AA000000000000000000000F, AA0000000000000000000010, AA0000000000000000000030, AB0000000000000000000001); runOnlyForDeploymentPostprocessing = 0; };
+		AA0000000000000000000072 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000003 /* JieJuTests.swift in Sources */, AA000000000000000000000A, AA000000000000000000000E); runOnlyForDeploymentPostprocessing = 0; };
 		AA0000000000000000000073 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000004 /* JieJuUITests.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
@@ -204,6 +270,14 @@
 		AA0000000000000000000093 /* Build configuration list for PBXNativeTarget "JieJuTests" */ = {isa = XCConfigurationList; buildConfigurations = (AA00000000000000000000C1 /* Debug */, AA00000000000000000000C2 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		AA0000000000000000000094 /* Build configuration list for PBXNativeTarget "JieJuUITests" */ = {isa = XCConfigurationList; buildConfigurations = (AA00000000000000000000D1 /* Debug */, AA00000000000000000000D2 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		AA00000000000000000000F1 /* XCLocalSwiftPackageReference "JieJuLanguage" */ = {isa = XCLocalSwiftPackageReference; relativePath = Packages/JieJuLanguage; };
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA00000000000000000000F2 /* JieJuLanguage */ = {isa = XCSwiftPackageProductDependency; package = AA00000000000000000000F1 /* XCLocalSwiftPackageReference "JieJuLanguage" */; productName = JieJuLanguage; };
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AA0000000000000000000031 /* Project object */;
 }

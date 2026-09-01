@@ -4,10 +4,9 @@ import SwiftUI
 struct JieJuApp: App {
     var body: some Scene {
         WindowGroup {
-            WelcomeView()
+            AppShellView()
         }
         .windowStyle(.titleBar)
         .defaultSize(width: 1080, height: 720)
     }
 }
-

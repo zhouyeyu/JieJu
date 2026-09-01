@@ -11,3 +11,22 @@ JieJu 是一个面向 macOS 的语言学习型 PDF/EPUB 阅读器。项目目前
 
 任务状态见 `TODO.md`，最近进度见 `PROGRESS.md`，跨 Agent 交接见 `HANDOFF.md`。
 
+## 本地语言实验
+
+启动 Ollama 并安装 `qwen2.5:0.5b-instruct` 后：
+
+```bash
+swift run --package-path Packages/JieJuLanguage JieJuAILab explain \
+  --text "Although she was tired, she continued working." \
+  --before "It was already midnight." \
+  --after "The report was due the next morning."
+```
+
+批量运行冒烟评测：
+
+```bash
+swift run --package-path Packages/JieJuLanguage JieJuAILab batch \
+  --input Evaluation/smoke.jsonl \
+  --output Evaluation/results.jsonl \
+  --report Evaluation/report.md
+```

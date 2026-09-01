@@ -4,7 +4,7 @@
 
 - 日期：2026-09-01
 - Agent：Codex
-- 阶段：Phase 0 工程基础
+- 阶段：并行模块首轮集成
 - 分支：`main`
 - 基线提交：`fbdf02f chore: create macOS project foundation`
 
@@ -13,20 +13,25 @@
 - 创建项目协作、产品、架构、任务、进度和决策文档；
 - 创建最小 macOS App 与测试工程；
 - 创建统一测试脚本。
+- 独立语言引擎、CLI 和批量评测；
+- PDF Reader、文本选择和解释弹窗；
+- JSON 存储与学习记录；
+- Mock/Ollama Provider 设置与 App 集成。
 
 ## 验证
 
-- `./scripts/test-all.sh`：通过
-- 单元测试：1 项通过
-- UI 测试：1 项通过
+- `xcodebuild build`：通过
+- JieJuLanguage：24 项测试通过
+- macOS App/UI 测试：Runner 启动会话卡住，最后一次完整运行被中止
 - Xcode 人工启动：待用户确认
 
 ## 已知问题
 
-- 尚未实现 PDF 阅读功能；
-- 尚未接入 AI Provider；
-- UI 测试当前只覆盖应用启动与欢迎页。
+- 尚未用真实 Ollama 模型验证质量；
+- 缺少固定测试 PDF 和完整 UI 流程；
+- 尚未恢复阅读页码和重新解释历史记录；
+- 工作区中的 `.workbuddy/` 未纳入本次提交，接手者不得擅自删除。
 
 ## 下一任务建议
 
-实现 PDF 阅读器空状态和系统文件打开入口。任务结束后更新本文件，不要只把交接信息留在聊天中。
+先恢复 XCTest Runner 并执行 `./scripts/test-all.sh`，再安装默认模型运行 `Evaluation/smoke.jsonl`。任务结束后更新本文件。
