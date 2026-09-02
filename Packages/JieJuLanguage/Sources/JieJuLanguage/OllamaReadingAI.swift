@@ -87,6 +87,88 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, DeepReadingAI, Bat
         }
     }
 
+    public func explanationStream(_ request: ExplanationRequest) async throws -> AsyncThrowingStream<Explanation, Error> where Client: StreamingHTTPClient {
+        let valid = try request.validated()
+        guard try await hasModel() else { throw ReadingAIError.modelMissing(model) }
+        let body = ChatRequest(
+            model: model,
+            messages: [
+                .init(role: "system", content: QwenPrompt.system),
+                .init(role: "user", content: QwenPrompt.user(valid))
+            ],
+            stream: true,
+            format: .explanation(minimumItems: 1, request: valid),
+            options: .init(temperature: 0, numPredict: 350)
+        )
+        let data = try JSONEncoder().encode(body)
+        guard let url = URL(string: "/api/chat", relativeTo: baseURL)?.absoluteURL else {
+            throw ReadingAIError.invalidInput("invalid Ollama URL")
+        }
+        let response = try await client.stream(.init(
+            url: url,
+            method: "POST",
+            headers: ["Content-Type": "application/json"],
+            body: data,
+            timeout: timeout
+        ))
+        guard (200..<300).contains(response.statusCode) else {
+            throw ReadingAIError.serviceUnavailable("HTTP \(response.statusCode)")
+        }
+
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                var raw = ""
+                var lastPreview: Explanation?
+                do {
+                    for try await line in response.lines {
+                        try Task.checkCancellation()
+                        guard !line.isEmpty else { continue }
+                        let envelope = try JSONDecoder().decode(StreamingChatResponse.self, from: line)
+                        if let message = envelope.error, !message.isEmpty {
+                            throw ReadingAIError.serviceUnavailable(message)
+                        }
+                        raw += envelope.message?.content ?? ""
+                        if let parsedPreview = PartialExplanationParser.parse(raw) {
+                            let preview = Explanation(
+                                translation: parsedPreview.translation,
+                                sentenceCore: parsedPreview.sentenceCore,
+                                grammarPoints: parsedPreview.grammarPoints.filter { valid.containsSourceFragment($0.text) },
+                                keyPhrases: parsedPreview.keyPhrases.filter { valid.containsSourceFragment($0.text) }
+                            )
+                            if preview != lastPreview {
+                                lastPreview = preview
+                                continuation.yield(preview)
+                            }
+                        }
+                    }
+
+                    let final: Explanation
+                    do {
+                        final = try ExplanationParser.parse(raw).validated(against: valid)
+                    } catch {
+                        if let decoded = try? ExplanationParser.parse(raw),
+                           let salvaged = try? validatedRepair(decoded, request: valid) {
+                            final = salvaged
+                        } else {
+                            let repaired = try await generate(messages: [
+                                .init(role: "system", content: QwenPrompt.system),
+                                .init(role: "user", content: QwenPrompt.repair(request: valid, rawResponse: raw))
+                            ], request: valid, minimumItems: 1)
+                            final = try validatedRepair(ExplanationParser.parse(repaired), request: valid)
+                        }
+                    }
+                    if final != lastPreview { continuation.yield(final) }
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish(throwing: CancellationError())
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     public func analyzeDeep(_ request: ExplanationRequest) async throws -> DeepAnalysis {
         try await analyzeDeepWithRawResponse(request).analysis
     }
@@ -274,6 +356,10 @@ private struct ChatRequest: Encodable {
     let options: ChatOptions
 }
 private struct ChatResponse: Codable { let message: ChatMessage }
+private struct StreamingChatResponse: Decodable {
+    let message: ChatMessage?
+    let error: String?
+}
 
 private indirect enum SchemaValue: Encodable {
     case string(String)
@@ -407,5 +493,109 @@ private indirect enum SchemaValue: Encodable {
 public extension OllamaReadingAI where Client == URLSessionHTTPClient {
     init(baseURL: URL = URL(string: "http://127.0.0.1:11434")!, model: String = Self.defaultModel, timeout: TimeInterval = 60) {
         self.init(baseURL: baseURL, model: model, client: URLSessionHTTPClient(), timeout: timeout)
+    }
+}
+
+extension OllamaReadingAI: StreamingReadingAI where Client: StreamingHTTPClient {}
+
+enum PartialExplanationParser {
+    static func parse(_ raw: String) -> Explanation? {
+        let translation = stringValue(named: "translation", in: raw) ?? ""
+        let sentenceCore = stringValue(named: "sentenceCore", in: raw) ?? ""
+        let grammar: [GrammarPoint] = completedObjects(named: "grammarPoints", in: raw)
+        let phrases: [KeyPhrase] = completedObjects(named: "keyPhrases", in: raw)
+        guard !translation.isEmpty || !sentenceCore.isEmpty || !grammar.isEmpty || !phrases.isEmpty else { return nil }
+        return Explanation(
+            translation: translation,
+            sentenceCore: sentenceCore,
+            grammarPoints: grammar,
+            keyPhrases: phrases
+        )
+    }
+
+    private static func stringValue(named name: String, in raw: String) -> String? {
+        guard let keyRange = raw.range(of: "\"\(name)\"") else { return nil }
+        var index = keyRange.upperBound
+        while index < raw.endIndex, raw[index].isWhitespace || raw[index] == ":" {
+            index = raw.index(after: index)
+        }
+        guard index < raw.endIndex, raw[index] == "\"" else { return nil }
+        index = raw.index(after: index)
+        let valueStart = index
+        var escaped = false
+        while index < raw.endIndex {
+            let character = raw[index]
+            if escaped {
+                escaped = false
+            } else if character == "\\" {
+                escaped = true
+            } else if character == "\"" {
+                let encoded = "\"" + String(raw[valueStart..<index]) + "\""
+                return try? JSONDecoder().decode(String.self, from: Data(encoded.utf8))
+            }
+            index = raw.index(after: index)
+        }
+        return decodeIncomplete(String(raw[valueStart...]))
+    }
+
+    private static func decodeIncomplete(_ fragment: String) -> String {
+        var result = ""
+        var escaped = false
+        for character in fragment {
+            if escaped {
+                switch character {
+                case "n": result.append("\n")
+                case "r": result.append("\r")
+                case "t": result.append("\t")
+                case "\"": result.append("\"")
+                case "\\": result.append("\\")
+                default: break
+                }
+                escaped = false
+            } else if character == "\\" {
+                escaped = true
+            } else {
+                result.append(character)
+            }
+        }
+        return result
+    }
+
+    private static func completedObjects<T: Decodable>(named name: String, in raw: String) -> [T] {
+        guard let keyRange = raw.range(of: "\"\(name)\""),
+              let arrayStart = raw[keyRange.upperBound...].firstIndex(of: "[") else { return [] }
+        var results: [T] = []
+        var index = raw.index(after: arrayStart)
+        var objectStart: String.Index?
+        var depth = 0
+        var inString = false
+        var escaped = false
+        while index < raw.endIndex {
+            let character = raw[index]
+            if inString {
+                if escaped { escaped = false }
+                else if character == "\\" { escaped = true }
+                else if character == "\"" { inString = false }
+            } else {
+                if character == "\"" { inString = true }
+                else if character == "{" {
+                    if depth == 0 { objectStart = index }
+                    depth += 1
+                } else if character == "}" {
+                    depth -= 1
+                    if depth == 0, let start = objectStart {
+                        let end = raw.index(after: index)
+                        if let value = try? JSONDecoder().decode(T.self, from: Data(raw[start..<end].utf8)) {
+                            results.append(value)
+                        }
+                        objectStart = nil
+                    }
+                } else if character == "]", depth == 0 {
+                    break
+                }
+            }
+            index = raw.index(after: index)
+        }
+        return results
     }
 }

@@ -6,7 +6,7 @@ public enum QwenPrompt {
     Translate only these value types: translation, explanation, meaning. Write them in explanationLanguage.
     NEVER translate sentenceCore or any text field. Keep them in sourceLanguage using exact consecutive words copied from targetText.
     Every grammarPoints.text and keyPhrases.text must be copied exactly from targetText. Use empty arrays when unsure.
-    Return JSON only. The response schema is supplied separately.
+    Return JSON only. Emit keys in this exact order: translation, sentenceCore, grammarPoints, keyPhrases. The response schema is supplied separately.
     """
 
     public static func user(_ request: ExplanationRequest) -> String {

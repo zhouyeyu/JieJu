@@ -26,6 +26,7 @@ import Testing
         #expect(prompt.contains(#""followingContext":"AFTER""#))
         #expect(QwenPrompt.system.contains("never copy context"))
         #expect(QwenPrompt.system.contains("schema is supplied separately"))
+        #expect(QwenPrompt.system.contains("translation, sentenceCore, grammarPoints, keyPhrases"))
     }
 
     @Test func repairPromptIncludesOriginalInputAndFailedResponse() {

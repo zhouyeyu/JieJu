@@ -24,6 +24,18 @@ struct JieJuAILab {
                 writeStandardError("Elapsed: \(elapsed)")
                 return
             }
+            if options.command == .stream {
+                let stream = try await provider.explanationStream(request)
+                var final: Explanation?
+                for try await update in stream {
+                    final = update
+                    let elapsed = start.duration(to: clock.now)
+                    print("[\(elapsed)] translation=\(update.translation) grammar=\(update.grammarPoints.count) phrases=\(update.keyPhrases.count)")
+                }
+                guard let final else { throw ReadingAIError.invalidResponse("empty stream") }
+                print("Final: \(final.translation)")
+                return
+            }
             let result = try await provider.explainWithRawResponse(request)
             let elapsed = start.duration(to: clock.now)
 
@@ -95,6 +107,9 @@ Usage:
   JieJuAILab deep --text <sentence> [--before <text>] [--after <text>]
                  [--source-language <name>] [--explanation-language <name>]
                  [--raw] [--model <name>] [--url <ollama-url>]
+  JieJuAILab stream --text <sentence> [--before <text>] [--after <text>]
+                   [--source-language <name>] [--explanation-language <name>]
+                   [--model <name>] [--url <ollama-url>]
   JieJuAILab batch --input <input.jsonl> --output <results.jsonl> --report <report.md>
                   [--model <name>] [--url <ollama-url>]
 """

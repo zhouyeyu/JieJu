@@ -137,6 +137,11 @@ public protocol ReadingAI: Sendable {
     func explain(_ request: ExplanationRequest) async throws -> Explanation
 }
 
+public protocol StreamingReadingAI: ReadingAI {
+    /// Intermediate values are display-only. The last value is fully decoded and validated.
+    func explanationStream(_ request: ExplanationRequest) async throws -> AsyncThrowingStream<Explanation, Error>
+}
+
 public struct SentenceComponent: Codable, Equatable, Sendable {
     public let text: String
     public let role: String
@@ -269,7 +274,7 @@ private extension String {
     var unspacedMatchableText: String { matchableSourceText.replacingOccurrences(of: " ", with: "") }
 }
 
-private extension ExplanationRequest {
+extension ExplanationRequest {
     var usesUnspacedSourceMatching: Bool {
         sourceLanguage.localizedCaseInsensitiveContains("Japanese") ||
         targetText.unicodeScalars.contains { (0x3040...0x30FF).contains($0.value) }

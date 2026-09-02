@@ -160,6 +160,35 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual(captured?.sourceLanguage, "Japanese")
     }
 
+    @MainActor
+    func testReaderPublishesStreamingPreviewBeforeFinalResult() async throws {
+        let model = ReaderViewModel(explanationProvider: ProgressiveExplanationProvider())
+        model.updateSelection(.init(
+            targetText: "She continued.", precedingContext: nil, followingContext: nil, anchorRect: .zero
+        ))
+        model.requestExplanation()
+
+        for _ in 0..<100 {
+            if case .streaming = model.explanationState { break }
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        guard case let .streaming(preview) = model.explanationState else {
+            return XCTFail("Expected an intermediate streaming state")
+        }
+        XCTAssertEqual(preview.translation, "她继续")
+        XCTAssertTrue(preview.grammarPoints.isEmpty)
+
+        for _ in 0..<200 {
+            if case .loaded = model.explanationState { break }
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        guard case let .loaded(final) = model.explanationState else {
+            return XCTFail("Expected a final loaded state")
+        }
+        XCTAssertEqual(final.translation, "她继续了。")
+        XCTAssertEqual(final.grammarPoints, ["continued：一般过去时"])
+    }
+
     func testEPUBFuriganaEntriesKeepOnlyUnambiguousLocalReadings() {
         let provider = StubJapaneseReadingProvider(segments: [
             .init(surface: "今日", reading: "きょう"),
@@ -196,6 +225,34 @@ private struct RecordingExplanationProvider: ReaderExplanationProviding {
             sentenceCore: request.targetText,
             grammarPoints: [],
             keyPhrases: []
+        )
+    }
+}
+
+private struct ProgressiveExplanationProvider: ReaderExplanationProviding {
+    func explain(_ request: ReaderExplanationRequest) async throws -> ReaderExplanation {
+        finalResult
+    }
+
+    func explanationStream(_ request: ReaderExplanationRequest) async throws -> AsyncThrowingStream<ReaderExplanation, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                continuation.yield(.init(
+                    translation: "她继续", sentenceCore: "", grammarPoints: [], keyPhrases: []
+                ))
+                try? await Task.sleep(for: .milliseconds(50))
+                guard !Task.isCancelled else { return }
+                continuation.yield(finalResult)
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private var finalResult: ReaderExplanation {
+        .init(
+            translation: "她继续了。", sentenceCore: "She continued.",
+            grammarPoints: ["continued：一般过去时"], keyPhrases: []
         )
     }
 }

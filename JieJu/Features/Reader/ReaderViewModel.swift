@@ -201,9 +201,17 @@ final class ReaderViewModel: ObservableObject {
         deepAnalysisState = .idle
         explanationTask = Task { [weak self, explanationProvider] in
             do {
-                let result = try await explanationProvider.explain(request)
-                try Task.checkCancellation()
-                self?.explanationState = .loaded(result)
+                let stream = try await explanationProvider.explanationStream(request)
+                var finalResult: ReaderExplanation?
+                for try await update in stream {
+                    try Task.checkCancellation()
+                    finalResult = update
+                    self?.explanationState = .streaming(update)
+                }
+                guard let finalResult else {
+                    throw ReadingAIError.invalidResponse("解释服务没有返回内容")
+                }
+                self?.explanationState = .loaded(finalResult)
             } catch is CancellationError {
                 return
             } catch {

@@ -266,6 +266,8 @@ struct ReaderExplanationPanel: View {
         switch state {
         case .idle, .loading:
             ProgressView("正在解释…")
+        case .streaming(let explanation):
+            explanationContent(explanation, isStreaming: true)
         case .failed(let message):
             VStack(alignment: .leading, spacing: 10) {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
@@ -274,15 +276,31 @@ struct ReaderExplanationPanel: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         case .loaded(let explanation):
-            LazyVStack(alignment: .leading, spacing: 12) {
+            explanationContent(explanation, isStreaming: false)
+        }
+    }
+
+    @ViewBuilder
+    private func explanationContent(_ explanation: ReaderExplanation, isStreaming: Bool) -> some View {
+        LazyVStack(alignment: .leading, spacing: 12) {
+            if !explanation.translation.isEmpty {
                 explanationCard(title: "翻译", systemImage: "character.bubble", value: explanation.translation)
+            }
+            if !explanation.sentenceCore.isEmpty {
                 explanationCard(title: "句子主干", systemImage: "arrow.triangle.branch", value: explanation.sentenceCore)
-                if !explanation.grammarPoints.isEmpty {
-                    itemCard(title: "语法", systemImage: "text.book.closed", items: explanation.grammarPoints)
+            }
+            if !explanation.grammarPoints.isEmpty {
+                itemCard(title: "语法", systemImage: "text.book.closed", items: explanation.grammarPoints)
+            }
+            if !explanation.keyPhrases.isEmpty {
+                itemCard(title: "重点表达", systemImage: "quote.bubble", items: explanation.keyPhrases)
+            }
+            if isStreaming {
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text("正在继续生成语法讲解…").foregroundStyle(.secondary)
                 }
-                if !explanation.keyPhrases.isEmpty {
-                    itemCard(title: "重点表达", systemImage: "quote.bubble", items: explanation.keyPhrases)
-                }
+            } else {
                 deepAnalysisContent
                 Button("保存到学习记录", systemImage: "bookmark", action: save)
                     .buttonStyle(.borderedProminent)

@@ -15,6 +15,31 @@ actor StubHTTPClient: HTTPClient {
     }
 }
 
+actor StubStreamingHTTPClient: StreamingHTTPClient {
+    private let tags: HTTPResponse
+    private let streamLines: [Data]
+    private(set) var requests: [HTTPRequest] = []
+
+    init(tags: HTTPResponse, streamLines: [Data]) {
+        self.tags = tags
+        self.streamLines = streamLines
+    }
+
+    func send(_ request: HTTPRequest) async throws -> HTTPResponse {
+        requests.append(request)
+        return tags
+    }
+
+    func stream(_ request: HTTPRequest) async throws -> HTTPDataStream {
+        requests.append(request)
+        let lines = streamLines
+        return HTTPDataStream(statusCode: 200, lines: AsyncThrowingStream<Data, Error>(bufferingPolicy: .unbounded) { continuation in
+            for line in lines { continuation.yield(line) }
+            continuation.finish()
+        })
+    }
+}
+
 @Suite struct OllamaTests {
     @Test func healthModelsAndExistence() async throws {
         let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
@@ -227,11 +252,47 @@ actor StubHTTPClient: HTTPClient {
         #expect(Set(required).contains("components"))
         #expect(Set(required).contains("clauses"))
     }
+
+    @Test func partialParserExposesTranslationAndCompletedGrammarBeforeJSONFinishes() throws {
+        let translation = try #require(PartialExplanationParser.parse(#"{"translation":"火车正"#))
+        #expect(translation.translation == "火车正")
+        #expect(translation.grammarPoints.isEmpty)
+
+        let grammar = try #require(PartialExplanationParser.parse(
+            #"{"translation":"火车正在出发。","sentenceCore":"The train leaves.","grammarPoints":[{"text":"leaves","explanation":"一般现在时"}],"keyPhrases":["#
+        ))
+        #expect(grammar.sentenceCore == "The train leaves.")
+        #expect(grammar.grammarPoints == [.init(text: "leaves", explanation: "一般现在时")])
+    }
+
+    @Test func streamsPreviewUpdatesThenValidatedFinalExplanation() async throws {
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
+        let chunks = [
+            #"{"translation":"尽管很"#,
+            #"累，她仍继续。","sentenceCore":"Although tired, she continued.","grammarPoints":[{"text":"Although tired","explanation":"让步结构"}],"keyPhrases":[{"text":"she continued","meaning":"她继续"}]}"#
+        ].map(streamEnvelope)
+        let client = StubStreamingHTTPClient(tags: tags, streamLines: chunks)
+        let provider = OllamaReadingAI(client: client)
+        let stream = try await provider.explanationStream(.init(targetText: "Although tired, she continued."))
+        var updates: [Explanation] = []
+        for try await update in stream { updates.append(update) }
+
+        #expect(updates.first?.translation == "尽管很")
+        #expect(updates.last?.grammarPoints == [.init(text: "Although tired", explanation: "让步结构")])
+        #expect(updates.last?.keyPhrases == [.init(text: "she continued", meaning: "她继续")])
+        let requests = await client.requests
+        let body = try #require(requests.last?.body)
+        let bodyJSON = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        #expect(bodyJSON["stream"] as? Bool == true)
+    }
 }
 
 private func response(_ status: Int, _ string: String) -> HTTPResponse { .init(statusCode: status, data: Data(string.utf8)) }
 private func chatEnvelope(_ content: String) -> HTTPResponse {
     let data = try! JSONSerialization.data(withJSONObject: ["message": ["role": "assistant", "content": content]])
     return .init(statusCode: 200, data: data)
+}
+private func streamEnvelope(_ content: String) -> Data {
+    try! JSONSerialization.data(withJSONObject: ["message": ["role": "assistant", "content": content], "done": false])
 }
 private var validJSON: String { String(decoding: try! JSONEncoder().encode(sampleExplanation), as: UTF8.self) }

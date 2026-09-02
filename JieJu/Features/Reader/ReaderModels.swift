@@ -133,16 +133,26 @@ struct ReaderSavePayload: Sendable {
 enum ReaderExplanationState: Equatable, Sendable {
     case idle
     case loading
+    case streaming(ReaderExplanation)
     case loaded(ReaderExplanation)
     case failed(String)
 }
 
 protocol ReaderExplanationProviding: Sendable {
     func explain(_ request: ReaderExplanationRequest) async throws -> ReaderExplanation
+    func explanationStream(_ request: ReaderExplanationRequest) async throws -> AsyncThrowingStream<ReaderExplanation, Error>
     func analyzeDeep(_ request: ReaderExplanationRequest) async throws -> ReaderDeepAnalysis
 }
 
 extension ReaderExplanationProviding {
+    func explanationStream(_ request: ReaderExplanationRequest) async throws -> AsyncThrowingStream<ReaderExplanation, Error> {
+        let result = try await explain(request)
+        return AsyncThrowingStream { continuation in
+            continuation.yield(result)
+            continuation.finish()
+        }
+    }
+
     func analyzeDeep(_ request: ReaderExplanationRequest) async throws -> ReaderDeepAnalysis {
         throw ReadingAIError.invalidResponse("当前解释服务不支持深入解析")
     }

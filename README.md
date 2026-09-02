@@ -22,6 +22,13 @@ swift run --package-path Packages/JieJuLanguage JieJuAILab explain \
   --after "The report was due the next morning."
 ```
 
+观察流式解句各阶段耗时：
+
+```bash
+swift run --package-path Packages/JieJuLanguage JieJuAILab stream \
+  --text "Although she was tired, she continued working."
+```
+
 批量运行冒烟评测：
 
 ```bash

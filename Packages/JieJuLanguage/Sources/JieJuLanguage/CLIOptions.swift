@@ -1,7 +1,7 @@
 import Foundation
 
 public struct CLIOptions: Equatable, Sendable {
-    public enum Command: Equatable, Sendable { case explain, deep }
+    public enum Command: Equatable, Sendable { case explain, deep, stream }
     public let command: Command
     public let request: ExplanationRequest?
     public let jsonFile: String?
@@ -13,6 +13,9 @@ public struct CLIOptions: Equatable, Sendable {
         var args = arguments
         if args.first == "deep" {
             command = .deep
+            args.removeFirst()
+        } else if args.first == "stream" {
+            command = .stream
             args.removeFirst()
         } else {
             command = .explain

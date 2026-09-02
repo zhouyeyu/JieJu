@@ -22,6 +22,12 @@ import Testing
         #expect(options.request?.explanationLanguage == "Chinese")
     }
 
+    @Test func parsesStreamCommand() throws {
+        let options = try CLIOptions(arguments: ["stream", "--text", "She continued."])
+        #expect(options.command == .stream)
+        #expect(options.request?.targetText == "She continued.")
+    }
+
     @Test func rejectsUnknownMissingAndConflictingArguments() {
         #expect(throws: ReadingAIError.self) { try CLIOptions(arguments: []) }
         #expect(throws: ReadingAIError.self) { try CLIOptions(arguments: ["--text"]) }
