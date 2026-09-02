@@ -35,32 +35,48 @@ struct AppShellView: View {
             }
             .navigationTitle("JieJu")
         } detail: {
-            switch selection ?? .reader {
-            case .reader:
-                ReaderView(
-                    explanationProvider: settings.providerSnapshot,
-                    saveHandler: { payload in
-                        Task { await library.save(payload, modelName: settings.provider == .ollama ? settings.modelName : "mock") }
-                    },
-                    explanationLanguage: settings.explanationLanguage,
-                    configurationID: "\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)",
-                    explanationPresentationMode: settings.explanationPresentationMode,
-                    furiganaDisplayMode: settings.furiganaDisplayMode,
-                    epubReadingStyle: EPUBReadingStyle(
-                        fontSize: settings.epubFontSize,
-                        lineHeight: settings.epubLineHeight,
-                        horizontalMargin: settings.epubHorizontalMargin,
-                        showsFurigana: settings.furiganaDisplayMode == .kanji,
-                        theme: settings.epubReaderTheme
-                    )
-                )
-            case .records:
-                LearningRecordsView(model: library)
-            case .settings:
-                AISettingsView(settings: settings)
+            ZStack {
+                // Reader 必须始终留在视图树中，否则切到设置时其 StateObject 会连同文档一起释放。
+                readerView
+                    .opacity(activeSection == .reader ? 1 : 0)
+                    .allowsHitTesting(activeSection == .reader)
+                    .disabled(activeSection != .reader)
+                    .accessibilityHidden(activeSection != .reader)
+
+                if activeSection == .records {
+                    LearningRecordsView(model: library)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.background)
+                } else if activeSection == .settings {
+                    AISettingsView(settings: settings)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.background)
+                }
             }
         }
         .task { await library.reload() }
+    }
+
+    private var activeSection: AppSection { selection ?? .reader }
+
+    private var readerView: some View {
+        ReaderView(
+            explanationProvider: settings.providerSnapshot,
+            saveHandler: { payload in
+                Task { await library.save(payload, modelName: settings.provider == .ollama ? settings.modelName : "mock") }
+            },
+            explanationLanguage: settings.explanationLanguage,
+            configurationID: "\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)",
+            explanationPresentationMode: settings.explanationPresentationMode,
+            furiganaDisplayMode: settings.furiganaDisplayMode,
+            epubReadingStyle: EPUBReadingStyle(
+                fontSize: settings.epubFontSize,
+                lineHeight: settings.epubLineHeight,
+                horizontalMargin: settings.epubHorizontalMargin,
+                showsFurigana: settings.furiganaDisplayMode == .kanji,
+                theme: settings.epubReaderTheme
+            )
+        )
     }
 }
 
