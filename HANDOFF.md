@@ -4,7 +4,7 @@
 
 - 日期：2026-09-02
 - Agent：WorkBuddy
-- 阶段：并行模块首轮集成（Track A：AI-211/212 已修复，真实模型基线已建立）
+- 阶段：并行模块首轮集成（PDF-112 已修复）
 - 分支：`main`
 - 基线提交：`fbdf02f chore: create macOS project foundation`
 - 模块集成提交：`3529d0f feat: build parallel reader language and storage modules`
@@ -34,13 +34,15 @@
   **渲染与阅读界面尚未实现，待选方案（WebKit 排版 vs 重排文本），见 DECISIONS.md。**
 - **可配置解释语言**（`INT-012`）：设置页选择解释语言（预设 6 种 + 自定义），
   `AppSettings.explanationLanguage` 持久化；请求与学习记录使用实际语言。
+- **修复 `PDF-112`**：移除由 AI 设置驱动的 `ReaderView.id`，改为原位更新 Provider
+  与解释语言；当前 PDF、页码和选区不再因设置输入而丢失，并增加配置更新回归测试。
 
 ## 验证
 
 - JieJuLanguage 包测试：**33 项通过**（`swift test --disable-sandbox`）。
 - 单句实测：0.5B「火车于六点出发。」、1.5B「火车六点出发。」均正确。
-- `xcodebuild build`：上一任记载为通过；**WorkBuddy 工具环境未能独立复验**
-  （解析本地 SwiftPM 依赖时 `sandbox_exec` 被拒，属环境限制，非工程缺陷）。
+- `xcodebuild build`：通过。
+- `xcodebuild build-for-testing`：通过，App 单元测试与 UI 测试目标均成功编译。
 - macOS App/UI 测试：**无法运行**。本机 `DevToolsSecurity -status` 为 disabled，
   Runner 卡在 `The test runner hung before establishing connection.`。
 - Xcode 人工启动：待用户确认。
@@ -71,11 +73,7 @@
 
 ## 已定位但未修的缺陷
 
-1. **改设置会读丢正在读的 PDF**（TODO `PDF-112`）：`AppShellView` 给 `ReaderView` 加
-   `.id("\(provider)-\(url)-\(modelName)")`，`ReaderViewModel` 是 `ReaderView` 内的
-   `@StateObject`。「模型名称」输入框每敲一键 id 就变 → ReaderView 重建 →
-   已打开 PDF、页码、选区全部丢失。
-2. **英文释义漏网**：AI-212 只拦截翻译与原文完全相同；同语言释义仍能通过校验。
+1. **英文释义漏网**：AI-212 只拦截翻译与原文完全相同；同语言释义仍能通过校验。
    可在 `validated(against:)` 增加启发式（如检测翻译为源语言字符集）或交给评测门槛把关。
 3. 无障碍小项：`LearningRecordsView` 删除仅 contextMenu，缺键盘/VoiceOver 路径；
    `ReaderExplanationPopover` 错误态仅 `foregroundStyle(.red)`，未配图标或文字。
@@ -118,8 +116,7 @@
 
 1. **人工评分 0.5B/1.5B 输出**（`Evaluation/report-*.md` 的 Manual scoring 表）：
    translationAccuracy / sentenceCoreAccuracy / grammarAccuracy / phraseValue / hallucination。
-2. 修 `PDF-112`（改设置丢 PDF）。
-3. 用户开启开发者模式（`sudo DevToolsSecurity -enable` + 重启）后跑 App/UI 测试与 `PDF-009`。
-4. `AI-403`：扩展到 100 条正式评测句（在模型定档之后做，避免反复返工）。
+2. 用户开启开发者模式（`sudo DevToolsSecurity -enable` + 重启）后跑 App/UI 测试与 `PDF-009`。
+3. `AI-403`：扩展到 100 条正式评测句（在模型定档之后做，避免反复返工）。
 
 任务结束后更新本文件，不要只把交接信息留在聊天中。

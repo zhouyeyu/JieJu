@@ -42,9 +42,9 @@ struct AppShellView: View {
                     saveHandler: { payload in
                         Task { await library.save(payload, modelName: settings.provider == .ollama ? settings.modelName : "mock") }
                     },
-                    explanationLanguage: settings.explanationLanguage
+                    explanationLanguage: settings.explanationLanguage,
+                    configurationID: "\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)"
                 )
-                .id("\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)")
             case .records:
                 LearningRecordsView(model: library)
             case .settings:

@@ -14,11 +14,11 @@ final class ReaderViewModel: ObservableObject {
     /// 打开文档时希望 PDFView 定位到的页码；为 nil 表示从第一页开始。
     private(set) var restoredPageIndex: Int?
 
-    private let explanationProvider: any ReaderExplanationProviding
+    private var explanationProvider: any ReaderExplanationProviding
     private let saveHandler: @MainActor (ReaderSavePayload) -> Void
     private let positionStore: ReadingPositionStore
     private let sourceLanguage: String
-    private let explanationLanguage: String
+    private var explanationLanguage: String
     private var explanationTask: Task<Void, Never>?
 
     init(
@@ -38,6 +38,19 @@ final class ReaderViewModel: ObservableObject {
     var pageLabel: String? {
         guard case let .loaded(metadata) = documentState, metadata.pageCount > 0 else { return nil }
         return "\(min(currentPageIndex + 1, metadata.pageCount)) / \(metadata.pageCount)"
+    }
+
+    func updateExplanationConfiguration(
+        provider: any ReaderExplanationProviding,
+        explanationLanguage: String
+    ) {
+        explanationTask?.cancel()
+        explanationProvider = provider
+        self.explanationLanguage = explanationLanguage
+        if isExplanationPresented {
+            isExplanationPresented = false
+            explanationState = .idle
+        }
     }
 
     func choosePDF() {

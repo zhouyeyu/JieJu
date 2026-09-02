@@ -35,8 +35,7 @@
 - [x] `PDF-111` 文本清理和上下文单元测试
 - [ ] 人工验证跨页选择与不同 PDF 排版
 - [x] 保存并恢复最近阅读页码
-- [ ] `PDF-112` 修 `AppShellView` 的 `.id` 绑定含 `modelName`，
-      导致设置页输入模型名时 `ReaderView` 被重建、丢失已打开的 PDF 与页码
+- [x] `PDF-112` 设置变化原位更新 AI 配置，不再重建 Reader 或丢失 PDF、页码与选区
 
 ## Track C：JSON 本地存储
 

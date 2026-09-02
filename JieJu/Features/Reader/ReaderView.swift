@@ -2,12 +2,19 @@ import SwiftUI
 
 struct ReaderView: View {
     @StateObject private var model: ReaderViewModel
+    private let explanationProvider: any ReaderExplanationProviding
+    private let explanationLanguage: String
+    private let configurationID: String
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
         saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in },
-        explanationLanguage: String = "Chinese"
+        explanationLanguage: String = "Chinese",
+        configurationID: String = "default"
     ) {
+        self.explanationProvider = explanationProvider
+        self.explanationLanguage = explanationLanguage
+        self.configurationID = configurationID
         _model = StateObject(wrappedValue: ReaderViewModel(
             explanationProvider: explanationProvider,
             saveHandler: saveHandler,
@@ -23,6 +30,12 @@ struct ReaderView: View {
         }
         .frame(minWidth: 720, minHeight: 520)
         .accessibilityIdentifier("reader.screen")
+        .onChange(of: configurationID, initial: true) {
+            model.updateExplanationConfiguration(
+                provider: explanationProvider,
+                explanationLanguage: explanationLanguage
+            )
+        }
     }
 
     @ViewBuilder

@@ -35,6 +35,8 @@
   - 真实《挪威的森林》EPUB 实测：16 章、3169 段落、书名/作者正确。
 - **可配置解释语言**（`INT-012`）：设置页可选择中/英/日/韩/法/德或自定义语言，
   请求与保存记录使用实际语言；CLI 实测英语→日语「六時に列車が発行します。」。
+- **修复设置变化重建阅读器**（`PDF-112`）：Provider、地址、模型和解释语言变化时
+  原位更新推理配置，不再丢失当前 PDF、页码和选区；旧推理会安全取消。
 
 ## 真实模型基线（2026-09-02，Qwen 2.5 冒烟集 20 条）
 
@@ -56,12 +58,9 @@
 
 ## 已定位但未修的缺陷
 
-1. **改设置会读丢正在读的 PDF**（TODO `PDF-112`）：`AppShellView` 的 `.id` 绑定含 `modelName`，
-   输入模型名时每敲一键都会重建 `ReaderView`。
-   （已部分缓解：即使重建，重开时也会恢复上次页码。）
-2. **英文释义漏网**：AI-212 只拦截翻译与原文完全相同；同语言释义（paraphrase）仍能通过校验。
-3. 无障碍小项：学习记录删除仅 contextMenu；解释弹窗错误态仅靠红色。
-4. 翻译/语法/短语的人工评分（`Evaluation/report-*.md` Manual scoring）尚未填写。
+1. **英文释义漏网**：AI-212 只拦截翻译与原文完全相同；同语言释义（paraphrase）仍能通过校验。
+2. 无障碍小项：学习记录删除仅 contextMenu；解释弹窗错误态仅靠红色。
+3. 翻译/语法/短语的人工评分（`Evaluation/report-*.md` Manual scoring）尚未填写。
 
 ## 当前状态
 
@@ -74,14 +73,14 @@
 ## 下一步
 
 1. 人工评分冒烟集输出，确认 1.5B 翻译/语法质量（`Evaluation/report-1.5b.md`）；
-2. 修 `PDF-112`（改设置丢 PDF）；
-3. 用户开启开发者模式（`sudo DevToolsSecurity -enable` + 重启）后跑 App/UI 测试；
-4. `AI-403`：扩展到 100 条正式评测句（在模型定档后做，避免返工）。
+2. 用户开启开发者模式（`sudo DevToolsSecurity -enable` + 重启）后跑 App/UI 测试；
+3. `AI-403`：扩展到 100 条正式评测句（在模型定档后做，避免返工）。
 
 ## 最近验证
 
 - 日期：2026-09-02
 - JieJuLanguage：**33 项离线测试通过**
+- App 与 App/Test Targets：`xcodebuild build`、`build-for-testing` 均通过
 - **EPUB 解析核心：7 项测试实跑通过**（/tmp 探针包执行，fixture 为 minimal/messy/nocontainer）
 - **真实《挪威的森林》EPUB 解析成功**（16 章、3169 段落）
 - **App 模块整体类型检查通过**（`swiftc -typecheck`，含 EPUBCore；`#Preview` 宏除外）
