@@ -59,7 +59,7 @@ struct JieJuAILab {
         print("Grammar:")
         analysis.grammarPoints.forEach { print("- \($0.text): \($0.explanation)") }
         if let words = analysis.japaneseWords, !words.isEmpty {
-            print("Japanese words (AI reference):")
+            print("Japanese words (local dictionary):")
             words.forEach {
                 print("- \($0.text) [\($0.reading)] base=\($0.baseForm), \($0.inflectionType): \($0.grammaticalFunction)")
             }
@@ -93,6 +93,7 @@ Usage:
                     [--raw] [--model <name>] [--url <ollama-url>]
   JieJuAILab explain --json <request.json> [--raw] [--model <name>] [--url <ollama-url>]
   JieJuAILab deep --text <sentence> [--before <text>] [--after <text>]
+                 [--source-language <name>] [--explanation-language <name>]
                  [--raw] [--model <name>] [--url <ollama-url>]
   JieJuAILab batch --input <input.jsonl> --output <results.jsonl> --report <report.md>
                   [--model <name>] [--url <ollama-url>]

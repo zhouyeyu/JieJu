@@ -89,7 +89,7 @@ struct ReaderView: View {
                                 onNextChapter: model.showNextChapter,
                                 onSelectionChange: model.updateSelection
                             )
-                            .id("\(epub.chapters[model.currentPageIndex].id)-\(epubReadingStyle.fontSize)-\(epubReadingStyle.lineHeight)-\(epubReadingStyle.horizontalMargin)")
+                            .id("\(epub.chapters[model.currentPageIndex].id)-\(epubReadingStyle.fontSize)-\(epubReadingStyle.lineHeight)-\(epubReadingStyle.horizontalMargin)-\(epubReadingStyle.showsFurigana)")
                         }
                     }
                         explanationButton
@@ -323,7 +323,7 @@ struct ReaderExplanationPanel: View {
     }
 
     private func japaneseWordCard(_ words: [ReaderJapaneseWord]) -> some View {
-        DisclosureGroup("日语词形与读音（AI 参考）") {
+        DisclosureGroup("日语词形与读音（本地词典）") {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(Array(words.enumerated()), id: \.offset) { _, word in
                     VStack(alignment: .leading, spacing: 3) {
@@ -332,7 +332,7 @@ struct ReaderExplanationPanel: View {
                         Text(word.grammaticalFunction).fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                Text("这里的读音由语言模型解释，仅供参考；正文注音只使用本地词典结果。")
+                Text("读音、原形和词性来自本地 MeCab/IPADic，不依赖语言模型。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             .padding(.top, 10)
@@ -419,7 +419,7 @@ struct FuriganaText: View {
     let mode: FuriganaDisplayMode
     private let segments: [ReadingSegment]
 
-    init(text: String, mode: FuriganaDisplayMode, provider: any JapaneseReadingProviding = LocalJapaneseReadingProvider()) {
+    init(text: String, mode: FuriganaDisplayMode, provider: any JapaneseReadingProviding = JapaneseReadingProviders.default) {
         self.text = text
         self.mode = mode
         self.segments = provider.segments(for: text)

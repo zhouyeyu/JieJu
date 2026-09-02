@@ -97,6 +97,19 @@ public enum DeepQwenPrompt {
     Use empty clauses when the sentence has no clause structure. Return JSON only using the supplied schema.
     """
 
+    public static func system(for request: ExplanationRequest) -> String {
+        guard request.sourceLanguage.localizedCaseInsensitiveContains("Japanese") else { return system }
+        return system + """
+
+        JAPANESE-SPECIFIC RULES:
+        Analyze Japanese grammar, not English S/V/O terminology. sentencePattern must show the Japanese construction, for example「主題＋は＋目的語＋を＋動詞」.
+        grammarPoints is the most important section. Include 2 to 6 useful items covering every meaningful particle (は、が、を、に、で、と、も、の、へ、から、まで), auxiliary, conjugation, or fixed sentence pattern present in targetText.
+        For each particle, grammarPoints.text is the exact particle or construction from targetText; explain what it marks, what it connects to, and why this particle is used instead of a likely alternative.
+        components must explain topic, subject, object, predicate, modifiers, and omitted elements when relevant. japaneseWords covers content words and predicates, with dictionary form, kana reading, conjugation form, and function in this sentence.
+        Keep each explanation to one precise sentence. Do not spend output on obvious punctuation or repeat the translation.
+        """
+    }
+
     public static func user(_ request: ExplanationRequest) -> String {
         """
         Task: deeply analyze targetText syntax.
@@ -110,27 +123,30 @@ public enum DeepQwenPrompt {
     }
 
     public static func repair(_ request: ExplanationRequest) -> String {
-        """
+        let japaneseRule = request.sourceLanguage.localizedCaseInsensitiveContains("Japanese")
+            ? "For Japanese, include at least 2 grammarPoints. Explain particles, sentence patterns, predicate conjugation, and omitted elements before vocabulary."
+            : ""
+        return """
         Start over. Analyze only targetText: \(request.targetText)
         Every components.text, non-empty components.modifies, clauses.text, and grammarPoints.text must be exact consecutive text copied from targetText.
         For Japanese, japaneseWords.text must also be copied exactly; give base form, kana reading, inflection and grammatical function only when confident.
+        \(japaneseRule)
         All explanations must be in \(request.explanationLanguage). Use fewer items when uncertain. Return JSON only.
         """
     }
 }
 
 public enum DeepAnalysisParser {
-    public static func parse(_ raw: String, request: ExplanationRequest) throws -> DeepAnalysis {
+    public static func decode(_ raw: String) throws -> DeepAnalysis {
         let cleaned = ExplanationParser.stripMarkdownFence(raw).trimmingCharacters(in: .whitespacesAndNewlines)
         guard let data = cleaned.data(using: .utf8) else {
             throw ReadingAIError.invalidResponse("response is not UTF-8")
         }
-        do {
-            return try JSONDecoder().decode(DeepAnalysis.self, from: data).validated(against: request)
-        } catch let error as ReadingAIError {
-            throw error
-        } catch {
-            throw ReadingAIError.invalidResponse(error.localizedDescription)
-        }
+        do { return try JSONDecoder().decode(DeepAnalysis.self, from: data) }
+        catch { throw ReadingAIError.invalidResponse(error.localizedDescription) }
+    }
+
+    public static func parse(_ raw: String, request: ExplanationRequest) throws -> DeepAnalysis {
+        try decode(raw).validated(against: request)
     }
 }

@@ -1,5 +1,6 @@
 import XCTest
 @testable import JieJu
+import JieJuLanguage
 
 final class JieJuTests: XCTestCase {
     func testProjectFoundationLoads() {
@@ -149,6 +150,26 @@ final class JieJuTests: XCTestCase {
         }
         XCTAssertEqual(captured?.sourceLanguage, "Japanese")
     }
+
+    func testEPUBFuriganaEntriesKeepOnlyUnambiguousLocalReadings() {
+        let provider = StubJapaneseReadingProvider(segments: [
+            .init(surface: "今日", reading: "きょう"),
+            .init(surface: "と"),
+            .init(surface: "今日", reading: "こんにち"),
+            .init(surface: "日本語", reading: "にほんご")
+        ])
+        let xhtml = "<html><body><p>今日と日本語</p><ruby>本<rt>ほん</rt></ruby></body></html>"
+        let entries = EPUBFuriganaInjection.entries(for: xhtml, provider: provider)
+        XCTAssertEqual(entries, [.init(surface: "日本語", reading: "にほんご")])
+        let script = EPUBFuriganaInjection.script(for: xhtml, provider: provider)
+        XCTAssertTrue(script.contains("closest('ruby, rt, script, style, head, textarea')"))
+        XCTAssertTrue(script.contains("DOMContentLoaded"))
+    }
+}
+
+private struct StubJapaneseReadingProvider: JapaneseReadingProviding {
+    let segments: [ReadingSegment]
+    func segments(for text: String) -> [ReadingSegment] { segments }
 }
 
 private actor ExplanationRequestRecorder {

@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import JieJuLanguage
 
 struct EPUBPagedReaderView: View {
     let document: EPUBDocument
@@ -186,6 +187,8 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
     static let scheme = "jieju-epub"
     private let resources: [String: EPUBResource]
     private let readingStyle: EPUBReadingStyle
+    private let cacheLock = NSLock()
+    private var injectedCache: [String: Data] = [:]
 
     init(resources: [String: EPUBResource], readingStyle: EPUBReadingStyle) {
         self.resources = resources
@@ -204,7 +207,7 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
             urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist)); return
         }
         let data = resource.mediaType.contains("xhtml")
-            ? injectedXHTML(resource.data)
+            ? cachedInjectedXHTML(resource.data, path: path)
             : resource.data
         let response = URLResponse(
             url: url,
@@ -219,8 +222,18 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
 
+    private func cachedInjectedXHTML(_ data: Data, path: String) -> Data {
+        if let cached = cacheLock.withLock({ injectedCache[path] }) { return cached }
+        let injected = injectedXHTML(data)
+        cacheLock.withLock { injectedCache[path] = injected }
+        return injected
+    }
+
     private func injectedXHTML(_ data: Data) -> Data {
         guard var html = String(data: data, encoding: .utf8) else { return data }
+        let furiganaScript = readingStyle.showsFurigana
+            ? EPUBFuriganaInjection.script(for: html)
+            : ""
         let injection = """
         <meta http-equiv="Content-Security-Policy" content="default-src jieju-epub: data:; connect-src 'none'; script-src 'unsafe-inline'; style-src jieju-epub: 'unsafe-inline'; img-src jieju-epub: data:; font-src jieju-epub: data:">
         <style id="jieju-reader-style">
@@ -266,6 +279,7 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         window.addEventListener('load', () => setTimeout(() => JieJuReader.layout(), 0));
         window.addEventListener('resize', () => JieJuReader.layout());
         document.addEventListener('mouseup', () => setTimeout(() => JieJuReader.selection(), 0));
+        \(furiganaScript)
         </script>
         """
         if let range = html.range(of: "</head>", options: .caseInsensitive) {
@@ -274,5 +288,71 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
             html = injection + html
         }
         return Data(html.utf8)
+    }
+}
+
+enum EPUBFuriganaInjection {
+    struct Entry: Codable, Equatable {
+        let surface: String
+        let reading: String
+    }
+
+    static func entries(for xhtml: String, provider: any JapaneseReadingProviding = JapaneseReadingProviders.default) -> [Entry] {
+        let text = XHTMLExtractor.blocks(from: xhtml).joined(separator: "\n")
+        var readings: [String: Set<String>] = [:]
+        for segment in provider.segments(for: text) {
+            guard let reading = segment.reading, !segment.surface.isEmpty else { continue }
+            readings[segment.surface, default: []].insert(reading)
+        }
+        return readings.compactMap { surface, values in
+            guard values.count == 1, let reading = values.first else { return nil }
+            return Entry(surface: surface, reading: reading)
+        }.sorted {
+            $0.surface.count == $1.surface.count ? $0.surface < $1.surface : $0.surface.count > $1.surface.count
+        }
+    }
+
+    static func script(for xhtml: String, provider: any JapaneseReadingProviding = JapaneseReadingProviders.default) -> String {
+        let entries = entries(for: xhtml, provider: provider)
+        guard !entries.isEmpty, let data = try? JSONEncoder().encode(entries),
+              let json = String(data: data, encoding: .utf8) else { return "" }
+        return """
+        window.addEventListener('DOMContentLoaded', () => {
+          const entries = \(json);
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+              const parent = node.parentElement;
+              if (!parent || parent.closest('ruby, rt, script, style, head, textarea')) return NodeFilter.FILTER_REJECT;
+              return node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            }
+          });
+          const nodes = [];
+          while (walker.nextNode()) nodes.push(walker.currentNode);
+          for (const node of nodes) {
+            const text = node.nodeValue;
+            const fragment = document.createDocumentFragment();
+            let cursor = 0;
+            while (cursor < text.length) {
+              let selected = null, selectedIndex = -1;
+              for (const entry of entries) {
+                const index = text.indexOf(entry.surface, cursor);
+                if (index < 0) continue;
+                if (selectedIndex < 0 || index < selectedIndex ||
+                    (index === selectedIndex && entry.surface.length > selected.surface.length)) {
+                  selected = entry; selectedIndex = index;
+                }
+              }
+              if (!selected) { fragment.append(document.createTextNode(text.slice(cursor))); break; }
+              if (selectedIndex > cursor) fragment.append(document.createTextNode(text.slice(cursor, selectedIndex)));
+              const ruby = document.createElement('ruby');
+              ruby.append(document.createTextNode(selected.surface));
+              const rt = document.createElement('rt'); rt.textContent = selected.reading; ruby.append(rt);
+              fragment.append(ruby);
+              cursor = selectedIndex + selected.surface.length;
+            }
+            node.replaceWith(fragment);
+          }
+        });
+        """
     }
 }

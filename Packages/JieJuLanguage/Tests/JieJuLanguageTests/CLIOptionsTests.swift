@@ -15,9 +15,11 @@ import Testing
     }
 
     @Test func parsesDeepCommand() throws {
-        let options = try CLIOptions(arguments: ["deep", "--text", "Although tired, she continued."])
+        let options = try CLIOptions(arguments: ["deep", "--text", "私は本を読みます。", "--source-language", "Japanese", "--explanation-language", "Chinese"])
         #expect(options.command == .deep)
-        #expect(options.request?.targetText == "Although tired, she continued.")
+        #expect(options.request?.targetText == "私は本を読みます。")
+        #expect(options.request?.sourceLanguage == "Japanese")
+        #expect(options.request?.explanationLanguage == "Chinese")
     }
 
     @Test func rejectsUnknownMissingAndConflictingArguments() {

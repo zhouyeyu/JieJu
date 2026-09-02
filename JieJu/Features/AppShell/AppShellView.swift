@@ -49,7 +49,8 @@ struct AppShellView: View {
                     epubReadingStyle: EPUBReadingStyle(
                         fontSize: settings.epubFontSize,
                         lineHeight: settings.epubLineHeight,
-                        horizontalMargin: settings.epubHorizontalMargin
+                        horizontalMargin: settings.epubHorizontalMargin,
+                        showsFurigana: settings.furiganaDisplayMode == .kanji
                     )
                 )
             case .records:

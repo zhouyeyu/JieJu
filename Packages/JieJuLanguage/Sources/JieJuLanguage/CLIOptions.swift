@@ -21,7 +21,7 @@ public struct CLIOptions: Equatable, Sendable {
         var values: [String: String] = [:]
         var flags = Set<String>()
         var index = 0
-        let valueOptions = Set(["--text", "--before", "--after", "--json", "--model", "--url"])
+        let valueOptions = Set(["--text", "--before", "--after", "--json", "--model", "--url", "--source-language", "--explanation-language"])
         while index < args.count {
             let argument = args[index]
             if argument == "--raw" {
@@ -56,11 +56,17 @@ public struct CLIOptions: Equatable, Sendable {
         raw = flags.contains("--raw")
         jsonFile = values["--json"]
         if let text = values["--text"] {
-            request = ExplanationRequest(targetText: text, precedingContext: values["--before"], followingContext: values["--after"])
+            request = ExplanationRequest(
+                targetText: text,
+                precedingContext: values["--before"],
+                followingContext: values["--after"],
+                sourceLanguage: values["--source-language"] ?? "English",
+                explanationLanguage: values["--explanation-language"] ?? "Chinese"
+            )
         } else {
             request = nil
-            if values["--before"] != nil || values["--after"] != nil {
-                throw ReadingAIError.invalidInput("--before and --after require --text")
+            if values["--before"] != nil || values["--after"] != nil || values["--source-language"] != nil || values["--explanation-language"] != nil {
+                throw ReadingAIError.invalidInput("context and language overrides require --text")
             }
         }
     }

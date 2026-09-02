@@ -93,20 +93,59 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, DeepReadingAI, Bat
 
     public func analyzeDeepWithRawResponse(_ request: ExplanationRequest) async throws -> (analysis: DeepAnalysis, rawResponse: String) {
         let valid = try request.validated()
+        if valid.sourceLanguage.localizedCaseInsensitiveContains("Japanese") {
+            let analysis = try JapaneseGrammarAnalyzer.localAnalysis(request: valid)
+            let raw = String(decoding: try JSONEncoder().encode(analysis), as: UTF8.self)
+            return (analysis, raw)
+        }
         guard try await hasModel() else { throw ReadingAIError.modelMissing(model) }
         let first = try await generateDeep(messages: [
-            .init(role: "system", content: DeepQwenPrompt.system),
+            .init(role: "system", content: DeepQwenPrompt.system(for: valid)),
             .init(role: "user", content: DeepQwenPrompt.user(valid))
         ], request: valid)
         do {
-            return (try DeepAnalysisParser.parse(first, request: valid), first)
+            let parsed = try DeepAnalysisParser.parse(first, request: valid)
+            return (try finalizedDeepAnalysis(parsed, request: valid), first)
         } catch {
+            if let decoded = try? DeepAnalysisParser.decode(first),
+               let repaired = try? validatedDeepRepair(decoded, request: valid) {
+                return (try finalizedDeepAnalysis(repaired, request: valid), first)
+            }
             let repaired = try await generateDeep(messages: [
-                .init(role: "system", content: DeepQwenPrompt.system),
+                .init(role: "system", content: DeepQwenPrompt.system(for: valid)),
                 .init(role: "user", content: DeepQwenPrompt.repair(valid))
             ], request: valid)
-            return (try DeepAnalysisParser.parse(repaired, request: valid), repaired)
+            let parsed = try DeepAnalysisParser.parse(repaired, request: valid)
+            return (try finalizedDeepAnalysis(parsed, request: valid), repaired)
         }
+    }
+
+    private func finalizedDeepAnalysis(_ analysis: DeepAnalysis, request: ExplanationRequest) throws -> DeepAnalysis {
+        try JapaneseGrammarAnalyzer.enrich(analysis, request: request).validated(against: request)
+    }
+
+    private func validatedDeepRepair(_ analysis: DeepAnalysis, request: ExplanationRequest) throws -> DeepAnalysis {
+        let itemValidationRequest = ExplanationRequest(
+            targetText: request.targetText,
+            precedingContext: request.precedingContext,
+            followingContext: request.followingContext,
+            sourceLanguage: "FragmentValidation",
+            explanationLanguage: request.explanationLanguage
+        )
+        func candidate(components: [SentenceComponent] = [], clauses: [ClauseExplanation] = [], grammar: [GrammarPoint] = [], words: [JapaneseWordAnalysis]? = nil) -> DeepAnalysis {
+            .init(sentenceType: analysis.sentenceType, sentencePattern: analysis.sentencePattern,
+                  components: components, clauses: clauses, grammarPoints: grammar,
+                  interpretation: analysis.interpretation, japaneseWords: words)
+        }
+        let components = analysis.components.filter { (try? candidate(components: [$0]).validated(against: itemValidationRequest)) != nil }
+        let clauses = analysis.clauses.filter { (try? candidate(clauses: [$0]).validated(against: itemValidationRequest)) != nil }
+        let grammar = analysis.grammarPoints.filter {
+            (try? candidate(grammar: [$0]).validated(against: itemValidationRequest)) != nil
+        }
+        let words = (analysis.japaneseWords ?? []).filter {
+            (try? candidate(words: [$0]).validated(against: itemValidationRequest)) != nil
+        }
+        return try candidate(components: components, clauses: clauses, grammar: grammar, words: words).validated(against: request)
     }
 
     public func attemptExplanation(_ request: ExplanationRequest) async -> BatchAttempt {
@@ -192,7 +231,10 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, DeepReadingAI, Bat
             messages: messages,
             stream: false,
             format: .deepAnalysis(request: request),
-            options: .init(temperature: 0, numPredict: 700)
+            options: .init(
+                temperature: 0,
+                numPredict: request.sourceLanguage.localizedCaseInsensitiveContains("Japanese") ? 560 : 700
+            )
         )
         let data = try JSONEncoder().encode(body)
         let response = try await send(path: "/api/chat", method: "POST", body: data)
@@ -329,6 +371,7 @@ private indirect enum SchemaValue: Encodable {
             ]),
             "required": .array([.string("text"), .string("type"), .string("function"), .string("explanation")])
         ])
+        let isJapanese = request.sourceLanguage.localizedCaseInsensitiveContains("Japanese")
         let grammar = SchemaValue.object([
             "type": .string("object"),
             "properties": .object(["text": string(fragment), "explanation": string(explained)]),
@@ -352,7 +395,7 @@ private indirect enum SchemaValue: Encodable {
                 "sentencePattern": string("Conventional syntax pattern plus a short \(explanation) explanation"),
                 "components": .object(["type": .string("array"), "maxItems": .integer(8), "items": component]),
                 "clauses": .object(["type": .string("array"), "maxItems": .integer(6), "items": clause]),
-                "grammarPoints": .object(["type": .string("array"), "maxItems": .integer(6), "items": grammar]),
+                "grammarPoints": .object(["type": .string("array"), "minItems": .integer(isJapanese ? 2 : 0), "maxItems": .integer(6), "items": grammar]),
                 "interpretation": string(explained),
                 "japaneseWords": .object(["type": .string("array"), "maxItems": .integer(12), "items": japaneseWord])
             ]),

@@ -27,6 +27,22 @@ import Testing
         #expect(segments == [.init(surface: "難読")])
     }
 
+    @Test func mecabProvidesReadingLemmaAndPartOfSpeech() throws {
+        let provider = try MeCabJapaneseReadingProvider()
+        let text = "昨日、その本を読んだ。"
+        let segments = provider.segments(for: text)
+        #expect(segments.map(\.surface).joined() == text)
+        #expect(segments.contains { $0.surface == "昨日" && $0.reading == "きのう" })
+        #expect(segments.contains { $0.surface == "読" && $0.reading == "よ" })
+
+        let tokens = provider.tokens(for: text)
+        let verb = try #require(tokens.first { $0.surface == "読ん" })
+        #expect(verb.reading == "よん")
+        #expect(verb.dictionaryForm == "読む")
+        #expect(verb.partOfSpeech == "verb")
+        #expect(verb.isInflected)
+    }
+
     @Test func JapaneseFragmentsUseUnspacedMatching() throws {
         let request = ExplanationRequest(targetText: "私は本を読みます。", sourceLanguage: "Japanese")
         let explanation = Explanation(
@@ -35,5 +51,28 @@ import Testing
             keyPhrases: [.init(text: "本", meaning: "书")]
         )
         #expect(try explanation.validated(against: request) == explanation)
+    }
+
+    @Test func deterministicGrammarEnrichmentExplainsParticlesAndAspect() throws {
+        let request = ExplanationRequest(
+            targetText: "私は日本語の本を読んでいます。",
+            sourceLanguage: "Japanese",
+            explanationLanguage: "Chinese"
+        )
+        let sparse = DeepAnalysis(
+            sentenceType: "S", sentencePattern: "SVO", components: [], clauses: [],
+            grammarPoints: [.init(text: "は", explanation: "は")], interpretation: "我正在读日语书。",
+            japaneseWords: []
+        )
+        let enriched = JapaneseGrammarAnalyzer.enrich(sparse, request: request)
+        #expect(enriched.sentencePattern.contains("主题(私は)"))
+        #expect(enriched.sentencePattern.contains("宾语(本を)"))
+        #expect(enriched.sentencePattern.contains("谓语(読んでいます。)"))
+        #expect(enriched.grammarPoints.contains { $0.text == "は" && $0.explanation.contains("主题") })
+        #expect(enriched.grammarPoints.contains { $0.text == "の" && $0.explanation.contains("限定") })
+        #expect(enriched.grammarPoints.contains { $0.text == "を" && $0.explanation.contains("对象") })
+        #expect(enriched.grammarPoints.contains { $0.text == "でいます" && $0.explanation.contains("正在进行") })
+        #expect(enriched.japaneseWords?.contains { $0.text == "読ん" && $0.baseForm == "読む" } == true)
+        #expect(try enriched.validated(against: request) == enriched)
     }
 }

@@ -12,6 +12,19 @@
 
 ## 本次完成内容
 
+- 完成 `JA-003`：以固定 revision `1f096492...` 接入 Mecab-Swift + IPADic，默认本地 Provider
+  现在返回分词、平假名读音、词性、词典原形、活用状态及汉字对齐区间；tokenizer 使用锁保护。
+  IPADic Bundle 约 51MB，Debug App 约 136MB。高频小词典仅保留为初始化失败回退。
+- 完成 `JA-006`：EPUB 开启“汉字注音”时，从本地词典结果生成安全 JSON，在 DOMContentLoaded
+  阶段遍历正文 Text Node 注入 `<ruby>`；跳过原书 Ruby、rt、script、style、head 和 textarea。
+  章节内同一表层形有多个读音时不注入，避免多音词被全局错误替换；注入结果按资源路径缓存。
+- 修复日语深入解析超时和内容空洞：不再让 1.5B 填充庞大的日语 Deep Schema，而由本地
+  `JapaneseGrammarAnalyzer` 基于 MeCab token 生成助词功能、日语句式骨架、谓语、原形和常见
+  「〜ている／〜ました／〜ません／〜たい」活用说明。实测「私は日本語の本を読んでいます。」
+  从模型失败/可能 60 秒超时变为约 0.013 秒，并稳定解释「は／の／を／〜でいます」。
+- 外部依赖已同时锁定在 Swift Package 与 Xcode workspace 的 `Package.resolved`。上游独立探针
+  21 项测试通过；本项目语言包 47 项测试通过，App/App Tests/UI Tests build-for-testing 通过。
+
 - 开始 Track G 日语阅读：新增可持久化 `ReadingSegment(surface, reading)`、日语自动识别、
   日语无空格片段校验和可替换 `JapaneseReadingProviding`。当前本地实现仅注音明确命中的高频词，
   未知汉字保持原样，禁止使用模型猜测结果作为正文注音。

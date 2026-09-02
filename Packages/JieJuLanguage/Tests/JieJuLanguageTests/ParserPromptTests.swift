@@ -52,6 +52,14 @@ import Testing
         #expect(DeepQwenPrompt.system.contains("Copy every component"))
         #expect(DeepQwenPrompt.user(request).contains("targetText: Although tired, she continued."))
     }
+
+    @Test func JapaneseDeepPromptPrioritizesParticlesAndPatterns() {
+        let request = ExplanationRequest(targetText: "私は本を読みます。", sourceLanguage: "Japanese")
+        let prompt = DeepQwenPrompt.system(for: request)
+        #expect(prompt.contains("grammarPoints is the most important section"))
+        #expect(prompt.contains("は、が、を、に、で"))
+        #expect(prompt.contains("why this particle is used"))
+    }
 }
 
 private var validJSON: String { String(decoding: try! JSONEncoder().encode(sampleExplanation), as: UTF8.self) }

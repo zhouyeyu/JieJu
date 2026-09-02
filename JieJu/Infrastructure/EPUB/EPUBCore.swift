@@ -368,7 +368,7 @@ private extension XMLNode {
 
 // MARK: - XHTML → 段落文本
 
-private enum XHTMLExtractor {
+enum XHTMLExtractor {
     static let blockTags: Set<String> = ["p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "tr", "td", "th", "dt", "dd", "figcaption"]
     static let skipTags: Set<String> = ["script", "style", "head", "title", "nav", "svg", "math"]
 

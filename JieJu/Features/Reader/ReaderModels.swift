@@ -35,6 +35,7 @@ struct EPUBReadingStyle: Equatable, Sendable {
     var fontSize: Double = 18
     var lineHeight: Double = 1.75
     var horizontalMargin: Double = 54
+    var showsFurigana = false
 }
 
 enum ReaderDocumentError: LocalizedError, Equatable, Sendable {
