@@ -31,7 +31,7 @@ enum FuriganaDisplayMode: String, CaseIterable, Identifiable {
     case kanji
 
     var id: String { rawValue }
-    var title: String { self == .hidden ? "不显示" : "汉字注音" }
+    var title: String { self == .hidden ? "关闭" : "开启" }
 }
 
 @MainActor

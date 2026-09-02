@@ -234,48 +234,22 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         let furiganaScript = readingStyle.showsFurigana
             ? EPUBFuriganaInjection.script(for: html)
             : ""
+        let rubyVisibility = readingStyle.showsFurigana ? "ruby-text" : "none"
         let injection = """
         <meta http-equiv="Content-Security-Policy" content="default-src jieju-epub: data:; connect-src 'none'; script-src 'unsafe-inline'; style-src jieju-epub: 'unsafe-inline'; img-src jieju-epub: data:; font-src jieju-epub: data:">
         <style id="jieju-reader-style">
-        html, body { height: 100%; margin: 0; overflow: hidden; }
+        html { height: 100%; margin: 0; overflow: hidden; }
         body { box-sizing: border-box; padding: 36px \(readingStyle.horizontalMargin)px 42px;
                column-gap: \(readingStyle.horizontalMargin * 2)px;
                column-fill: auto; font-size: \(readingStyle.fontSize)px; line-height: \(readingStyle.lineHeight);
+               margin: 0; overflow: visible;
                color: CanvasText; color-scheme: light dark; background: transparent; }
         img, svg { max-width: 100%; max-height: 80vh; object-fit: contain; }
-        ruby rt { font-size: 0.55em; }
+        ruby rt { display: \(rubyVisibility); font-size: 0.55em; user-select: none; -webkit-user-select: none; }
+        ruby rp { display: none; user-select: none; -webkit-user-select: none; }
         </style>
         <script>
-        window.JieJuReader = {
-          page: 0,
-          layout: function() {
-            const width = Math.max(1, window.innerWidth);
-            document.body.style.width = width + 'px';
-            document.body.style.height = window.innerHeight + 'px';
-            document.body.style.columnWidth = (width - \(readingStyle.horizontalMargin * 2)) + 'px';
-            const count = Math.max(1, Math.ceil(document.documentElement.scrollWidth / width));
-            if (location.hash === '#jieju-end' && !this.didApplyInitialPage) {
-              this.page = count - 1; this.didApplyInitialPage = true;
-            } else { this.page = Math.min(this.page, count - 1); }
-            window.scrollTo(this.page * width, 0);
-            webkit.messageHandlers.pagination.postMessage({page: this.page, count: count});
-          },
-          turnPage: function(delta) {
-            const width = Math.max(1, window.innerWidth);
-            const count = Math.max(1, Math.ceil(document.documentElement.scrollWidth / width));
-            this.page = Math.max(0, Math.min(count - 1, this.page + delta));
-            window.scrollTo({left: this.page * width, top: 0, behavior: 'smooth'});
-            webkit.messageHandlers.pagination.postMessage({page: this.page, count: count});
-          },
-          selection: function() {
-            const selection = window.getSelection();
-            const text = selection ? selection.toString().trim() : '';
-            if (!text) { webkit.messageHandlers.selection.postMessage({text: ''}); return; }
-            const rect = selection.getRangeAt(0).getBoundingClientRect();
-            webkit.messageHandlers.selection.postMessage({text: text, surrounding: document.body.innerText,
-              x: rect.x, y: rect.y, width: rect.width, height: rect.height});
-          }
-        };
+        \(EPUBWebScript.script(horizontalMargin: readingStyle.horizontalMargin))
         window.addEventListener('load', () => setTimeout(() => JieJuReader.layout(), 0));
         window.addEventListener('resize', () => JieJuReader.layout());
         document.addEventListener('mouseup', () => setTimeout(() => JieJuReader.selection(), 0));
@@ -288,6 +262,63 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
             html = injection + html
         }
         return Data(html.utf8)
+    }
+}
+
+enum EPUBWebScript {
+    static func script(horizontalMargin: Double) -> String {
+        """
+        window.JieJuReader = {
+          page: 0,
+          viewportWidth: function() {
+            return Math.max(1, document.documentElement.clientWidth || window.innerWidth);
+          },
+          pageCount: function() {
+            const width = this.viewportWidth();
+            const extent = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
+            return Math.max(1, Math.ceil((extent - 1) / width));
+          },
+          layout: function() {
+            const width = this.viewportWidth();
+            document.body.style.width = width + 'px';
+            document.body.style.height = window.innerHeight + 'px';
+            document.body.style.columnWidth = Math.max(1, width - \(horizontalMargin * 2)) + 'px';
+            requestAnimationFrame(() => {
+              const count = this.pageCount();
+              if (location.hash === '#jieju-end' && !this.didApplyInitialPage) {
+                this.page = count - 1; this.didApplyInitialPage = true;
+              } else { this.page = Math.min(this.page, count - 1); }
+              window.scrollTo(this.page * width, 0);
+              webkit.messageHandlers.pagination.postMessage({page: this.page, count: count});
+            });
+          },
+          turnPage: function(delta) {
+            const width = this.viewportWidth();
+            const count = this.pageCount();
+            this.page = Math.max(0, Math.min(count - 1, this.page + delta));
+            window.scrollTo({left: this.page * width, top: 0, behavior: 'smooth'});
+            webkit.messageHandlers.pagination.postMessage({page: this.page, count: count});
+          },
+          textWithoutReadings: function(source) {
+            const clone = source.cloneNode(true);
+            if (clone.querySelectorAll) clone.querySelectorAll('rt, rp').forEach(node => node.remove());
+            return (clone.textContent || '').trim();
+          },
+          selection: function() {
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+              webkit.messageHandlers.selection.postMessage({text: ''}); return;
+            }
+            const range = selection.getRangeAt(0);
+            const text = this.textWithoutReadings(range.cloneContents());
+            if (!text) { webkit.messageHandlers.selection.postMessage({text: ''}); return; }
+            const rect = range.getBoundingClientRect();
+            const surrounding = this.textWithoutReadings(document.body);
+            webkit.messageHandlers.selection.postMessage({text: text, surrounding: surrounding,
+              x: rect.x, y: rect.y, width: rect.width, height: rect.height});
+          }
+        };
+        """
     }
 }
 

@@ -81,6 +81,15 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual(AppSettings(defaults: defaults).furiganaDisplayMode, .kanji)
     }
 
+    func testEPUBScriptMeasuresBodyColumnsAndExcludesRubyReadingsFromSelection() {
+        let script = EPUBWebScript.script(horizontalMargin: 54)
+
+        XCTAssertTrue(script.contains("document.body.scrollWidth"))
+        XCTAssertTrue(script.contains("range.cloneContents()"))
+        XCTAssertTrue(script.contains("querySelectorAll('rt, rp')"))
+        XCTAssertTrue(script.contains("textWithoutReadings(document.body)"))
+    }
+
     @MainActor
     func testReaderUpdatesExplanationConfigurationWithoutResettingState() async throws {
         let recorder = ExplanationRequestRecorder()

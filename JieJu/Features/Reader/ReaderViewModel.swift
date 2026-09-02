@@ -44,7 +44,8 @@ final class ReaderViewModel: ObservableObject {
 
     var pageLabel: String? {
         guard case let .loaded(metadata) = documentState, metadata.pageCount > 0 else { return nil }
-        return "\(min(currentPageIndex + 1, metadata.pageCount)) / \(metadata.pageCount)"
+        let position = "\(min(currentPageIndex + 1, metadata.pageCount)) / \(metadata.pageCount)"
+        return metadata.kind == .epub ? "第 \(position) 章" : position
     }
 
     func updateExplanationConfiguration(

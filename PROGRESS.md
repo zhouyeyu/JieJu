@@ -8,6 +8,10 @@
 
 ## 已完成
 
+- **EPUB 分页与 Ruby 选区修复**：顶部原先的 `1 / 16` 实为章节数，现明确显示“第 1 / 16 章”；
+  章内分页改为同时测量 `body` 与文档横向宽度，长章节按当前窗口产生真实多栏页。日语注音可在
+  设置中关闭/开启，关闭时连原书 Ruby 一并隐藏；开启时 `rt/rp` 不可高亮，并会从选中文本和
+  前后文副本中移除，不再把假名发送给解句模型。
 - 建立跨 Codex、Cursor、WorkBuddy 的仓库内协作协议；
 - 明确 MVP 产品边界与初始架构；
 - 创建最小 macOS SwiftUI App、单元测试和 UI 测试目标；
@@ -114,6 +118,7 @@
 ## 最近验证
 
 - 日期：2026-09-02
+- EPUB 分页/Ruby 两项针对性 App 测试实际运行通过；App/App Tests/UI Tests 构建通过。
 - JieJuLanguage：**47 项离线测试通过**
 - Ollama 1.5B 单句端到端：中文翻译、英文主干、中文语法说明通过
 - App 与 App/Test Targets：`xcodebuild build`、`build-for-testing` 均通过

@@ -112,7 +112,7 @@ private struct AISettingsView: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("settings.explanationPresentationMode")
-            Picker("日语注音", selection: $settings.furiganaDisplayMode) {
+            Picker("日语汉字注音", selection: $settings.furiganaDisplayMode) {
                 ForEach(FuriganaDisplayMode.allCases) { mode in Text(mode.title).tag(mode) }
             }
             .pickerStyle(.segmented)

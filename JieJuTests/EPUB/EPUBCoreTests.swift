@@ -68,7 +68,10 @@ final class EPUBCoreTests: XCTestCase {
 
     @MainActor
     func testReaderModelOpensEPUBAndClampsChapterNavigation() async throws {
-        let model = ReaderViewModel()
+        let suite = "JieJuTests.EPUBNavigation.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = ReaderViewModel(positionStore: ReadingPositionStore(defaults: defaults))
         model.open(try fixture("minimal"))
 
         for _ in 0..<200 {
@@ -82,6 +85,7 @@ final class EPUBCoreTests: XCTestCase {
         XCTAssertEqual(metadata.kind, .epub)
         XCTAssertNotNil(model.epubDocument)
         XCTAssertNil(model.document)
+        XCTAssertEqual(model.pageLabel, "第 1 / 2 章")
 
         model.showPreviousChapter()
         XCTAssertEqual(model.currentPageIndex, 0)
