@@ -1,4 +1,5 @@
 import SwiftUI
+import JieJuLanguage
 
 struct ReaderView: View {
     @StateObject private var model: ReaderViewModel
@@ -6,6 +7,7 @@ struct ReaderView: View {
     private let explanationLanguage: String
     private let configurationID: String
     private let explanationPresentationMode: ExplanationPresentationMode
+    private let furiganaDisplayMode: FuriganaDisplayMode
     private let epubReadingStyle: EPUBReadingStyle
 
     init(
@@ -14,12 +16,14 @@ struct ReaderView: View {
         explanationLanguage: String = "Chinese",
         configurationID: String = "default",
         explanationPresentationMode: ExplanationPresentationMode = .sidebar,
+        furiganaDisplayMode: FuriganaDisplayMode = .hidden,
         epubReadingStyle: EPUBReadingStyle = EPUBReadingStyle()
     ) {
         self.explanationProvider = explanationProvider
         self.explanationLanguage = explanationLanguage
         self.configurationID = configurationID
         self.explanationPresentationMode = explanationPresentationMode
+        self.furiganaDisplayMode = furiganaDisplayMode
         self.epubReadingStyle = epubReadingStyle
         _model = StateObject(wrappedValue: ReaderViewModel(
             explanationProvider: explanationProvider,
@@ -102,6 +106,7 @@ struct ReaderView: View {
                             save: model.saveExplanation,
                             retry: model.requestExplanation,
                             analyzeDeep: model.requestDeepAnalysis,
+                            furiganaDisplayMode: furiganaDisplayMode,
                         close: model.dismissExplanation,
                         presentation: .sidebar
                     )
@@ -174,6 +179,7 @@ struct ReaderView: View {
                         save: model.saveExplanation,
                         retry: model.requestExplanation,
                         analyzeDeep: model.requestDeepAnalysis,
+                        furiganaDisplayMode: furiganaDisplayMode,
                         close: model.dismissExplanation,
                         presentation: .popover
                     )
@@ -210,6 +216,7 @@ struct ReaderExplanationPanel: View {
     let save: () -> Void
     let retry: () -> Void
     let analyzeDeep: () -> Void
+    let furiganaDisplayMode: FuriganaDisplayMode
     let close: () -> Void
     let presentation: Presentation
 
@@ -232,9 +239,7 @@ struct ReaderExplanationPanel: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
                     DisclosureGroup("选中的原文", isExpanded: $sourceExpanded) {
-                        Text(selectedText)
-                            .font(.body)
-                            .textSelection(.enabled)
+                        FuriganaText(text: selectedText, mode: furiganaDisplayMode)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, 8)
                     }
@@ -311,9 +316,29 @@ struct ReaderExplanationPanel: View {
                 if !analysis.grammarPoints.isEmpty {
                     itemCard(title: "深度语法", systemImage: "books.vertical", items: analysis.grammarPoints)
                 }
+                if !analysis.japaneseWords.isEmpty { japaneseWordCard(analysis.japaneseWords) }
                 explanationCard(title: "整句理解", systemImage: "lightbulb", value: analysis.interpretation)
             }
         }
+    }
+
+    private func japaneseWordCard(_ words: [ReaderJapaneseWord]) -> some View {
+        DisclosureGroup("日语词形与读音（AI 参考）") {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Array(words.enumerated()), id: \.offset) { _, word in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("\(word.text)【\(word.reading)】").font(.body.weight(.semibold))
+                        Text("原形：\(word.baseForm) · \(word.inflectionType)").font(.caption).foregroundStyle(.secondary)
+                        Text(word.grammaticalFunction).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Text("这里的读音由语言模型解释，仅供参考；正文注音只使用本地词典结果。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(.top, 10)
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func componentCard(_ components: [ReaderSentenceComponent]) -> some View {
@@ -388,3 +413,69 @@ struct ReaderExplanationPanel: View {
 }
 
 #Preview { ReaderView() }
+
+struct FuriganaText: View {
+    let text: String
+    let mode: FuriganaDisplayMode
+    private let segments: [ReadingSegment]
+
+    init(text: String, mode: FuriganaDisplayMode, provider: any JapaneseReadingProviding = LocalJapaneseReadingProvider()) {
+        self.text = text
+        self.mode = mode
+        self.segments = provider.segments(for: text)
+    }
+
+    var body: some View {
+        if mode == .hidden || !segments.contains(where: { $0.reading != nil }) {
+            Text(text).textSelection(.enabled)
+        } else {
+            FuriganaFlowLayout(spacing: 2) {
+                ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
+                    VStack(spacing: 0) {
+                        Text(segment.reading ?? " ")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .opacity(segment.reading == nil ? 0 : 1)
+                        Text(segment.surface).font(.body)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(segment.reading.map { "\(segment.surface)、\($0)" } ?? segment.surface)
+                }
+            }
+        }
+    }
+}
+
+private struct FuriganaFlowLayout: Layout {
+    let spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(width: proposal.width ?? .greatestFiniteMagnitude, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let arrangement = arrange(width: bounds.width, subviews: subviews)
+        for (index, point) in arrangement.points.enumerated() {
+            subviews[index].place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y), proposal: .unspecified)
+        }
+    }
+
+    private func arrange(width: CGFloat, subviews: Subviews) -> (size: CGSize, points: [CGPoint]) {
+        var points: [CGPoint] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > width {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            points.append(CGPoint(x: x, y: y))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return (CGSize(width: min(width, max(0, x)), height: y + rowHeight), points)
+    }
+}

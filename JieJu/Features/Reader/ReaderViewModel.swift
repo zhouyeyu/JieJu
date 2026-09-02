@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import PDFKit
 import UniformTypeIdentifiers
+import JieJuLanguage
 
 @MainActor
 final class ReaderViewModel: ObservableObject {
@@ -21,7 +22,7 @@ final class ReaderViewModel: ObservableObject {
     private var explanationProvider: any ReaderExplanationProviding
     private let saveHandler: @MainActor (ReaderSavePayload) -> Void
     private let positionStore: ReadingPositionStore
-    private let sourceLanguage: String
+    private let fallbackSourceLanguage: String
     private var explanationLanguage: String
     private var explanationTask: Task<Void, Never>?
     private var deepAnalysisTask: Task<Void, Never>?
@@ -37,7 +38,7 @@ final class ReaderViewModel: ObservableObject {
         self.explanationProvider = explanationProvider
         self.saveHandler = saveHandler
         self.positionStore = positionStore
-        self.sourceLanguage = sourceLanguage
+        self.fallbackSourceLanguage = sourceLanguage
         self.explanationLanguage = explanationLanguage
     }
 
@@ -188,6 +189,7 @@ final class ReaderViewModel: ObservableObject {
     }
 
     func requestExplanation() {
+        let sourceLanguage = detectedSourceLanguage
         guard let request = selection?.explanationRequest(
             sourceLanguage: sourceLanguage,
             explanationLanguage: explanationLanguage
@@ -210,6 +212,7 @@ final class ReaderViewModel: ObservableObject {
     }
 
     func requestDeepAnalysis() {
+        let sourceLanguage = detectedSourceLanguage
         guard let request = selection?.explanationRequest(
             sourceLanguage: sourceLanguage,
             explanationLanguage: explanationLanguage
@@ -243,6 +246,7 @@ final class ReaderViewModel: ObservableObject {
             case let .loaded(metadata) = documentState,
             let selection
         else { return }
+        let sourceLanguage = detectedSourceLanguage
         saveHandler(.init(
             documentURL: metadata.url,
             pageIndex: currentPageIndex,
@@ -251,6 +255,10 @@ final class ReaderViewModel: ObservableObject {
             sourceLanguage: sourceLanguage,
             explanationLanguage: explanationLanguage
         ))
+    }
+
+    private var detectedSourceLanguage: String {
+        TextLanguageDetector.languageName(for: selection?.targetText ?? "", fallback: fallbackSourceLanguage)
     }
 
     private func fail(_ error: ReaderDocumentError) {

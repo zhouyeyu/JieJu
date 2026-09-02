@@ -109,6 +109,15 @@ struct ReaderDeepAnalysis: Equatable, Sendable {
     let clauses: [ReaderClauseExplanation]
     let grammarPoints: [String]
     let interpretation: String
+    let japaneseWords: [ReaderJapaneseWord]
+}
+
+struct ReaderJapaneseWord: Equatable, Sendable {
+    let text: String
+    let baseForm: String
+    let reading: String
+    let inflectionType: String
+    let grammaticalFunction: String
 }
 
 struct ReaderSavePayload: Sendable {
@@ -153,7 +162,8 @@ struct MockReaderExplanationProvider: ReaderExplanationProviding {
             sentenceType: "Mock 句子类型",
             sentencePattern: "S + V",
             components: [.init(text: request.targetText, role: "完整句", explanation: "Mock 成分说明", modifies: nil)],
-            clauses: [], grammarPoints: ["Mock 深度语法说明"], interpretation: "Mock 整句理解"
+            clauses: [], grammarPoints: ["Mock 深度语法说明"], interpretation: "Mock 整句理解",
+            japaneseWords: []
         )
     }
 }

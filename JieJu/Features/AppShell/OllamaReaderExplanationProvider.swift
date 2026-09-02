@@ -27,7 +27,11 @@ struct OllamaReaderExplanationProvider: ReaderExplanationProviding {
                 .init(text: $0.text, type: $0.type, function: $0.function, explanation: $0.explanation)
             },
             grammarPoints: result.grammarPoints.map { "\($0.text)：\($0.explanation)" },
-            interpretation: result.interpretation
+            interpretation: result.interpretation,
+            japaneseWords: (result.japaneseWords ?? []).map {
+                .init(text: $0.text, baseForm: $0.baseForm, reading: $0.reading,
+                      inflectionType: $0.inflectionType, grammaticalFunction: $0.grammaticalFunction)
+            }
         )
     }
 }

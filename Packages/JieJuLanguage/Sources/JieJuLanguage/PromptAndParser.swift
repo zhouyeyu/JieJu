@@ -93,6 +93,7 @@ public enum DeepQwenPrompt {
     You are a rigorous syntax tutor. Analyze targetText only; context may resolve meaning but must never appear as analyzed text.
     Copy every component.text, component.modifies, clause.text, and grammarPoints.text exactly from consecutive targetText words. Use an empty string when there is no modifies fragment. Explain roles, relationships, and interpretation in explanationLanguage.
     Describe sentencePattern with conventional labels such as S, V, O, C, relative clause, or adverbial clause.
+    For Japanese targetText, add japaneseWords for useful content words: copy text exactly, then provide dictionary baseForm, kana reading, inflectionType, and grammaticalFunction. Model readings are explanatory references, not authoritative furigana.
     Use empty clauses when the sentence has no clause structure. Return JSON only using the supplied schema.
     """
 
@@ -112,6 +113,7 @@ public enum DeepQwenPrompt {
         """
         Start over. Analyze only targetText: \(request.targetText)
         Every components.text, non-empty components.modifies, clauses.text, and grammarPoints.text must be exact consecutive text copied from targetText.
+        For Japanese, japaneseWords.text must also be copied exactly; give base form, kana reading, inflection and grammatical function only when confident.
         All explanations must be in \(request.explanationLanguage). Use fewer items when uncertain. Return JSON only.
         """
     }

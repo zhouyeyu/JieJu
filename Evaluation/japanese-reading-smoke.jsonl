@@ -1,0 +1,12 @@
+{"id":"common-01","text":"私は日本語を勉強しています。","focus":"日本語","expectedReading":"にほんご","category":"common"}
+{"id":"polyphone-01","text":"今日は一日中、本を読んだ。","focus":"今日","expectedReading":"きょう","category":"polyphone"}
+{"id":"polyphone-02","text":"三月一日に出発する。","focus":"一日","expectedReading":"ついたち","category":"polyphone"}
+{"id":"name-01","text":"東野圭吾の小説を読む。","focus":"東野圭吾","expectedReading":"ひがしのけいご","category":"person-name"}
+{"id":"name-02","text":"東京から京都へ行く。","focus":"東京","expectedReading":"とうきょう","category":"place-name"}
+{"id":"inflection-01","text":"昨日、その本を読んだ。","focus":"読んだ","expectedReading":"よんだ","category":"inflection"}
+{"id":"inflection-02","text":"駅まで走っている。","focus":"走って","expectedReading":"はしって","category":"inflection"}
+{"id":"date-01","text":"会議は四月二十日です。","focus":"二十日","expectedReading":"はつか","category":"number-date"}
+{"id":"date-02","text":"七時三十分に会いましょう。","focus":"七時三十分","expectedReading":"しちじさんじゅっぷん","category":"number-date"}
+{"id":"jukujikun-01","text":"大人になってから故郷へ戻った。","focus":"大人","expectedReading":"おとな","category":"jukujikun"}
+{"id":"jukujikun-02","text":"明日は友達と出かける。","focus":"明日","expectedReading":"あした","category":"jukujikun"}
+{"id":"unknown-01","text":"難読地名には注音しない。","focus":"難読地名","expectedReading":null,"category":"safe-unknown"}

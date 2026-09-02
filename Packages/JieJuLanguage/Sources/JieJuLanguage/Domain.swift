@@ -110,19 +110,22 @@ public struct Explanation: Codable, Equatable, Sendable {
         let core = sentenceCore.matchableSourceText
         let targetWords = Set(target.split(separator: " "))
         let coreWords = Set(core.split(separator: " "))
-        guard !coreWords.isEmpty, coreWords.isSubset(of: targetWords) else {
+        let coreIsPresent = request.usesUnspacedSourceMatching
+            ? request.targetText.unspacedMatchableText.contains(sentenceCore.unspacedMatchableText)
+            : (!coreWords.isEmpty && coreWords.isSubset(of: targetWords))
+        guard coreIsPresent else {
             throw ReadingAIError.invalidResponse("sentenceCore is absent from targetText: \(sentenceCore)")
         }
 
         for point in grammarPoints {
             let fragment = point.text.matchableSourceText
-            guard !fragment.isEmpty, " \(target) ".contains(" \(fragment) ") else {
+            guard !fragment.isEmpty, request.containsSourceFragment(point.text) else {
                 throw ReadingAIError.invalidResponse("grammar fragment is absent from targetText: \(point.text)")
             }
         }
         for phrase in keyPhrases {
             let fragment = phrase.text.matchableSourceText
-            guard !fragment.isEmpty, " \(target) ".contains(" \(fragment) ") else {
+            guard !fragment.isEmpty, request.containsSourceFragment(phrase.text) else {
                 throw ReadingAIError.invalidResponse("key phrase is absent from targetText: \(phrase.text)")
             }
         }
@@ -169,6 +172,7 @@ public struct DeepAnalysis: Codable, Equatable, Sendable {
     public let clauses: [ClauseExplanation]
     public let grammarPoints: [GrammarPoint]
     public let interpretation: String
+    public let japaneseWords: [JapaneseWordAnalysis]?
 
     public init(
         sentenceType: String,
@@ -176,7 +180,8 @@ public struct DeepAnalysis: Codable, Equatable, Sendable {
         components: [SentenceComponent],
         clauses: [ClauseExplanation],
         grammarPoints: [GrammarPoint],
-        interpretation: String
+        interpretation: String,
+        japaneseWords: [JapaneseWordAnalysis]? = nil
     ) {
         self.sentenceType = sentenceType
         self.sentencePattern = sentencePattern
@@ -184,6 +189,7 @@ public struct DeepAnalysis: Codable, Equatable, Sendable {
         self.clauses = clauses
         self.grammarPoints = grammarPoints
         self.interpretation = interpretation
+        self.japaneseWords = japaneseWords
     }
 
     public func validated(against request: ExplanationRequest) throws -> Self {
@@ -193,13 +199,23 @@ public struct DeepAnalysis: Codable, Equatable, Sendable {
         guard components.count <= 8, clauses.count <= 6, grammarPoints.count <= 6 else {
             throw ReadingAIError.invalidResponse("deep analysis exceeds item limits")
         }
-        let target = request.targetText.matchableSourceText
+        guard (japaneseWords?.count ?? 0) <= 12 else {
+            throw ReadingAIError.invalidResponse("deep analysis exceeds Japanese word limit")
+        }
         let modifiers = components.compactMap(\.modifies).filter { !$0.isBlank }
         let fragments = components.map(\.text) + modifiers + clauses.map(\.text) + grammarPoints.map(\.text)
         for text in fragments {
             let fragment = text.matchableSourceText
-            guard !fragment.isEmpty, " \(target) ".contains(" \(fragment) ") else {
+            guard !fragment.isEmpty, request.containsSourceFragment(text) else {
                 throw ReadingAIError.invalidResponse("analysis fragment is absent from targetText: \(text)")
+            }
+        }
+        for word in japaneseWords ?? [] {
+            let fragment = word.text.matchableSourceText
+            guard !fragment.isEmpty, request.containsSourceFragment(word.text),
+                  !word.baseForm.isBlank, !word.reading.isBlank,
+                  !word.inflectionType.isBlank, !word.grammaticalFunction.isBlank else {
+                throw ReadingAIError.invalidResponse("invalid Japanese word analysis: \(word.text)")
             }
         }
         guard components.allSatisfy({ !$0.role.isBlank && !$0.explanation.isBlank }),
@@ -248,5 +264,22 @@ private extension String {
             .split(whereSeparator: { $0 == " " })
             .map(String.init)
             .joined(separator: " ")
+    }
+
+    var unspacedMatchableText: String { matchableSourceText.replacingOccurrences(of: " ", with: "") }
+}
+
+private extension ExplanationRequest {
+    var usesUnspacedSourceMatching: Bool {
+        sourceLanguage.localizedCaseInsensitiveContains("Japanese") ||
+        targetText.unicodeScalars.contains { (0x3040...0x30FF).contains($0.value) }
+    }
+
+    func containsSourceFragment(_ fragment: String) -> Bool {
+        if usesUnspacedSourceMatching {
+            let needle = fragment.unspacedMatchableText
+            return !needle.isEmpty && targetText.unspacedMatchableText.contains(needle)
+        }
+        return " \(targetText.matchableSourceText) ".contains(" \(fragment.matchableSourceText) ")
     }
 }

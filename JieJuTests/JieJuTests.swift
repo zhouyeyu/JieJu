@@ -69,6 +69,18 @@ final class JieJuTests: XCTestCase {
     }
 
     @MainActor
+    func testFuriganaModeDefaultsHiddenAndPersists() {
+        let suite = "JieJuTests.AppSettings.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.furiganaDisplayMode, .hidden)
+        settings.furiganaDisplayMode = .kanji
+        XCTAssertEqual(AppSettings(defaults: defaults).furiganaDisplayMode, .kanji)
+    }
+
+    @MainActor
     func testReaderUpdatesExplanationConfigurationWithoutResettingState() async throws {
         let recorder = ExplanationRequestRecorder()
         let model = ReaderViewModel(explanationProvider: MockReaderExplanationProvider())
@@ -120,6 +132,23 @@ final class JieJuTests: XCTestCase {
         }
         XCTAssertEqual(result.sentencePattern, "Although + adjective, S + V")
     }
+
+    @MainActor
+    func testReaderDetectsJapaneseSelectionForAIRequest() async throws {
+        let recorder = ExplanationRequestRecorder()
+        let model = ReaderViewModel(explanationProvider: RecordingExplanationProvider(recorder: recorder))
+        model.updateSelection(.init(
+            targetText: "私は日本語の本を読みます。",
+            precedingContext: nil, followingContext: nil, anchorRect: .zero
+        ))
+        model.requestExplanation()
+        var captured = await recorder.request
+        for _ in 0..<100 where captured == nil {
+            await Task.yield()
+            captured = await recorder.request
+        }
+        XCTAssertEqual(captured?.sourceLanguage, "Japanese")
+    }
 }
 
 private actor ExplanationRequestRecorder {
@@ -158,7 +187,8 @@ private struct RecordingDeepAnalysisProvider: ReaderExplanationProviding {
         return ReaderDeepAnalysis(
             sentenceType: "简单句",
             sentencePattern: "Although + adjective, S + V",
-            components: [], clauses: [], grammarPoints: [], interpretation: "尽管疲惫，她仍继续。"
+            components: [], clauses: [], grammarPoints: [], interpretation: "尽管疲惫，她仍继续。",
+            japaneseWords: []
         )
     }
 }

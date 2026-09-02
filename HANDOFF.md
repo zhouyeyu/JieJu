@@ -12,6 +12,16 @@
 
 ## 本次完成内容
 
+- 开始 Track G 日语阅读：新增可持久化 `ReadingSegment(surface, reading)`、日语自动识别、
+  日语无空格片段校验和可替换 `JapaneseReadingProviding`。当前本地实现仅注音明确命中的高频词，
+  未知汉字保持原样，禁止使用模型猜测结果作为正文注音。
+- 解句面板新增可换行 Furigana/Ruby 布局，设置页增加“不显示/汉字注音”并持久化；深入解析
+  JSON 增加日语词语的原形、假名、活用类型和句中语法功能，并在 UI 标为“AI 参考”。
+- 新增 12 条日语读音评测数据，覆盖多音字、姓名、活用、日期数字、熟字训和未知词；
+  `Docs/JAPANESE_READING_ENGINE.md` 记录 Sudachi、MeCab/UniDic 与 Apple NaturalLanguage 的取舍。
+- 尚未完成：正式形态词典接入与全量汉字—假名对齐（`JA-003`）、无原书 Ruby 的 EPUB 正文
+  批量注音注入（`JA-006`）。后续 Agent 不应扩充手写小词典来冒充完整形态分析器。
+
 - 重排后续计划为 Track E（WebKit 动态分页）、Track F（深度句法）和 Track G（日语假名）。
 - 完成 `EPUB-201`：`EPUBDocument.resources` 暴露 manifest 资源数据、MIME 类型和标准包内路径；
   `EPUBChapter.resourcePath` 记录章节 XHTML 位置，并增加资源路径与内容回归测试。
@@ -69,7 +79,8 @@
 
 ## 验证
 
-- JieJuLanguage 包测试：**35 项通过**（`swift test`）。
+- JieJuLanguage 包测试：**44 项通过**（`swift test`）。
+- App、App Tests 与 UI Tests：`xcodebuild build-for-testing` 通过；新增日语识别和注音设置测试。
 - Ollama 1.5B 端到端：中文翻译、英文主干、中文语法说明通过；不再返回 Mock 示例。
 - 单句实测：0.5B「火车于六点出发。」、1.5B「火车六点出发。」均正确。
 - `xcodebuild build`：通过。

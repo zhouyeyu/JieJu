@@ -308,6 +308,8 @@ private indirect enum SchemaValue: Encodable {
         let source = request.sourceLanguage
         let fragment = "Exact consecutive text copied from targetText in \(source); never translate"
         let explained = "Write in \(explanation). \(QwenPrompt.explanationLanguageRule(for: explanation))"
+        var required = ["sentenceType", "sentencePattern", "components", "clauses", "grammarPoints", "interpretation"]
+        if request.sourceLanguage.localizedCaseInsensitiveContains("Japanese") { required.append("japaneseWords") }
         func string(_ description: String) -> SchemaValue {
             .object(["type": .string("string"), "description": .string(description)])
         }
@@ -332,6 +334,17 @@ private indirect enum SchemaValue: Encodable {
             "properties": .object(["text": string(fragment), "explanation": string(explained)]),
             "required": .array([.string("text"), .string("explanation")])
         ])
+        let japaneseWord = SchemaValue.object([
+            "type": .string("object"),
+            "properties": .object([
+                "text": string(fragment),
+                "baseForm": string("Dictionary form; use Japanese orthography"),
+                "reading": string("Kana reading; model-provided reference, never HTML"),
+                "inflectionType": string(explained),
+                "grammaticalFunction": string(explained)
+            ]),
+            "required": .array([.string("text"), .string("baseForm"), .string("reading"), .string("inflectionType"), .string("grammaticalFunction")])
+        ])
         return .object([
             "type": .string("object"),
             "properties": .object([
@@ -340,9 +353,10 @@ private indirect enum SchemaValue: Encodable {
                 "components": .object(["type": .string("array"), "maxItems": .integer(8), "items": component]),
                 "clauses": .object(["type": .string("array"), "maxItems": .integer(6), "items": clause]),
                 "grammarPoints": .object(["type": .string("array"), "maxItems": .integer(6), "items": grammar]),
-                "interpretation": string(explained)
+                "interpretation": string(explained),
+                "japaneseWords": .object(["type": .string("array"), "maxItems": .integer(12), "items": japaneseWord])
             ]),
-            "required": .array([.string("sentenceType"), .string("sentencePattern"), .string("components"), .string("clauses"), .string("grammarPoints"), .string("interpretation")])
+            "required": .array(required.map(SchemaValue.string))
         ])
     }
 }

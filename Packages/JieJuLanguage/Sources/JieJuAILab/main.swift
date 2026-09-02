@@ -58,6 +58,12 @@ struct JieJuAILab {
         analysis.clauses.forEach { print("- \($0.text) [\($0.type) / \($0.function)]: \($0.explanation)") }
         print("Grammar:")
         analysis.grammarPoints.forEach { print("- \($0.text): \($0.explanation)") }
+        if let words = analysis.japaneseWords, !words.isEmpty {
+            print("Japanese words (AI reference):")
+            words.forEach {
+                print("- \($0.text) [\($0.reading)] base=\($0.baseForm), \($0.inflectionType): \($0.grammaticalFunction)")
+            }
+        }
         print("Interpretation: \(analysis.interpretation)")
     }
 

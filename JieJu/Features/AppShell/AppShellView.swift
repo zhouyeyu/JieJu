@@ -45,6 +45,7 @@ struct AppShellView: View {
                     explanationLanguage: settings.explanationLanguage,
                     configurationID: "\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)",
                     explanationPresentationMode: settings.explanationPresentationMode,
+                    furiganaDisplayMode: settings.furiganaDisplayMode,
                     epubReadingStyle: EPUBReadingStyle(
                         fontSize: settings.epubFontSize,
                         lineHeight: settings.epubLineHeight,
@@ -110,6 +111,11 @@ private struct AISettingsView: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("settings.explanationPresentationMode")
+            Picker("日语注音", selection: $settings.furiganaDisplayMode) {
+                ForEach(FuriganaDisplayMode.allCases) { mode in Text(mode.title).tag(mode) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.furiganaDisplayMode")
             Section("EPUB 排版") {
                 LabeledContent("字号 \(Int(settings.epubFontSize))") {
                     Slider(value: $settings.epubFontSize, in: 14...28, step: 1)
