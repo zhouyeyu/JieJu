@@ -12,15 +12,25 @@ public struct EPUBMetadata: Equatable, Sendable {
 public struct EPUBChapter: Equatable, Sendable {
     public let id: String
     public let title: String
+    /// 章节 XHTML 在 EPUB 包内的标准化路径。
+    public let resourcePath: String
     /// 段落级纯文本（重排阅读模式使用）
     public let textBlocks: [String]
     /// 原始 XHTML（WebKit 渲染模式使用）
     public let rawXHTML: String
 }
 
+public struct EPUBResource: Equatable, Sendable {
+    public let path: String
+    public let mediaType: String
+    public let data: Data
+}
+
 public struct EPUBDocument: Equatable, Sendable {
     public let metadata: EPUBMetadata
     public let chapters: [EPUBChapter]
+    /// manifest 中可供渲染器访问的书内资源，以标准化包内路径索引。
+    public let resources: [String: EPUBResource]
 
     public var displayName: String {
         metadata.title.isEmpty ? "未命名 EPUB" : metadata.title
@@ -83,11 +93,19 @@ public enum EPUBCore {
         let title = opf.firstText(path: ["metadata", "title"]) ?? "未命名"
         let creator = opf.firstText(path: ["metadata", "creator"])
         let language = opf.firstText(path: ["metadata", "language"])
+        let basePath = (rootfile as NSString).deletingLastPathComponent
 
-        var manifest: [String: (href: String, properties: String)] = [:]
+        var manifest: [String: (href: String, mediaType: String, properties: String)] = [:]
         for node in opf.children(named: "manifest").first?.children(named: "item") ?? [] {
             guard let id = node.attribute("id"), let href = node.attribute("href") else { continue }
-            manifest[id] = (href, node.attribute("properties") ?? "")
+            manifest[id] = (href, node.attribute("media-type") ?? "application/octet-stream", node.attribute("properties") ?? "")
+        }
+
+        var resources: [String: EPUBResource] = [:]
+        for item in manifest.values {
+            let path = resolve(href: item.href, basePath: basePath)
+            guard isSafePackagePath(path), let resourceData = try archive.read(named: path) else { continue }
+            resources[path] = EPUBResource(path: path, mediaType: item.mediaType, data: resourceData)
         }
 
         let spineRefs = (opf.children(named: "spine").first?.children(named: "itemref") ?? []).compactMap {
@@ -95,7 +113,6 @@ public enum EPUBCore {
         }
         guard !spineRefs.isEmpty else { throw EPUBError.missingOPF("spine is empty") }
 
-        let basePath = (rootfile as NSString).deletingLastPathComponent
         var chapters: [EPUBChapter] = []
         for (index, idref) in spineRefs.enumerated() {
             guard let item = manifest[idref] else {
@@ -111,6 +128,7 @@ public enum EPUBCore {
                 EPUBChapter(
                     id: idref,
                     title: blocks.first ?? "第 \(index + 1) 节",
+                    resourcePath: resolved,
                     textBlocks: blocks,
                     rawXHTML: raw
                 )
@@ -122,8 +140,13 @@ public enum EPUBCore {
         let finalTitle = title == "未命名" ? chapters.first?.title ?? title : title
         return EPUBDocument(
             metadata: EPUBMetadata(title: finalTitle, creator: creator, language: language),
-            chapters: chapters
+            chapters: chapters,
+            resources: resources
         )
+    }
+
+    private static func isSafePackagePath(_ path: String) -> Bool {
+        !path.isEmpty && !path.hasPrefix("/") && !path.split(separator: "/").contains("..")
     }
 
     private static func resolve(href: String, basePath: String) -> String {

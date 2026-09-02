@@ -30,6 +30,16 @@ final class EPUBCoreTests: XCTestCase {
         XCTAssertEqual(blocks[2], "Second paragraph, with a link.")
     }
 
+    func testExposesManifestResourcesWithResolvedPackagePaths() throws {
+        let doc = try EPUBCore.parse(url: try fixture("minimal"))
+        let first = try XCTUnwrap(doc.chapters.first)
+
+        XCTAssertEqual(first.resourcePath, "OEBPS/chapter1.xhtml")
+        XCTAssertEqual(doc.resources[first.resourcePath]?.mediaType, "application/xhtml+xml")
+        XCTAssertEqual(doc.resources[first.resourcePath]?.data, Data(first.rawXHTML.utf8))
+        XCTAssertTrue(doc.resources.keys.allSatisfy { !$0.hasPrefix("/") && !$0.contains("../") })
+    }
+
     func testDecodesEntitiesAndHandlesBreaksAndLists() throws {
         let doc = try EPUBCore.parse(url: try fixture("messy"))
         let blocks = doc.chapters[0].textBlocks
