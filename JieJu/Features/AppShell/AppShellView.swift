@@ -135,6 +135,7 @@ private struct AISettingsView: View {
             .pickerStyle(.segmented)
             .accessibilityIdentifier("settings.furiganaDisplayMode")
             Section("EPUB 排版") {
+                EPUBLayoutPreview(settings: settings)
                 Picker("阅读背景", selection: $settings.epubReaderTheme) {
                     ForEach(EPUBReaderTheme.allCases) { theme in
                         Text(theme.title).tag(theme)
@@ -198,6 +199,64 @@ private struct AISettingsView: View {
             Label(message, systemImage: "arrow.down.circle").foregroundStyle(.orange)
         case .unavailable(let message):
             Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+        }
+    }
+}
+
+private struct EPUBLayoutPreview: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        GeometryReader { geometry in
+            let previewMargin = min(
+                CGFloat(settings.epubHorizontalMargin),
+                max(24, geometry.size.width * 0.28)
+            )
+            VStack(alignment: .leading, spacing: 12) {
+                Text("阅读预览")
+                    .font(.system(size: min(settings.epubFontSize + 4, 30), weight: .semibold))
+                Text("语言并不只是需要记忆的知识。\n当我们在真实的故事里理解一句话，它才会慢慢成为自己的表达。")
+                    .font(.system(size: settings.epubFontSize))
+                    .lineSpacing(max(0, settings.epubFontSize * (settings.epubLineHeight - 1.2)))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(settings.epubReaderTheme.previewForeground)
+            .padding(.vertical, 22)
+            .padding(.horizontal, previewMargin)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(settings.epubReaderTheme.previewBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(settings.epubReaderTheme.previewForeground.opacity(0.12))
+            }
+            .animation(.easeOut(duration: 0.12), value: settings.epubFontSize)
+            .animation(.easeOut(duration: 0.12), value: settings.epubLineHeight)
+            .animation(.easeOut(duration: 0.12), value: settings.epubHorizontalMargin)
+            .animation(.easeOut(duration: 0.12), value: settings.epubReaderTheme)
+        }
+        .frame(height: 220)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("EPUB 排版预览")
+    }
+}
+
+private extension EPUBReaderTheme {
+    var previewBackground: Color {
+        switch self {
+        case .paper: Color(red: 250 / 255, green: 250 / 255, blue: 248 / 255)
+        case .night: Color(red: 22 / 255, green: 24 / 255, blue: 29 / 255)
+        case .sepia: Color(red: 244 / 255, green: 236 / 255, blue: 216 / 255)
+        case .sage: Color(red: 221 / 255, green: 232 / 255, blue: 213 / 255)
+        }
+    }
+
+    var previewForeground: Color {
+        switch self {
+        case .paper: Color(red: 28 / 255, green: 28 / 255, blue: 30 / 255)
+        case .night: Color(red: 242 / 255, green: 242 / 255, blue: 244 / 255)
+        case .sepia: Color(red: 51 / 255, green: 43 / 255, blue: 34 / 255)
+        case .sage: Color(red: 34 / 255, green: 48 / 255, blue: 40 / 255)
         }
     }
 }

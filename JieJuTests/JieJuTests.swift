@@ -122,6 +122,8 @@ final class JieJuTests: XCTestCase {
 
             XCTAssertTrue(renderedHTML.contains("background: \(theme.backgroundCSS) !important"))
             XCTAssertTrue(renderedHTML.contains("body * { color: \(theme.foregroundCSS) !important"))
+            XCTAssertTrue(renderedHTML.contains("font-size: 18.0px !important"))
+            XCTAssertTrue(renderedHTML.contains("line-height: 1.75 !important"))
         }
     }
 

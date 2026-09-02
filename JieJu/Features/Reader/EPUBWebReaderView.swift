@@ -269,6 +269,9 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
                background: \(readingStyle.theme.backgroundCSS) !important; }
         body * { color: \(readingStyle.theme.foregroundCSS) !important;
                  background-color: transparent !important; }
+        body p, body li, body blockquote, body dd, body dt {
+                 font-size: \(readingStyle.fontSize)px !important;
+                 line-height: \(readingStyle.lineHeight) !important; }
         body a, body a * { color: \(readingStyle.theme.linkCSS) !important; }
         ::selection { background: color-mix(in srgb, \(readingStyle.theme.linkCSS) 35%, transparent) !important; }
         img, svg { max-width: 100%; max-height: 80vh; object-fit: contain; }
