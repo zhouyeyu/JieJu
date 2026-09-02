@@ -91,7 +91,7 @@ struct ReaderView: View {
                                 onPageChange: model.updateEPUBPage,
                                 onSelectionChange: model.updateSelection
                             )
-                            .id("\(epub.chapters[model.currentPageIndex].id)-\(epubReadingStyle.fontSize)-\(epubReadingStyle.lineHeight)-\(epubReadingStyle.horizontalMargin)-\(epubReadingStyle.showsFurigana)")
+                            .id("\(epub.chapters[model.currentPageIndex].id)-\(epubReadingStyle.fontSize)-\(epubReadingStyle.lineHeight)-\(epubReadingStyle.horizontalMargin)-\(epubReadingStyle.showsFurigana)-\(epubReadingStyle.theme.rawValue)")
                         }
                     }
                         explanationButton

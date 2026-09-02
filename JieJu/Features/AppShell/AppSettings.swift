@@ -68,6 +68,9 @@ final class AppSettings: ObservableObject {
     @Published var epubFontSize: Double { didSet { defaults.set(epubFontSize, forKey: Keys.epubFontSize) } }
     @Published var epubLineHeight: Double { didSet { defaults.set(epubLineHeight, forKey: Keys.epubLineHeight) } }
     @Published var epubHorizontalMargin: Double { didSet { defaults.set(epubHorizontalMargin, forKey: Keys.epubHorizontalMargin) } }
+    @Published var epubReaderTheme: EPUBReaderTheme {
+        didSet { defaults.set(epubReaderTheme.rawValue, forKey: Keys.epubReaderTheme) }
+    }
     @Published var furiganaDisplayMode: FuriganaDisplayMode {
         didSet { defaults.set(furiganaDisplayMode.rawValue, forKey: Keys.furiganaDisplayMode) }
     }
@@ -95,6 +98,7 @@ final class AppSettings: ObservableObject {
         epubFontSize = defaults.object(forKey: Keys.epubFontSize) as? Double ?? 18
         epubLineHeight = defaults.object(forKey: Keys.epubLineHeight) as? Double ?? 1.75
         epubHorizontalMargin = defaults.object(forKey: Keys.epubHorizontalMargin) as? Double ?? 54
+        epubReaderTheme = EPUBReaderTheme(rawValue: defaults.string(forKey: Keys.epubReaderTheme) ?? "") ?? .paper
         furiganaDisplayMode = FuriganaDisplayMode(rawValue: defaults.string(forKey: Keys.furiganaDisplayMode) ?? "") ?? .hidden
     }
 
@@ -146,6 +150,7 @@ final class AppSettings: ObservableObject {
         static let epubFontSize = "reader.epub.fontSize"
         static let epubLineHeight = "reader.epub.lineHeight"
         static let epubHorizontalMargin = "reader.epub.horizontalMargin"
+        static let epubReaderTheme = "reader.epub.theme"
         static let furiganaDisplayMode = "reader.japanese.furiganaDisplayMode"
     }
 }

@@ -106,7 +106,7 @@ private struct EPUBWebReaderView: NSViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
-        webView.underPageBackgroundColor = .clear
+        webView.underPageBackgroundColor = readingStyle.theme.webBackgroundColor
         context.coordinator.webView = webView
         context.coordinator.load(chapter)
         return webView
@@ -255,7 +255,8 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         <meta http-equiv="Content-Security-Policy" content="default-src jieju-epub: data:; connect-src 'none'; script-src 'unsafe-inline'; style-src jieju-epub: 'unsafe-inline'; img-src jieju-epub: data:; font-src jieju-epub: data:">
         <style id="jieju-reader-style">
         html { width: 100% !important; height: 100% !important; margin: 0 !important;
-               padding: 0 !important; overflow: hidden !important; }
+               padding: 0 !important; overflow: hidden !important;
+               background: \(readingStyle.theme.backgroundCSS) !important; }
         body { box-sizing: border-box !important; width: 100vw !important; height: 100vh !important;
                min-width: 0 !important; max-width: none !important; min-height: 0 !important;
                max-height: none !important; margin: 0 !important;
@@ -264,7 +265,12 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
                column-width: calc(100vw - \(readingStyle.horizontalMargin * 2)px) !important;
                column-gap: \(readingStyle.horizontalMargin * 2)px !important; column-fill: auto !important;
                font-size: \(readingStyle.fontSize)px !important; line-height: \(readingStyle.lineHeight) !important;
-               color: CanvasText; color-scheme: light dark; background: transparent; }
+               color: \(readingStyle.theme.foregroundCSS) !important;
+               background: \(readingStyle.theme.backgroundCSS) !important; }
+        body * { color: \(readingStyle.theme.foregroundCSS) !important;
+                 background-color: transparent !important; }
+        body a, body a * { color: \(readingStyle.theme.linkCSS) !important; }
+        ::selection { background: color-mix(in srgb, \(readingStyle.theme.linkCSS) 35%, transparent) !important; }
         img, svg { max-width: 100%; max-height: 80vh; object-fit: contain; }
         ruby rt { display: \(rubyVisibility); font-size: 0.55em; user-select: none; -webkit-user-select: none; }
         ruby rp { display: none; user-select: none; -webkit-user-select: none; }
@@ -283,6 +289,17 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
             html = injection + html
         }
         return Data(html.utf8)
+    }
+}
+
+private extension EPUBReaderTheme {
+    var webBackgroundColor: NSColor {
+        switch self {
+        case .paper: NSColor(deviceRed: 250 / 255, green: 250 / 255, blue: 248 / 255, alpha: 1)
+        case .night: NSColor(deviceRed: 22 / 255, green: 24 / 255, blue: 29 / 255, alpha: 1)
+        case .sepia: NSColor(deviceRed: 244 / 255, green: 236 / 255, blue: 216 / 255, alpha: 1)
+        case .sage: NSColor(deviceRed: 221 / 255, green: 232 / 255, blue: 213 / 255, alpha: 1)
+        }
     }
 }
 

@@ -59,14 +59,17 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual(settings.epubFontSize, 18)
         XCTAssertEqual(settings.epubLineHeight, 1.75)
         XCTAssertEqual(settings.epubHorizontalMargin, 54)
+        XCTAssertEqual(settings.epubReaderTheme, .paper)
 
         settings.epubFontSize = 22
         settings.epubLineHeight = 1.9
         settings.epubHorizontalMargin = 64
+        settings.epubReaderTheme = .sepia
         let restored = AppSettings(defaults: defaults)
         XCTAssertEqual(restored.epubFontSize, 22)
         XCTAssertEqual(restored.epubLineHeight, 1.9)
         XCTAssertEqual(restored.epubHorizontalMargin, 64)
+        XCTAssertEqual(restored.epubReaderTheme, .sepia)
     }
 
     @MainActor
@@ -106,6 +109,20 @@ final class JieJuTests: XCTestCase {
         XCTAssertFalse(renderedHTML.contains("while (document.body.firstChild)"))
         XCTAssertTrue(renderedHTML.contains("document.fonts.ready"))
         XCTAssertTrue(renderedHTML.contains(paragraphs))
+    }
+
+    func testEPUBThemesInjectExplicitForegroundAndBackgroundColors() {
+        for theme in EPUBReaderTheme.allCases {
+            let handler = EPUBSchemeHandler(
+                resources: [:],
+                readingStyle: EPUBReadingStyle(theme: theme)
+            )
+            let xhtml = Data("<html><head></head><body><p style='color:white'>Readable</p></body></html>".utf8)
+            let renderedHTML = String(data: handler.injectedXHTML(xhtml), encoding: .utf8)!
+
+            XCTAssertTrue(renderedHTML.contains("background: \(theme.backgroundCSS) !important"))
+            XCTAssertTrue(renderedHTML.contains("body * { color: \(theme.foregroundCSS) !important"))
+        }
     }
 
     @MainActor

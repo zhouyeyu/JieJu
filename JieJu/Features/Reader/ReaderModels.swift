@@ -36,6 +36,52 @@ struct EPUBReadingStyle: Equatable, Sendable {
     var lineHeight: Double = 1.75
     var horizontalMargin: Double = 54
     var showsFurigana = false
+    var theme: EPUBReaderTheme = .paper
+}
+
+enum EPUBReaderTheme: String, CaseIterable, Identifiable, Sendable {
+    case paper
+    case night
+    case sepia
+    case sage
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .paper: "白纸"
+        case .night: "夜间"
+        case .sepia: "羊皮纸"
+        case .sage: "护眼绿"
+        }
+    }
+
+    var backgroundCSS: String {
+        switch self {
+        case .paper: "#FAFAF8"
+        case .night: "#16181D"
+        case .sepia: "#F4ECD8"
+        case .sage: "#DDE8D5"
+        }
+    }
+
+    var foregroundCSS: String {
+        switch self {
+        case .paper: "#1C1C1E"
+        case .night: "#F2F2F4"
+        case .sepia: "#332B22"
+        case .sage: "#223028"
+        }
+    }
+
+    var linkCSS: String {
+        switch self {
+        case .paper: "#315F9D"
+        case .night: "#8AB4F8"
+        case .sepia: "#76552D"
+        case .sage: "#356859"
+        }
+    }
 }
 
 enum ReaderDocumentError: LocalizedError, Equatable, Sendable {

@@ -50,7 +50,8 @@ struct AppShellView: View {
                         fontSize: settings.epubFontSize,
                         lineHeight: settings.epubLineHeight,
                         horizontalMargin: settings.epubHorizontalMargin,
-                        showsFurigana: settings.furiganaDisplayMode == .kanji
+                        showsFurigana: settings.furiganaDisplayMode == .kanji,
+                        theme: settings.epubReaderTheme
                     )
                 )
             case .records:
@@ -118,6 +119,13 @@ private struct AISettingsView: View {
             .pickerStyle(.segmented)
             .accessibilityIdentifier("settings.furiganaDisplayMode")
             Section("EPUB 排版") {
+                Picker("阅读背景", selection: $settings.epubReaderTheme) {
+                    ForEach(EPUBReaderTheme.allCases) { theme in
+                        Text(theme.title).tag(theme)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("settings.epubReaderTheme")
                 LabeledContent("字号 \(Int(settings.epubFontSize))") {
                     Slider(value: $settings.epubFontSize, in: 14...28, step: 1)
                 }
