@@ -36,10 +36,13 @@
   `AppSettings.explanationLanguage` 持久化；请求与学习记录使用实际语言。
 - **修复 `PDF-112`**：移除由 AI 设置驱动的 `ReaderView.id`，改为原位更新 Provider
   与解释语言；当前 PDF、页码和选区不再因设置输入而丢失，并增加配置更新回归测试。
+- **真实解句成为默认**（`1a55765`）：旧版 Mock 默认偏好一次性迁移到 Ollama 1.5B；
+  修复轮逐项删除越界内容而非清空全部讲解，并明确要求中文翻译/语法/词义。
 
 ## 验证
 
-- JieJuLanguage 包测试：**33 项通过**（`swift test --disable-sandbox`）。
+- JieJuLanguage 包测试：**35 项通过**（`swift test`）。
+- Ollama 1.5B 端到端：中文翻译、英文主干、中文语法说明通过；不再返回 Mock 示例。
 - 单句实测：0.5B「火车于六点出发。」、1.5B「火车六点出发。」均正确。
 - `xcodebuild build`：通过。
 - `xcodebuild build-for-testing`：通过，App 单元测试与 UI 测试目标均成功编译。
@@ -86,6 +89,7 @@
 - 尚未实现「重新解释已保存句子」（INT-009）与学习记录详情页；
 - 本机开发者模式关闭，App/UI 测试全线阻塞；
 - 工作区中的 `.workbuddy/` 未纳入版本控制，接手者不得擅自删除。
+- EPUB Agent 当前正在修改 Reader/EPUB 文件；`1a55765` 未包含这些并行未提交改动。
 
 ## 环境注意事项
 
