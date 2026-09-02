@@ -194,7 +194,8 @@ public struct DeepAnalysis: Codable, Equatable, Sendable {
             throw ReadingAIError.invalidResponse("deep analysis exceeds item limits")
         }
         let target = request.targetText.matchableSourceText
-        let fragments = components.map(\.text) + clauses.map(\.text) + grammarPoints.map(\.text)
+        let modifiers = components.compactMap(\.modifies).filter { !$0.isBlank }
+        let fragments = components.map(\.text) + modifiers + clauses.map(\.text) + grammarPoints.map(\.text)
         for text in fragments {
             let fragment = text.matchableSourceText
             guard !fragment.isEmpty, " \(target) ".contains(" \(fragment) ") else {

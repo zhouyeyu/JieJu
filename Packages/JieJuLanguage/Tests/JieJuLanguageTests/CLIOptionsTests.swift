@@ -8,9 +8,16 @@ import Testing
         #expect(options.request?.targetText == "Hello")
         #expect(options.request?.precedingContext == "Before")
         #expect(options.request?.followingContext == "After")
+        #expect(options.command == .explain)
         #expect(options.raw)
         #expect(options.model == "custom")
         #expect(options.baseURL.port == 9999)
+    }
+
+    @Test func parsesDeepCommand() throws {
+        let options = try CLIOptions(arguments: ["deep", "--text", "Although tired, she continued."])
+        #expect(options.command == .deep)
+        #expect(options.request?.targetText == "Although tired, she continued.")
     }
 
     @Test func rejectsUnknownMissingAndConflictingArguments() {

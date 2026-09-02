@@ -88,6 +88,10 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, DeepReadingAI, Bat
     }
 
     public func analyzeDeep(_ request: ExplanationRequest) async throws -> DeepAnalysis {
+        try await analyzeDeepWithRawResponse(request).analysis
+    }
+
+    public func analyzeDeepWithRawResponse(_ request: ExplanationRequest) async throws -> (analysis: DeepAnalysis, rawResponse: String) {
         let valid = try request.validated()
         guard try await hasModel() else { throw ReadingAIError.modelMissing(model) }
         let first = try await generateDeep(messages: [
@@ -95,13 +99,13 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, DeepReadingAI, Bat
             .init(role: "user", content: DeepQwenPrompt.user(valid))
         ], request: valid)
         do {
-            return try DeepAnalysisParser.parse(first, request: valid)
+            return (try DeepAnalysisParser.parse(first, request: valid), first)
         } catch {
             let repaired = try await generateDeep(messages: [
                 .init(role: "system", content: DeepQwenPrompt.system),
                 .init(role: "user", content: DeepQwenPrompt.repair(valid))
             ], request: valid)
-            return try DeepAnalysisParser.parse(repaired, request: valid)
+            return (try DeepAnalysisParser.parse(repaired, request: valid), repaired)
         }
     }
 

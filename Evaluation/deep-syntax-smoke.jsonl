@@ -1,0 +1,12 @@
+{"id":"simple-01","targetText":"The train leaves at six.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"simple"}
+{"id":"simple-02","targetText":"The old stone bridge crosses the narrow river.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"simple"}
+{"id":"compound-01","targetText":"She opened the window, but the room remained warm.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"compound"}
+{"id":"compound-02","targetText":"I called him, and he promised that he would come.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"compound-complex"}
+{"id":"nonfinite-01","targetText":"Having finished the report, Maya went home.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"non-finite"}
+{"id":"nonfinite-02","targetText":"The woman standing by the door is our new teacher.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"non-finite"}
+{"id":"inversion-01","targetText":"Never had she seen such a crowded station.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"inversion"}
+{"id":"inversion-02","targetText":"Only after the meeting did I understand his concern.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"inversion"}
+{"id":"ellipsis-01","targetText":"When in doubt, ask for help.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"ellipsis"}
+{"id":"ellipsis-02","targetText":"Though tired, he kept working.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"ellipsis"}
+{"id":"reference-01","targetText":"When Emma spoke to Julia, she sounded worried.","precedingContext":"Emma had received an unexpected letter.","followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"reference"}
+{"id":"reference-02","targetText":"The trophy would not fit in the suitcase because it was too large.","precedingContext":null,"followingContext":null,"sourceLanguage":"English","explanationLanguage":"Chinese","category":"reference"}

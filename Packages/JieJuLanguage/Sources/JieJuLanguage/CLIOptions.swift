@@ -1,6 +1,8 @@
 import Foundation
 
 public struct CLIOptions: Equatable, Sendable {
+    public enum Command: Equatable, Sendable { case explain, deep }
+    public let command: Command
     public let request: ExplanationRequest?
     public let jsonFile: String?
     public let raw: Bool
@@ -9,7 +11,13 @@ public struct CLIOptions: Equatable, Sendable {
 
     public init(arguments: [String]) throws {
         var args = arguments
-        if args.first == "explain" { args.removeFirst() }
+        if args.first == "deep" {
+            command = .deep
+            args.removeFirst()
+        } else {
+            command = .explain
+            if args.first == "explain" { args.removeFirst() }
+        }
         var values: [String: String] = [:]
         var flags = Set<String>()
         var index = 0

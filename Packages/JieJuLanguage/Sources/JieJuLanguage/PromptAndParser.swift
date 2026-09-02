@@ -91,7 +91,7 @@ public enum ExplanationParser {
 public enum DeepQwenPrompt {
     public static let system = """
     You are a rigorous syntax tutor. Analyze targetText only; context may resolve meaning but must never appear as analyzed text.
-    Copy every component, clause, and grammar text exactly from targetText. Explain roles, relationships, and interpretation in explanationLanguage.
+    Copy every component.text, component.modifies, clause.text, and grammarPoints.text exactly from consecutive targetText words. Use an empty string when there is no modifies fragment. Explain roles, relationships, and interpretation in explanationLanguage.
     Describe sentencePattern with conventional labels such as S, V, O, C, relative clause, or adverbial clause.
     Use empty clauses when the sentence has no clause structure. Return JSON only using the supplied schema.
     """
@@ -111,7 +111,7 @@ public enum DeepQwenPrompt {
     public static func repair(_ request: ExplanationRequest) -> String {
         """
         Start over. Analyze only targetText: \(request.targetText)
-        Every components.text, clauses.text, and grammarPoints.text must be exact consecutive text copied from targetText.
+        Every components.text, non-empty components.modifies, clauses.text, and grammarPoints.text must be exact consecutive text copied from targetText.
         All explanations must be in \(request.explanationLanguage). Use fewer items when uncertain. Return JSON only.
         """
     }

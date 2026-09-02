@@ -15,6 +15,15 @@ struct JieJuAILab {
             let provider = OllamaReadingAI(baseURL: options.baseURL, model: options.model)
             let clock = ContinuousClock()
             let start = clock.now
+            if options.command == .deep {
+                let result = try await provider.analyzeDeepWithRawResponse(request)
+                let elapsed = start.duration(to: clock.now)
+                if options.raw { print(result.rawResponse) }
+                else { printDeep(result.analysis) }
+                writeStandardError("Model: \(options.model)")
+                writeStandardError("Elapsed: \(elapsed)")
+                return
+            }
             let result = try await provider.explainWithRawResponse(request)
             let elapsed = start.duration(to: clock.now)
 
@@ -35,6 +44,21 @@ struct JieJuAILab {
             writeStandardError(usage)
             Foundation.exit(EXIT_FAILURE)
         }
+    }
+
+    private static func printDeep(_ analysis: DeepAnalysis) {
+        print("Sentence type: \(analysis.sentenceType)")
+        print("Pattern: \(analysis.sentencePattern)")
+        print("Components:")
+        analysis.components.forEach {
+            let modifies = $0.modifies.flatMap { $0.isEmpty ? nil : " -> \($0)" } ?? ""
+            print("- \($0.text) [\($0.role)]\(modifies): \($0.explanation)")
+        }
+        print("Clauses:")
+        analysis.clauses.forEach { print("- \($0.text) [\($0.type) / \($0.function)]: \($0.explanation)") }
+        print("Grammar:")
+        analysis.grammarPoints.forEach { print("- \($0.text): \($0.explanation)") }
+        print("Interpretation: \(analysis.interpretation)")
     }
 
     private static func runBatch(arguments: [String]) async throws {
@@ -62,6 +86,8 @@ Usage:
   JieJuAILab explain --text <sentence> [--before <text>] [--after <text>]
                     [--raw] [--model <name>] [--url <ollama-url>]
   JieJuAILab explain --json <request.json> [--raw] [--model <name>] [--url <ollama-url>]
+  JieJuAILab deep --text <sentence> [--before <text>] [--after <text>]
+                 [--raw] [--model <name>] [--url <ollama-url>]
   JieJuAILab batch --input <input.jsonl> --output <results.jsonl> --report <report.md>
                   [--model <name>] [--url <ollama-url>]
 """
