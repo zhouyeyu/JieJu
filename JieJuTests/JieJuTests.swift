@@ -81,17 +81,17 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual(AppSettings(defaults: defaults).furiganaDisplayMode, .kanji)
     }
 
-    func testEPUBScriptMeasuresDedicatedContentColumnsAndExcludesRubyReadingsFromSelection() {
+    func testEPUBScriptMeasuresBodyColumnsAndExcludesRubyReadingsFromSelection() {
         let script = EPUBWebScript.script(horizontalMargin: 54)
 
-        XCTAssertTrue(script.contains("this.content().scrollWidth"))
-        XCTAssertTrue(script.contains("translate3d"))
+        XCTAssertTrue(script.contains("document.body.scrollWidth"))
+        XCTAssertTrue(script.contains("window.scrollTo"))
         XCTAssertTrue(script.contains("range.cloneContents()"))
         XCTAssertTrue(script.contains("querySelectorAll('rt, rp')"))
         XCTAssertTrue(script.contains("textWithoutReadings(document.body)"))
     }
 
-    func testEPUBInjectionBuildsControlledPageViewportForLongChapter() {
+    func testEPUBInjectionBuildsPaginatedBodyViewportForLongChapter() {
         let paragraphs = Array(repeating: "<p>This is a long paragraph for testing real EPUB pagination. It must flow into following book pages instead of becoming one chapter-sized page.</p>", count: 100).joined()
         let xhtml = "<html><head><title>Long chapter</title></head><body><h1>Chapter</h1>\(paragraphs)</body></html>"
         let handler = EPUBSchemeHandler(
@@ -100,10 +100,10 @@ final class JieJuTests: XCTestCase {
         )
         let renderedHTML = String(data: handler.injectedXHTML(Data(xhtml.utf8)), encoding: .utf8)!
 
-        XCTAssertTrue(renderedHTML.contains("#jieju-book-content"))
+        XCTAssertTrue(renderedHTML.contains("body { box-sizing: border-box !important"))
         XCTAssertTrue(renderedHTML.contains("column-width: calc(100vw - 108.0px)"))
         XCTAssertTrue(renderedHTML.contains("overflow: hidden !important"))
-        XCTAssertTrue(renderedHTML.contains("while (document.body.firstChild)"))
+        XCTAssertFalse(renderedHTML.contains("while (document.body.firstChild)"))
         XCTAssertTrue(renderedHTML.contains("document.fonts.ready"))
         XCTAssertTrue(renderedHTML.contains(paragraphs))
     }

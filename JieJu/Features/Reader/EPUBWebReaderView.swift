@@ -254,25 +254,23 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         let injection = """
         <meta http-equiv="Content-Security-Policy" content="default-src jieju-epub: data:; connect-src 'none'; script-src 'unsafe-inline'; style-src jieju-epub: 'unsafe-inline'; img-src jieju-epub: data:; font-src jieju-epub: data:">
         <style id="jieju-reader-style">
-        html, body { width: 100% !important; height: 100% !important; margin: 0 !important;
-                     padding: 0 !important; overflow: hidden !important; }
-        body { color: CanvasText; color-scheme: light dark; background: transparent; }
-        #jieju-book-content { position: absolute !important; box-sizing: border-box !important;
-               top: 32px !important; left: \(readingStyle.horizontalMargin)px !important;
-               width: calc(100vw - \(readingStyle.horizontalMargin * 2)px) !important;
-               height: calc(100vh - 70px) !important; margin: 0 !important; padding: 0 !important;
-               max-width: none !important; max-height: none !important; overflow: visible !important;
+        html { width: 100% !important; height: 100% !important; margin: 0 !important;
+               padding: 0 !important; overflow: hidden !important; }
+        body { box-sizing: border-box !important; width: 100vw !important; height: 100vh !important;
+               min-width: 0 !important; max-width: none !important; min-height: 0 !important;
+               max-height: none !important; margin: 0 !important;
+               padding: 32px \(readingStyle.horizontalMargin)px 38px !important;
+               overflow: visible !important;
                column-width: calc(100vw - \(readingStyle.horizontalMargin * 2)px) !important;
                column-gap: \(readingStyle.horizontalMargin * 2)px !important; column-fill: auto !important;
                font-size: \(readingStyle.fontSize)px !important; line-height: \(readingStyle.lineHeight) !important;
-               transition: transform 160ms ease-out; will-change: transform; }
+               color: CanvasText; color-scheme: light dark; background: transparent; }
         img, svg { max-width: 100%; max-height: 80vh; object-fit: contain; }
         ruby rt { display: \(rubyVisibility); font-size: 0.55em; user-select: none; -webkit-user-select: none; }
         ruby rp { display: none; user-select: none; -webkit-user-select: none; }
         </style>
         <script>
         \(EPUBWebScript.script(horizontalMargin: readingStyle.horizontalMargin))
-        document.addEventListener('DOMContentLoaded', () => JieJuReader.prepare());
         window.addEventListener('load', () => JieJuReader.observeAndLayout());
         window.addEventListener('resize', () => JieJuReader.scheduleLayout());
         document.addEventListener('mouseup', () => setTimeout(() => JieJuReader.selection(), 0));
@@ -293,35 +291,21 @@ enum EPUBWebScript {
         """
         window.JieJuReader = {
           page: 0,
-          prepared: false,
           layoutTimer: null,
-          prepare: function() {
-            if (this.prepared) return this.content();
-            const container = document.createElement('main');
-            container.id = 'jieju-book-content';
-            while (document.body.firstChild) container.appendChild(document.body.firstChild);
-            document.body.appendChild(container);
-            this.prepared = true;
-            return container;
-          },
-          content: function() {
-            return document.getElementById('jieju-book-content') || this.prepare();
-          },
           viewportWidth: function() {
             return Math.max(1, document.documentElement.clientWidth || window.innerWidth);
           },
           pageCount: function() {
             const width = this.viewportWidth();
-            const extent = this.content().scrollWidth;
-            return Math.max(1, Math.ceil((extent + \(horizontalMargin * 2) - 1) / width));
+            const extent = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
+            return Math.max(1, Math.ceil((extent - 1) / width));
           },
           scheduleLayout: function() {
             clearTimeout(this.layoutTimer);
             this.layoutTimer = setTimeout(() => this.layout(), 80);
           },
           observeAndLayout: function() {
-            const content = this.content();
-            content.querySelectorAll('img, svg, video').forEach(element => {
+            document.body.querySelectorAll('img, svg, video').forEach(element => {
               if (!element.complete) element.addEventListener('load', () => this.scheduleLayout(), {once: true});
             });
             if (document.fonts && document.fonts.ready) {
@@ -331,10 +315,9 @@ enum EPUBWebScript {
           },
           layout: function() {
             const width = this.viewportWidth();
-            const content = this.content();
-            content.style.width = Math.max(1, width - \(horizontalMargin * 2)) + 'px';
-            content.style.height = Math.max(1, window.innerHeight - 70) + 'px';
-            content.style.columnWidth = Math.max(1, width - \(horizontalMargin * 2)) + 'px';
+            document.body.style.width = width + 'px';
+            document.body.style.height = window.innerHeight + 'px';
+            document.body.style.columnWidth = Math.max(1, width - \(horizontalMargin * 2)) + 'px';
             requestAnimationFrame(() => {
               const count = this.pageCount();
               if (location.hash === '#jieju-end' && !this.didApplyInitialPage) {
@@ -344,7 +327,7 @@ enum EPUBWebScript {
                 this.page = Number.isFinite(restored) ? Math.min(Math.max(0, restored), count - 1) : 0;
                 this.didApplyInitialPage = true;
               } else { this.page = Math.min(this.page, count - 1); }
-              content.style.transform = `translate3d(${-this.page * width}px, 0, 0)`;
+              window.scrollTo(this.page * width, 0);
               webkit.messageHandlers.pagination.postMessage({page: this.page, count: count});
             });
           },
@@ -352,7 +335,7 @@ enum EPUBWebScript {
             const width = this.viewportWidth();
             const count = this.pageCount();
             this.page = Math.max(0, Math.min(count - 1, this.page + delta));
-            this.content().style.transform = `translate3d(${-this.page * width}px, 0, 0)`;
+            window.scrollTo({left: this.page * width, top: 0, behavior: 'smooth'});
             webkit.messageHandlers.pagination.postMessage({page: this.page, count: count});
           },
           textWithoutReadings: function(source) {
