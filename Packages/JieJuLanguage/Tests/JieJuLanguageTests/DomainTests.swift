@@ -99,6 +99,24 @@ import Testing
         )
         #expect(try echo.validated(against: request) == echo)
     }
+
+    @Test func deepAnalysisRoundTripsAndRejectsContextFragments() throws {
+        let request = ExplanationRequest(
+            targetText: "Although tired, she continued.",
+            precedingContext: "Her friends went home."
+        )
+        let analysis = sampleDeepAnalysis
+        let data = try JSONEncoder().encode(analysis)
+        #expect(try JSONDecoder().decode(DeepAnalysis.self, from: data) == analysis)
+        #expect(try analysis.validated(against: request) == analysis)
+
+        let invalid = DeepAnalysis(
+            sentenceType: "复合句", sentencePattern: "SVO",
+            components: [.init(text: "friends went home", role: "主句", explanation: "错误引用上下文")],
+            clauses: [], grammarPoints: [], interpretation: "错误"
+        )
+        #expect(throws: ReadingAIError.self) { try invalid.validated(against: request) }
+    }
 }
 
 let sampleExplanation = Explanation(
@@ -106,4 +124,17 @@ let sampleExplanation = Explanation(
     sentenceCore: "she continued",
     grammarPoints: [.init(text: "Although tired", explanation: "让步状语从句的省略")],
     keyPhrases: [.init(text: "continued", meaning: "继续")]
+)
+
+let sampleDeepAnalysis = DeepAnalysis(
+    sentenceType: "带省略让步结构的简单句",
+    sentencePattern: "Although + adjective, S + V",
+    components: [
+        .init(text: "Although tired", role: "让步状语", explanation: "修饰主句", modifies: "she continued"),
+        .init(text: "she", role: "主语", explanation: "动作执行者"),
+        .init(text: "continued", role: "谓语", explanation: "表示继续")
+    ],
+    clauses: [],
+    grammarPoints: [.init(text: "Although tired", explanation: "省略了 she was")],
+    interpretation: "尽管疲惫，她仍然继续。"
 )

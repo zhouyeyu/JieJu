@@ -11,6 +11,7 @@ final class ReaderViewModel: ObservableObject {
     @Published private(set) var currentPageIndex = 0
     @Published var selection: ReaderSelection?
     @Published var explanationState: ReaderExplanationState = .idle
+    @Published var deepAnalysisState: ReaderDeepAnalysisState = .idle
     @Published var isExplanationPresented = false
     @Published private(set) var epubOpenAtEnd = false
 
@@ -23,6 +24,7 @@ final class ReaderViewModel: ObservableObject {
     private let sourceLanguage: String
     private var explanationLanguage: String
     private var explanationTask: Task<Void, Never>?
+    private var deepAnalysisTask: Task<Void, Never>?
     private var documentLoadTask: Task<Void, Never>?
 
     init(
@@ -49,11 +51,13 @@ final class ReaderViewModel: ObservableObject {
         explanationLanguage: String
     ) {
         explanationTask?.cancel()
+        deepAnalysisTask?.cancel()
         explanationProvider = provider
         self.explanationLanguage = explanationLanguage
         if isExplanationPresented {
             isExplanationPresented = false
             explanationState = .idle
+            deepAnalysisState = .idle
         }
     }
 
@@ -94,6 +98,7 @@ final class ReaderViewModel: ObservableObject {
         epubDocument = nil
         selection = nil
         explanationState = .idle
+        deepAnalysisState = .idle
         restoredPageIndex = nil
         if let saved = positionStore.position(for: url), saved > 0, saved < pdf.pageCount {
             currentPageIndex = saved
@@ -116,6 +121,7 @@ final class ReaderViewModel: ObservableObject {
                 self.epubDocument = epub
                 self.selection = nil
                 self.explanationState = .idle
+                self.deepAnalysisState = .idle
                 let saved = self.positionStore.position(for: url) ?? 0
                 self.currentPageIndex = min(max(0, saved), epub.chapters.count - 1)
                 self.restoredPageIndex = nil
@@ -133,6 +139,7 @@ final class ReaderViewModel: ObservableObject {
     func closeDocument() {
         documentLoadTask?.cancel()
         explanationTask?.cancel()
+        deepAnalysisTask?.cancel()
         if case let .loaded(metadata) = documentState {
             positionStore.save(currentPageIndex, for: metadata.url)
         }
@@ -142,6 +149,7 @@ final class ReaderViewModel: ObservableObject {
         currentPageIndex = 0
         restoredPageIndex = nil
         explanationState = .idle
+        deepAnalysisState = .idle
         isExplanationPresented = false
         documentState = .empty
     }
@@ -175,6 +183,7 @@ final class ReaderViewModel: ObservableObject {
         if selection == nil {
             isExplanationPresented = false
             explanationState = .idle
+            deepAnalysisState = .idle
         }
     }
 
@@ -186,6 +195,7 @@ final class ReaderViewModel: ObservableObject {
         explanationTask?.cancel()
         isExplanationPresented = true
         explanationState = .loading
+        deepAnalysisState = .idle
         explanationTask = Task { [weak self, explanationProvider] in
             do {
                 let result = try await explanationProvider.explain(request)
@@ -199,10 +209,32 @@ final class ReaderViewModel: ObservableObject {
         }
     }
 
+    func requestDeepAnalysis() {
+        guard let request = selection?.explanationRequest(
+            sourceLanguage: sourceLanguage,
+            explanationLanguage: explanationLanguage
+        ) else { return }
+        deepAnalysisTask?.cancel()
+        deepAnalysisState = .loading
+        deepAnalysisTask = Task { [weak self, explanationProvider] in
+            do {
+                let result = try await explanationProvider.analyzeDeep(request)
+                try Task.checkCancellation()
+                self?.deepAnalysisState = .loaded(result)
+            } catch is CancellationError {
+                return
+            } catch {
+                self?.deepAnalysisState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
     func dismissExplanation() {
         explanationTask?.cancel()
+        deepAnalysisTask?.cancel()
         isExplanationPresented = false
         explanationState = .idle
+        deepAnalysisState = .idle
     }
 
     func saveExplanation() {

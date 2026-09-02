@@ -15,7 +15,7 @@ public enum OllamaDefaults {
     public static let model = "qwen2.5:1.5b-instruct"
 }
 
-public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
+public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, DeepReadingAI, BatchReadingAI {
     public static var defaultModel: String { OllamaDefaults.model }
     public let baseURL: URL
     public let model: String
@@ -87,6 +87,24 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
         }
     }
 
+    public func analyzeDeep(_ request: ExplanationRequest) async throws -> DeepAnalysis {
+        let valid = try request.validated()
+        guard try await hasModel() else { throw ReadingAIError.modelMissing(model) }
+        let first = try await generateDeep(messages: [
+            .init(role: "system", content: DeepQwenPrompt.system),
+            .init(role: "user", content: DeepQwenPrompt.user(valid))
+        ], request: valid)
+        do {
+            return try DeepAnalysisParser.parse(first, request: valid)
+        } catch {
+            let repaired = try await generateDeep(messages: [
+                .init(role: "system", content: DeepQwenPrompt.system),
+                .init(role: "user", content: DeepQwenPrompt.repair(valid))
+            ], request: valid)
+            return try DeepAnalysisParser.parse(repaired, request: valid)
+        }
+    }
+
     public func attemptExplanation(_ request: ExplanationRequest) async -> BatchAttempt {
         var latestRaw: String?
         do {
@@ -151,6 +169,26 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
             stream: false,
             format: .explanation(minimumItems: minimumItems, request: request),
             options: .init(temperature: 0, numPredict: 350)
+        )
+        let data = try JSONEncoder().encode(body)
+        let response = try await send(path: "/api/chat", method: "POST", body: data)
+        guard (200..<300).contains(response.statusCode) else {
+            throw ReadingAIError.serviceUnavailable("HTTP \(response.statusCode)")
+        }
+        do {
+            return try JSONDecoder().decode(ChatResponse.self, from: response.data).message.content
+        } catch {
+            throw ReadingAIError.invalidResponse("invalid Ollama envelope: \(error.localizedDescription)")
+        }
+    }
+
+    private func generateDeep(messages: [ChatMessage], request: ExplanationRequest) async throws -> String {
+        let body = ChatRequest(
+            model: model,
+            messages: messages,
+            stream: false,
+            format: .deepAnalysis(request: request),
+            options: .init(temperature: 0, numPredict: 700)
         )
         let data = try JSONEncoder().encode(body)
         let response = try await send(path: "/api/chat", method: "POST", body: data)
@@ -258,6 +296,49 @@ private indirect enum SchemaValue: Encodable {
                 ])
             ]),
             "required": .array([.string("translation"), .string("sentenceCore"), .string("grammarPoints"), .string("keyPhrases")])
+        ])
+    }
+
+    static func deepAnalysis(request: ExplanationRequest) -> SchemaValue {
+        let explanation = request.explanationLanguage
+        let source = request.sourceLanguage
+        let fragment = "Exact consecutive text copied from targetText in \(source); never translate"
+        let explained = "Write in \(explanation). \(QwenPrompt.explanationLanguageRule(for: explanation))"
+        func string(_ description: String) -> SchemaValue {
+            .object(["type": .string("string"), "description": .string(description)])
+        }
+        let component = SchemaValue.object([
+            "type": .string("object"),
+            "properties": .object([
+                "text": string(fragment), "role": string(explained),
+                "explanation": string(explained), "modifies": string("Exact targetText fragment being modified, or empty string")
+            ]),
+            "required": .array([.string("text"), .string("role"), .string("explanation"), .string("modifies")])
+        ])
+        let clause = SchemaValue.object([
+            "type": .string("object"),
+            "properties": .object([
+                "text": string(fragment), "type": string(explained),
+                "function": string(explained), "explanation": string(explained)
+            ]),
+            "required": .array([.string("text"), .string("type"), .string("function"), .string("explanation")])
+        ])
+        let grammar = SchemaValue.object([
+            "type": .string("object"),
+            "properties": .object(["text": string(fragment), "explanation": string(explained)]),
+            "required": .array([.string("text"), .string("explanation")])
+        ])
+        return .object([
+            "type": .string("object"),
+            "properties": .object([
+                "sentenceType": string(explained),
+                "sentencePattern": string("Conventional syntax pattern plus a short \(explanation) explanation"),
+                "components": .object(["type": .string("array"), "maxItems": .integer(8), "items": component]),
+                "clauses": .object(["type": .string("array"), "maxItems": .integer(6), "items": clause]),
+                "grammarPoints": .object(["type": .string("array"), "maxItems": .integer(6), "items": grammar]),
+                "interpretation": string(explained)
+            ]),
+            "required": .array([.string("sentenceType"), .string("sentencePattern"), .string("components"), .string("clauses"), .string("grammarPoints"), .string("interpretation")])
         ])
     }
 }

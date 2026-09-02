@@ -97,9 +97,11 @@ struct ReaderView: View {
                    let selection = model.selection {
                     ReaderExplanationPanel(
                         selectedText: selection.targetText,
-                        state: model.explanationState,
-                        save: model.saveExplanation,
-                        retry: model.requestExplanation,
+                            state: model.explanationState,
+                            deepAnalysisState: model.deepAnalysisState,
+                            save: model.saveExplanation,
+                            retry: model.requestExplanation,
+                            analyzeDeep: model.requestDeepAnalysis,
                         close: model.dismissExplanation,
                         presentation: .sidebar
                     )
@@ -168,8 +170,10 @@ struct ReaderView: View {
                     ReaderExplanationPanel(
                         selectedText: selection.targetText,
                         state: model.explanationState,
+                        deepAnalysisState: model.deepAnalysisState,
                         save: model.saveExplanation,
                         retry: model.requestExplanation,
+                        analyzeDeep: model.requestDeepAnalysis,
                         close: model.dismissExplanation,
                         presentation: .popover
                     )
@@ -202,8 +206,10 @@ struct ReaderExplanationPanel: View {
 
     let selectedText: String
     let state: ReaderExplanationState
+    let deepAnalysisState: ReaderDeepAnalysisState
     let save: () -> Void
     let retry: () -> Void
+    let analyzeDeep: () -> Void
     let close: () -> Void
     let presentation: Presentation
 
@@ -272,11 +278,79 @@ struct ReaderExplanationPanel: View {
                 if !explanation.keyPhrases.isEmpty {
                     itemCard(title: "重点表达", systemImage: "quote.bubble", items: explanation.keyPhrases)
                 }
+                deepAnalysisContent
                 Button("保存到学习记录", systemImage: "bookmark", action: save)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
             }
         }
+    }
+
+    @ViewBuilder
+    private var deepAnalysisContent: some View {
+        switch deepAnalysisState {
+        case .idle:
+            Button("深入解析句式与结构", systemImage: "point.3.connected.trianglepath.dotted", action: analyzeDeep)
+                .buttonStyle(.bordered)
+        case .loading:
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small)
+                Text("正在深入分析句式、成分和从句…").foregroundStyle(.secondary)
+            }
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 8) {
+                Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+                Button("重试深入解析", action: analyzeDeep)
+            }
+        case .loaded(let analysis):
+            LazyVStack(alignment: .leading, spacing: 12) {
+                explanationCard(title: "句子类型", systemImage: "text.line.first.and.arrowtriangle.forward", value: analysis.sentenceType)
+                explanationCard(title: "句型结构", systemImage: "point.3.connected.trianglepath.dotted", value: analysis.sentencePattern)
+                componentCard(analysis.components)
+                if !analysis.clauses.isEmpty { clauseCard(analysis.clauses) }
+                if !analysis.grammarPoints.isEmpty {
+                    itemCard(title: "深度语法", systemImage: "books.vertical", items: analysis.grammarPoints)
+                }
+                explanationCard(title: "整句理解", systemImage: "lightbulb", value: analysis.interpretation)
+            }
+        }
+    }
+
+    private func componentCard(_ components: [ReaderSentenceComponent]) -> some View {
+        DisclosureGroup("句子成分（\(components.count)）") {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Array(components.enumerated()), id: \.offset) { _, component in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(component.text).font(.body.weight(.semibold)).textSelection(.enabled)
+                        Text(component.role).font(.caption).foregroundStyle(.tint)
+                        Text(component.explanation).fixedSize(horizontal: false, vertical: true)
+                        if let modifies = component.modifies, !modifies.isEmpty {
+                            Text("修饰：\(modifies)").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .padding(.top, 10)
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func clauseCard(_ clauses: [ReaderClauseExplanation]) -> some View {
+        DisclosureGroup("从句关系（\(clauses.count)）") {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Array(clauses.enumerated()), id: \.offset) { _, clause in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(clause.text).font(.body.weight(.semibold)).textSelection(.enabled)
+                        Text("\(clause.type) · \(clause.function)").font(.caption).foregroundStyle(.tint)
+                        Text(clause.explanation).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(.top, 10)
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func explanationCard(title: String, systemImage: String, value: String) -> some View {

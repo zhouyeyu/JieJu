@@ -134,6 +134,86 @@ public protocol ReadingAI: Sendable {
     func explain(_ request: ExplanationRequest) async throws -> Explanation
 }
 
+public struct SentenceComponent: Codable, Equatable, Sendable {
+    public let text: String
+    public let role: String
+    public let explanation: String
+    public let modifies: String?
+
+    public init(text: String, role: String, explanation: String, modifies: String? = nil) {
+        self.text = text
+        self.role = role
+        self.explanation = explanation
+        self.modifies = modifies
+    }
+}
+
+public struct ClauseExplanation: Codable, Equatable, Sendable {
+    public let text: String
+    public let type: String
+    public let function: String
+    public let explanation: String
+
+    public init(text: String, type: String, function: String, explanation: String) {
+        self.text = text
+        self.type = type
+        self.function = function
+        self.explanation = explanation
+    }
+}
+
+public struct DeepAnalysis: Codable, Equatable, Sendable {
+    public let sentenceType: String
+    public let sentencePattern: String
+    public let components: [SentenceComponent]
+    public let clauses: [ClauseExplanation]
+    public let grammarPoints: [GrammarPoint]
+    public let interpretation: String
+
+    public init(
+        sentenceType: String,
+        sentencePattern: String,
+        components: [SentenceComponent],
+        clauses: [ClauseExplanation],
+        grammarPoints: [GrammarPoint],
+        interpretation: String
+    ) {
+        self.sentenceType = sentenceType
+        self.sentencePattern = sentencePattern
+        self.components = components
+        self.clauses = clauses
+        self.grammarPoints = grammarPoints
+        self.interpretation = interpretation
+    }
+
+    public func validated(against request: ExplanationRequest) throws -> Self {
+        guard !sentenceType.isBlank, !sentencePattern.isBlank, !interpretation.isBlank else {
+            throw ReadingAIError.invalidResponse("deep analysis contains empty summary fields")
+        }
+        guard components.count <= 8, clauses.count <= 6, grammarPoints.count <= 6 else {
+            throw ReadingAIError.invalidResponse("deep analysis exceeds item limits")
+        }
+        let target = request.targetText.matchableSourceText
+        let fragments = components.map(\.text) + clauses.map(\.text) + grammarPoints.map(\.text)
+        for text in fragments {
+            let fragment = text.matchableSourceText
+            guard !fragment.isEmpty, " \(target) ".contains(" \(fragment) ") else {
+                throw ReadingAIError.invalidResponse("analysis fragment is absent from targetText: \(text)")
+            }
+        }
+        guard components.allSatisfy({ !$0.role.isBlank && !$0.explanation.isBlank }),
+              clauses.allSatisfy({ !$0.type.isBlank && !$0.function.isBlank && !$0.explanation.isBlank }),
+              grammarPoints.allSatisfy({ !$0.explanation.isBlank }) else {
+            throw ReadingAIError.invalidResponse("deep analysis contains empty items")
+        }
+        return self
+    }
+}
+
+public protocol DeepReadingAI: Sendable {
+    func analyzeDeep(_ request: ExplanationRequest) async throws -> DeepAnalysis
+}
+
 public enum ReadingAIError: Error, Equatable, Sendable {
     case invalidInput(String)
     case serviceUnavailable(String)

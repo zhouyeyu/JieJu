@@ -87,3 +87,48 @@ public enum ExplanationParser {
         return lines.joined(separator: "\n")
     }
 }
+
+public enum DeepQwenPrompt {
+    public static let system = """
+    You are a rigorous syntax tutor. Analyze targetText only; context may resolve meaning but must never appear as analyzed text.
+    Copy every component, clause, and grammar text exactly from targetText. Explain roles, relationships, and interpretation in explanationLanguage.
+    Describe sentencePattern with conventional labels such as S, V, O, C, relative clause, or adverbial clause.
+    Use empty clauses when the sentence has no clause structure. Return JSON only using the supplied schema.
+    """
+
+    public static func user(_ request: ExplanationRequest) -> String {
+        """
+        Task: deeply analyze targetText syntax.
+        sourceLanguage: \(request.sourceLanguage)
+        explanationLanguage: \(request.explanationLanguage)
+        \(QwenPrompt.explanationLanguageRule(for: request.explanationLanguage))
+        precedingContext: \(request.precedingContext ?? "")
+        targetText: \(request.targetText)
+        followingContext: \(request.followingContext ?? "")
+        """
+    }
+
+    public static func repair(_ request: ExplanationRequest) -> String {
+        """
+        Start over. Analyze only targetText: \(request.targetText)
+        Every components.text, clauses.text, and grammarPoints.text must be exact consecutive text copied from targetText.
+        All explanations must be in \(request.explanationLanguage). Use fewer items when uncertain. Return JSON only.
+        """
+    }
+}
+
+public enum DeepAnalysisParser {
+    public static func parse(_ raw: String, request: ExplanationRequest) throws -> DeepAnalysis {
+        let cleaned = ExplanationParser.stripMarkdownFence(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let data = cleaned.data(using: .utf8) else {
+            throw ReadingAIError.invalidResponse("response is not UTF-8")
+        }
+        do {
+            return try JSONDecoder().decode(DeepAnalysis.self, from: data).validated(against: request)
+        } catch let error as ReadingAIError {
+            throw error
+        } catch {
+            throw ReadingAIError.invalidResponse(error.localizedDescription)
+        }
+    }
+}

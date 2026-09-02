@@ -88,6 +88,29 @@ struct ReaderExplanation: Equatable, Sendable {
     let keyPhrases: [String]
 }
 
+struct ReaderSentenceComponent: Equatable, Sendable {
+    let text: String
+    let role: String
+    let explanation: String
+    let modifies: String?
+}
+
+struct ReaderClauseExplanation: Equatable, Sendable {
+    let text: String
+    let type: String
+    let function: String
+    let explanation: String
+}
+
+struct ReaderDeepAnalysis: Equatable, Sendable {
+    let sentenceType: String
+    let sentencePattern: String
+    let components: [ReaderSentenceComponent]
+    let clauses: [ReaderClauseExplanation]
+    let grammarPoints: [String]
+    let interpretation: String
+}
+
 struct ReaderSavePayload: Sendable {
     let documentURL: URL
     let pageIndex: Int
@@ -106,6 +129,13 @@ enum ReaderExplanationState: Equatable, Sendable {
 
 protocol ReaderExplanationProviding: Sendable {
     func explain(_ request: ReaderExplanationRequest) async throws -> ReaderExplanation
+    func analyzeDeep(_ request: ReaderExplanationRequest) async throws -> ReaderDeepAnalysis
+}
+
+extension ReaderExplanationProviding {
+    func analyzeDeep(_ request: ReaderExplanationRequest) async throws -> ReaderDeepAnalysis {
+        throw ReadingAIError.invalidResponse("当前解释服务不支持深入解析")
+    }
 }
 
 struct MockReaderExplanationProvider: ReaderExplanationProviding {
@@ -117,4 +147,20 @@ struct MockReaderExplanationProvider: ReaderExplanationProviding {
             keyPhrases: ["Mock：这里将展示重点表达。"]
         )
     }
+
+    func analyzeDeep(_ request: ReaderExplanationRequest) async throws -> ReaderDeepAnalysis {
+        ReaderDeepAnalysis(
+            sentenceType: "Mock 句子类型",
+            sentencePattern: "S + V",
+            components: [.init(text: request.targetText, role: "完整句", explanation: "Mock 成分说明", modifies: nil)],
+            clauses: [], grammarPoints: ["Mock 深度语法说明"], interpretation: "Mock 整句理解"
+        )
+    }
+}
+
+enum ReaderDeepAnalysisState: Equatable, Sendable {
+    case idle
+    case loading
+    case loaded(ReaderDeepAnalysis)
+    case failed(String)
 }

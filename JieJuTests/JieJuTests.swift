@@ -96,6 +96,30 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual(request.explanationLanguage, "Japanese")
         XCTAssertEqual(model.selection, selection)
     }
+
+    @MainActor
+    func testReaderRequestsDeepAnalysisOnlyOnDemand() async throws {
+        let recorder = DeepAnalysisRequestRecorder()
+        let model = ReaderViewModel(explanationProvider: RecordingDeepAnalysisProvider(recorder: recorder))
+        model.updateSelection(.init(
+            targetText: "Although tired, she continued.",
+            precedingContext: nil, followingContext: nil, anchorRect: .zero
+        ))
+
+        XCTAssertEqual(model.deepAnalysisState, .idle)
+        model.requestDeepAnalysis()
+        for _ in 0..<100 {
+            if case .loaded = model.deepAnalysisState { break }
+            await Task.yield()
+        }
+
+        let recordedRequest = await recorder.request
+        XCTAssertEqual(recordedRequest?.targetText, "Although tired, she continued.")
+        guard case let .loaded(result) = model.deepAnalysisState else {
+            return XCTFail("Expected loaded deep analysis")
+        }
+        XCTAssertEqual(result.sentencePattern, "Although + adjective, S + V")
+    }
 }
 
 private actor ExplanationRequestRecorder {
@@ -113,6 +137,28 @@ private struct RecordingExplanationProvider: ReaderExplanationProviding {
             sentenceCore: request.targetText,
             grammarPoints: [],
             keyPhrases: []
+        )
+    }
+}
+
+private actor DeepAnalysisRequestRecorder {
+    private(set) var request: ReaderExplanationRequest?
+    func record(_ request: ReaderExplanationRequest) { self.request = request }
+}
+
+private struct RecordingDeepAnalysisProvider: ReaderExplanationProviding {
+    let recorder: DeepAnalysisRequestRecorder
+
+    func explain(_ request: ReaderExplanationRequest) async throws -> ReaderExplanation {
+        ReaderExplanation(translation: "", sentenceCore: "", grammarPoints: [], keyPhrases: [])
+    }
+
+    func analyzeDeep(_ request: ReaderExplanationRequest) async throws -> ReaderDeepAnalysis {
+        await recorder.record(request)
+        return ReaderDeepAnalysis(
+            sentenceType: "简单句",
+            sentencePattern: "Although + adjective, S + V",
+            components: [], clauses: [], grammarPoints: [], interpretation: "尽管疲惫，她仍继续。"
         )
     }
 }

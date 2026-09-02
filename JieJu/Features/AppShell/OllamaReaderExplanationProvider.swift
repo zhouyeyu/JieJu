@@ -14,5 +14,20 @@ struct OllamaReaderExplanationProvider: ReaderExplanationProviding {
             keyPhrases: result.keyPhrases.map { "\($0.text)：\($0.meaning)" }
         )
     }
-}
 
+    func analyzeDeep(_ request: ReaderExplanationRequest) async throws -> ReaderDeepAnalysis {
+        let result = try await OllamaReadingAI(baseURL: baseURL, model: model).analyzeDeep(request)
+        return ReaderDeepAnalysis(
+            sentenceType: result.sentenceType,
+            sentencePattern: result.sentencePattern,
+            components: result.components.map {
+                .init(text: $0.text, role: $0.role, explanation: $0.explanation, modifies: $0.modifies)
+            },
+            clauses: result.clauses.map {
+                .init(text: $0.text, type: $0.type, function: $0.function, explanation: $0.explanation)
+            },
+            grammarPoints: result.grammarPoints.map { "\($0.text)：\($0.explanation)" },
+            interpretation: result.interpretation
+        )
+    }
+}

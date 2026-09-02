@@ -210,6 +210,23 @@ actor StubHTTPClient: HTTPClient {
         #expect(attempt.raw == "still bad")
         #expect(attempt.error?.contains("Invalid model response") == true)
     }
+
+    @Test func deepAnalysisUsesLargerStrictSchema() async throws {
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
+        let raw = String(decoding: try JSONEncoder().encode(sampleDeepAnalysis), as: UTF8.self)
+        let client = StubHTTPClient([.success(tags), .success(chatEnvelope(raw))])
+        let request = ExplanationRequest(targetText: "Although tired, she continued.")
+
+        #expect(try await OllamaReadingAI(client: client).analyzeDeep(request) == sampleDeepAnalysis)
+        let body = try #require((await client.requests).last?.body)
+        let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let options = try #require(json["options"] as? [String: Any])
+        #expect(options["num_predict"] as? Int == 700)
+        let format = try #require(json["format"] as? [String: Any])
+        let required = try #require(format["required"] as? [String])
+        #expect(Set(required).contains("components"))
+        #expect(Set(required).contains("clauses"))
+    }
 }
 
 private func response(_ status: Int, _ string: String) -> HTTPResponse { .init(statusCode: status, data: Data(string.utf8)) }

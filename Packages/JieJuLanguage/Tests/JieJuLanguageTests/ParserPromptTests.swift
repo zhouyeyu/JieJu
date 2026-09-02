@@ -44,6 +44,14 @@ import Testing
         #expect(prompt.contains("MUST use Chinese characters"))
         #expect(repair.contains("MUST use Chinese characters"))
     }
+
+    @Test func parsesAndValidatesDeepAnalysis() throws {
+        let request = ExplanationRequest(targetText: "Although tired, she continued.")
+        let raw = String(decoding: try JSONEncoder().encode(sampleDeepAnalysis), as: UTF8.self)
+        #expect(try DeepAnalysisParser.parse(raw, request: request) == sampleDeepAnalysis)
+        #expect(DeepQwenPrompt.system.contains("Copy every component"))
+        #expect(DeepQwenPrompt.user(request).contains("targetText: Although tired, she continued."))
+    }
 }
 
 private var validJSON: String { String(decoding: try! JSONEncoder().encode(sampleExplanation), as: UTF8.self) }
