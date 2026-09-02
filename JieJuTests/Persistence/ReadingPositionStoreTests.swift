@@ -59,4 +59,21 @@ final class ReadingPositionStoreTests: XCTestCase {
         store.clear(for: url)
         XCTAssertNil(store.position(for: url))
     }
+
+    func testSaveAndRestoreEPUBChapterAndPage() {
+        let url = URL(fileURLWithPath: "/tmp/book.epub")
+
+        store.saveEPUB(chapterIndex: 3, pageIndex: 12, for: url)
+
+        XCTAssertEqual(store.epubPosition(for: url), EPUBReadingPosition(chapterIndex: 3, pageIndex: 12))
+    }
+
+    func testClearRemovesEPUBPosition() {
+        let url = URL(fileURLWithPath: "/tmp/book.epub")
+        store.saveEPUB(chapterIndex: 2, pageIndex: 8, for: url)
+
+        store.clear(for: url)
+
+        XCTAssertNil(store.epubPosition(for: url))
+    }
 }

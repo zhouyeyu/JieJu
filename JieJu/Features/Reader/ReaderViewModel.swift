@@ -15,9 +15,11 @@ final class ReaderViewModel: ObservableObject {
     @Published var deepAnalysisState: ReaderDeepAnalysisState = .idle
     @Published var isExplanationPresented = false
     @Published private(set) var epubOpenAtEnd = false
+    @Published private(set) var currentEPUBPageIndex = 0
 
     /// 打开文档时希望 PDFView 定位到的页码；为 nil 表示从第一页开始。
     private(set) var restoredPageIndex: Int?
+    private(set) var restoredEPUBPageIndex: Int?
 
     private var explanationProvider: any ReaderExplanationProviding
     private let saveHandler: @MainActor (ReaderSavePayload) -> Void
@@ -94,6 +96,8 @@ final class ReaderViewModel: ObservableObject {
 
     private func openPDF(_ url: URL) {
         epubOpenAtEnd = false
+        restoredEPUBPageIndex = nil
+        currentEPUBPageIndex = 0
         guard let pdf = PDFDocument(url: url) else { fail(.invalidPDF); return }
 
         document = pdf
@@ -124,8 +128,11 @@ final class ReaderViewModel: ObservableObject {
                 self.selection = nil
                 self.explanationState = .idle
                 self.deepAnalysisState = .idle
-                let saved = self.positionStore.position(for: url) ?? 0
-                self.currentPageIndex = min(max(0, saved), epub.chapters.count - 1)
+                let savedPosition = self.positionStore.epubPosition(for: url)
+                let savedChapter = savedPosition?.chapterIndex ?? self.positionStore.position(for: url) ?? 0
+                self.currentPageIndex = min(max(0, savedChapter), epub.chapters.count - 1)
+                self.currentEPUBPageIndex = max(0, savedPosition?.pageIndex ?? 0)
+                self.restoredEPUBPageIndex = self.currentEPUBPageIndex
                 self.restoredPageIndex = nil
                 self.epubOpenAtEnd = false
                 self.documentState = .loaded(.init(url: url, pageCount: epub.chapters.count, kind: .epub))
@@ -149,7 +156,9 @@ final class ReaderViewModel: ObservableObject {
         epubDocument = nil
         selection = nil
         currentPageIndex = 0
+        currentEPUBPageIndex = 0
         restoredPageIndex = nil
+        restoredEPUBPageIndex = nil
         explanationState = .idle
         deepAnalysisState = .idle
         isExplanationPresented = false
@@ -163,21 +172,40 @@ final class ReaderViewModel: ObservableObject {
         let clamped = min(max(0, index), upperBound)
         currentPageIndex = clamped
         if case let .loaded(metadata) = documentState {
-            positionStore.save(clamped, for: metadata.url)
+            if metadata.kind == .epub {
+                epubOpenAtEnd = false
+                currentEPUBPageIndex = 0
+                restoredEPUBPageIndex = nil
+                positionStore.saveEPUB(chapterIndex: clamped, pageIndex: 0, for: metadata.url)
+            } else {
+                positionStore.save(clamped, for: metadata.url)
+            }
         }
     }
 
     func showPreviousChapter() {
         guard currentPageIndex > 0 else { return }
         epubOpenAtEnd = true
-        updateCurrentPage(currentPageIndex - 1)
+        restoredEPUBPageIndex = nil
+        currentEPUBPageIndex = 0
+        currentPageIndex -= 1
     }
 
     func showNextChapter() {
         guard case let .loaded(metadata) = documentState,
               currentPageIndex + 1 < metadata.pageCount else { return }
         epubOpenAtEnd = false
-        updateCurrentPage(currentPageIndex + 1)
+        restoredEPUBPageIndex = nil
+        currentEPUBPageIndex = 0
+        currentPageIndex += 1
+    }
+
+    func updateEPUBPage(_ page: Int, pageCount: Int) {
+        guard pageCount > 0, case let .loaded(metadata) = documentState, metadata.kind == .epub else { return }
+        let clamped = min(max(0, page), pageCount - 1)
+        currentEPUBPageIndex = clamped
+        restoredEPUBPageIndex = clamped
+        positionStore.saveEPUB(chapterIndex: currentPageIndex, pageIndex: clamped, for: metadata.url)
     }
 
     func updateSelection(_ selection: ReaderSelection?) {

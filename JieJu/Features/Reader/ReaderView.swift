@@ -83,10 +83,12 @@ struct ReaderView: View {
                             EPUBPagedReaderView(
                                 document: epub,
                                 chapterIndex: model.currentPageIndex,
+                                initialPageIndex: model.restoredEPUBPageIndex,
                                 initialPageAtEnd: model.epubOpenAtEnd,
                                 readingStyle: epubReadingStyle,
                                 onPreviousChapter: model.showPreviousChapter,
                                 onNextChapter: model.showNextChapter,
+                                onPageChange: model.updateEPUBPage,
                                 onSelectionChange: model.updateSelection
                             )
                             .id("\(epub.chapters[model.currentPageIndex].id)-\(epubReadingStyle.fontSize)-\(epubReadingStyle.lineHeight)-\(epubReadingStyle.horizontalMargin)-\(epubReadingStyle.showsFurigana)")

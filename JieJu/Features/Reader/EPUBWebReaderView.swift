@@ -5,10 +5,12 @@ import JieJuLanguage
 struct EPUBPagedReaderView: View {
     let document: EPUBDocument
     let chapterIndex: Int
+    let initialPageIndex: Int?
     let initialPageAtEnd: Bool
     let readingStyle: EPUBReadingStyle
     let onPreviousChapter: () -> Void
     let onNextChapter: () -> Void
+    let onPageChange: (Int, Int) -> Void
     let onSelectionChange: (ReaderSelection?) -> Void
 
     @State private var pageIndex = 0
@@ -22,27 +24,32 @@ struct EPUBPagedReaderView: View {
             EPUBWebReaderView(
                 document: document,
                 chapter: chapter,
+                initialPageIndex: initialPageIndex,
                 initialPageAtEnd: initialPageAtEnd,
                 readingStyle: readingStyle,
                 command: command,
                 onPaginationChange: { page, count in
                     pageIndex = page
                     pageCount = max(1, count)
+                    onPageChange(page, count)
                 },
                 onSelectionChange: onSelectionChange
             )
             .id(chapter.id)
 
             Divider()
-            HStack(spacing: 18) {
+            HStack(spacing: 14) {
                 Button(action: previousPage) { Image(systemName: "chevron.left") }
                     .keyboardShortcut(.leftArrow, modifiers: [])
                     .disabled(pageIndex == 0 && chapterIndex == 0)
                     .accessibilityLabel("上一页")
-                Text("本章 \(pageIndex + 1) / \(pageCount)")
+                ProgressView(value: Double(pageIndex + 1), total: Double(pageCount))
+                    .progressViewStyle(.linear)
+                    .frame(width: 120)
+                Text("第 \(chapterIndex + 1) / \(document.chapters.count) 章 · 本章 \(pageIndex + 1) / \(pageCount) 页")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
-                    .frame(minWidth: 92)
+                    .frame(minWidth: 180)
                 Button(action: nextPage) { Image(systemName: "chevron.right") }
                     .keyboardShortcut(.rightArrow, modifiers: [])
                     .disabled(pageIndex + 1 >= pageCount && chapterIndex + 1 >= document.chapters.count)
@@ -78,6 +85,7 @@ private enum EPUBPageCommand: Equatable {
 private struct EPUBWebReaderView: NSViewRepresentable {
     let document: EPUBDocument
     let chapter: EPUBChapter
+    let initialPageIndex: Int?
     let initialPageAtEnd: Bool
     let readingStyle: EPUBReadingStyle
     let command: EPUBPageCommand
@@ -133,7 +141,14 @@ private struct EPUBWebReaderView: NSViewRepresentable {
                 .split(separator: "/")
                 .map { String($0).addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? String($0) }
                 .joined(separator: "/")
-            let fragment = parent.initialPageAtEnd ? "#jieju-end" : ""
+            let fragment: String
+            if parent.initialPageAtEnd {
+                fragment = "#jieju-end"
+            } else if let page = parent.initialPageIndex, page > 0 {
+                fragment = "#jieju-page-\(page)"
+            } else {
+                fragment = ""
+            }
             guard let url = URL(string: "\(EPUBSchemeHandler.scheme)://book/\(encodedPath)\(fragment)") else { return }
             webView?.load(URLRequest(url: url))
         }
@@ -183,7 +198,7 @@ private struct EPUBWebReaderView: NSViewRepresentable {
     }
 }
 
-private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
+final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
     static let scheme = "jieju-epub"
     private let resources: [String: EPUBResource]
     private let readingStyle: EPUBReadingStyle
@@ -206,14 +221,15 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
               let resource = resources[path] else {
             urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist)); return
         }
-        let data = resource.mediaType.contains("xhtml")
+        let isHTML = resource.mediaType.contains("xhtml") || resource.mediaType.contains("html")
+        let data = isHTML
             ? cachedInjectedXHTML(resource.data, path: path)
             : resource.data
         let response = URLResponse(
             url: url,
-            mimeType: resource.mediaType.contains("xhtml") ? "text/html" : resource.mediaType,
+            mimeType: isHTML ? "text/html" : resource.mediaType,
             expectedContentLength: data.count,
-            textEncodingName: resource.mediaType.contains("text") || resource.mediaType.contains("xhtml") ? "utf-8" : nil
+            textEncodingName: resource.mediaType.contains("text") || isHTML ? "utf-8" : nil
         )
         urlSchemeTask.didReceive(response)
         urlSchemeTask.didReceive(data)
@@ -229,7 +245,7 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         return injected
     }
 
-    private func injectedXHTML(_ data: Data) -> Data {
+    func injectedXHTML(_ data: Data) -> Data {
         guard var html = String(data: data, encoding: .utf8) else { return data }
         let furiganaScript = readingStyle.showsFurigana
             ? EPUBFuriganaInjection.script(for: html)
@@ -238,20 +254,27 @@ private final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         let injection = """
         <meta http-equiv="Content-Security-Policy" content="default-src jieju-epub: data:; connect-src 'none'; script-src 'unsafe-inline'; style-src jieju-epub: 'unsafe-inline'; img-src jieju-epub: data:; font-src jieju-epub: data:">
         <style id="jieju-reader-style">
-        html { height: 100%; margin: 0; overflow: hidden; }
-        body { box-sizing: border-box; padding: 36px \(readingStyle.horizontalMargin)px 42px;
-               column-gap: \(readingStyle.horizontalMargin * 2)px;
-               column-fill: auto; font-size: \(readingStyle.fontSize)px; line-height: \(readingStyle.lineHeight);
-               margin: 0; overflow: visible;
-               color: CanvasText; color-scheme: light dark; background: transparent; }
+        html, body { width: 100% !important; height: 100% !important; margin: 0 !important;
+                     padding: 0 !important; overflow: hidden !important; }
+        body { color: CanvasText; color-scheme: light dark; background: transparent; }
+        #jieju-book-content { position: absolute !important; box-sizing: border-box !important;
+               top: 32px !important; left: \(readingStyle.horizontalMargin)px !important;
+               width: calc(100vw - \(readingStyle.horizontalMargin * 2)px) !important;
+               height: calc(100vh - 70px) !important; margin: 0 !important; padding: 0 !important;
+               max-width: none !important; max-height: none !important; overflow: visible !important;
+               column-width: calc(100vw - \(readingStyle.horizontalMargin * 2)px) !important;
+               column-gap: \(readingStyle.horizontalMargin * 2)px !important; column-fill: auto !important;
+               font-size: \(readingStyle.fontSize)px !important; line-height: \(readingStyle.lineHeight) !important;
+               transition: transform 160ms ease-out; will-change: transform; }
         img, svg { max-width: 100%; max-height: 80vh; object-fit: contain; }
         ruby rt { display: \(rubyVisibility); font-size: 0.55em; user-select: none; -webkit-user-select: none; }
         ruby rp { display: none; user-select: none; -webkit-user-select: none; }
         </style>
         <script>
         \(EPUBWebScript.script(horizontalMargin: readingStyle.horizontalMargin))
-        window.addEventListener('load', () => setTimeout(() => JieJuReader.layout(), 0));
-        window.addEventListener('resize', () => JieJuReader.layout());
+        document.addEventListener('DOMContentLoaded', () => JieJuReader.prepare());
+        window.addEventListener('load', () => JieJuReader.observeAndLayout());
+        window.addEventListener('resize', () => JieJuReader.scheduleLayout());
         document.addEventListener('mouseup', () => setTimeout(() => JieJuReader.selection(), 0));
         \(furiganaScript)
         </script>
@@ -270,25 +293,58 @@ enum EPUBWebScript {
         """
         window.JieJuReader = {
           page: 0,
+          prepared: false,
+          layoutTimer: null,
+          prepare: function() {
+            if (this.prepared) return this.content();
+            const container = document.createElement('main');
+            container.id = 'jieju-book-content';
+            while (document.body.firstChild) container.appendChild(document.body.firstChild);
+            document.body.appendChild(container);
+            this.prepared = true;
+            return container;
+          },
+          content: function() {
+            return document.getElementById('jieju-book-content') || this.prepare();
+          },
           viewportWidth: function() {
             return Math.max(1, document.documentElement.clientWidth || window.innerWidth);
           },
           pageCount: function() {
             const width = this.viewportWidth();
-            const extent = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
-            return Math.max(1, Math.ceil((extent - 1) / width));
+            const extent = this.content().scrollWidth;
+            return Math.max(1, Math.ceil((extent + \(horizontalMargin * 2) - 1) / width));
+          },
+          scheduleLayout: function() {
+            clearTimeout(this.layoutTimer);
+            this.layoutTimer = setTimeout(() => this.layout(), 80);
+          },
+          observeAndLayout: function() {
+            const content = this.content();
+            content.querySelectorAll('img, svg, video').forEach(element => {
+              if (!element.complete) element.addEventListener('load', () => this.scheduleLayout(), {once: true});
+            });
+            if (document.fonts && document.fonts.ready) {
+              document.fonts.ready.then(() => this.scheduleLayout());
+            }
+            this.layout();
           },
           layout: function() {
             const width = this.viewportWidth();
-            document.body.style.width = width + 'px';
-            document.body.style.height = window.innerHeight + 'px';
-            document.body.style.columnWidth = Math.max(1, width - \(horizontalMargin * 2)) + 'px';
+            const content = this.content();
+            content.style.width = Math.max(1, width - \(horizontalMargin * 2)) + 'px';
+            content.style.height = Math.max(1, window.innerHeight - 70) + 'px';
+            content.style.columnWidth = Math.max(1, width - \(horizontalMargin * 2)) + 'px';
             requestAnimationFrame(() => {
               const count = this.pageCount();
               if (location.hash === '#jieju-end' && !this.didApplyInitialPage) {
                 this.page = count - 1; this.didApplyInitialPage = true;
+              } else if (location.hash.startsWith('#jieju-page-') && !this.didApplyInitialPage) {
+                const restored = Number.parseInt(location.hash.slice('#jieju-page-'.length), 10);
+                this.page = Number.isFinite(restored) ? Math.min(Math.max(0, restored), count - 1) : 0;
+                this.didApplyInitialPage = true;
               } else { this.page = Math.min(this.page, count - 1); }
-              window.scrollTo(this.page * width, 0);
+              content.style.transform = `translate3d(${-this.page * width}px, 0, 0)`;
               webkit.messageHandlers.pagination.postMessage({page: this.page, count: count});
             });
           },
@@ -296,7 +352,7 @@ enum EPUBWebScript {
             const width = this.viewportWidth();
             const count = this.pageCount();
             this.page = Math.max(0, Math.min(count - 1, this.page + delta));
-            window.scrollTo({left: this.page * width, top: 0, behavior: 'smooth'});
+            this.content().style.transform = `translate3d(${-this.page * width}px, 0, 0)`;
             webkit.messageHandlers.pagination.postMessage({page: this.page, count: count});
           },
           textWithoutReadings: function(source) {

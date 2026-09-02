@@ -81,13 +81,31 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual(AppSettings(defaults: defaults).furiganaDisplayMode, .kanji)
     }
 
-    func testEPUBScriptMeasuresBodyColumnsAndExcludesRubyReadingsFromSelection() {
+    func testEPUBScriptMeasuresDedicatedContentColumnsAndExcludesRubyReadingsFromSelection() {
         let script = EPUBWebScript.script(horizontalMargin: 54)
 
-        XCTAssertTrue(script.contains("document.body.scrollWidth"))
+        XCTAssertTrue(script.contains("this.content().scrollWidth"))
+        XCTAssertTrue(script.contains("translate3d"))
         XCTAssertTrue(script.contains("range.cloneContents()"))
         XCTAssertTrue(script.contains("querySelectorAll('rt, rp')"))
         XCTAssertTrue(script.contains("textWithoutReadings(document.body)"))
+    }
+
+    func testEPUBInjectionBuildsControlledPageViewportForLongChapter() {
+        let paragraphs = Array(repeating: "<p>This is a long paragraph for testing real EPUB pagination. It must flow into following book pages instead of becoming one chapter-sized page.</p>", count: 100).joined()
+        let xhtml = "<html><head><title>Long chapter</title></head><body><h1>Chapter</h1>\(paragraphs)</body></html>"
+        let handler = EPUBSchemeHandler(
+            resources: [:],
+            readingStyle: EPUBReadingStyle(fontSize: 18, lineHeight: 1.75, horizontalMargin: 54)
+        )
+        let renderedHTML = String(data: handler.injectedXHTML(Data(xhtml.utf8)), encoding: .utf8)!
+
+        XCTAssertTrue(renderedHTML.contains("#jieju-book-content"))
+        XCTAssertTrue(renderedHTML.contains("column-width: calc(100vw - 108.0px)"))
+        XCTAssertTrue(renderedHTML.contains("overflow: hidden !important"))
+        XCTAssertTrue(renderedHTML.contains("while (document.body.firstChild)"))
+        XCTAssertTrue(renderedHTML.contains("document.fonts.ready"))
+        XCTAssertTrue(renderedHTML.contains(paragraphs))
     }
 
     @MainActor

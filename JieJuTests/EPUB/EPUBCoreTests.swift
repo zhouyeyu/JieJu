@@ -92,4 +92,27 @@ final class EPUBCoreTests: XCTestCase {
         for _ in 0...metadata.pageCount { model.showNextChapter() }
         XCTAssertEqual(model.currentPageIndex, metadata.pageCount - 1)
     }
+
+    @MainActor
+    func testReaderModelRestoresEPUBChapterAndPage() async throws {
+        let suite = "JieJuTests.EPUBPosition.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let url = try fixture("minimal")
+        let store = ReadingPositionStore(defaults: defaults)
+        store.saveEPUB(chapterIndex: 1, pageIndex: 4, for: url)
+        let model = ReaderViewModel(positionStore: store)
+
+        model.open(url)
+        for _ in 0..<200 {
+            if case .loaded = model.documentState { break }
+            await Task.yield()
+        }
+
+        XCTAssertEqual(model.currentPageIndex, 1)
+        XCTAssertEqual(model.currentEPUBPageIndex, 4)
+        XCTAssertEqual(model.restoredEPUBPageIndex, 4)
+        model.updateEPUBPage(2, pageCount: 3)
+        XCTAssertEqual(store.epubPosition(for: url), EPUBReadingPosition(chapterIndex: 1, pageIndex: 2))
+    }
 }
