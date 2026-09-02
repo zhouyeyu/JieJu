@@ -136,7 +136,7 @@ actor StubHTTPClient: HTTPClient {
         let messages = try #require(bodyJSON["messages"] as? [[String: String]])
         #expect(messages.last?["content"]?.contains("Although tired, she continued.") == true)
         #expect(messages.last?["content"]?.contains("went home") == false)
-        #expect(messages.last?["content"]?.contains("grammarPoints MUST be []") == true)
+        #expect(messages.last?["content"]?.contains("1 to 3 useful grammarPoints") == true)
     }
 
     @Test func safelyDropsOffTargetItemsFromRepairResponse() async throws {
@@ -156,6 +156,40 @@ actor StubHTTPClient: HTTPClient {
         #expect(result.sentenceCore == request.targetText)
         #expect(result.grammarPoints.isEmpty)
         #expect(result.keyPhrases.isEmpty)
+    }
+
+    @Test func repairKeepsValidItemsWhileDroppingHallucinatedOnes() async throws {
+        let tags = response(200, #"{"models":[{"name":"qwen2.5:1.5b-instruct"}]}"#)
+        let first = Explanation(
+            translation: "尽管疲惫，她仍继续。", sentenceCore: "她仍继续",
+            grammarPoints: [], keyPhrases: []
+        )
+        let repaired = Explanation(
+            translation: "尽管疲惫，她仍继续。", sentenceCore: "她仍继续",
+            grammarPoints: [
+                .init(text: "Although tired", explanation: "让步结构"),
+                .init(text: "went home", explanation: "虚构内容")
+            ],
+            keyPhrases: [
+                .init(text: "she continued", meaning: "她继续了"),
+                .init(text: "gave up", meaning: "虚构内容")
+            ]
+        )
+        let encode: (Explanation) throws -> String = { value in
+            String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+        }
+        let client = StubHTTPClient([
+            .success(tags),
+            .success(chatEnvelope(try encode(first))),
+            .success(chatEnvelope(try encode(repaired)))
+        ])
+        let request = ExplanationRequest(targetText: "Although tired, she continued.")
+
+        let result = try await OllamaReadingAI(model: "qwen2.5:1.5b-instruct", client: client).explain(request)
+
+        #expect(result.sentenceCore == request.targetText)
+        #expect(result.grammarPoints == [.init(text: "Although tired", explanation: "让步结构")])
+        #expect(result.keyPhrases == [.init(text: "she continued", meaning: "她继续了")])
     }
 
     @Test func failsAfterOneRetry() async {

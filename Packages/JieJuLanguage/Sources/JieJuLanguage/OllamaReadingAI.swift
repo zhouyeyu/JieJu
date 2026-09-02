@@ -81,7 +81,7 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
             let repaired = try await generate(messages: [
                 .init(role: "system", content: QwenPrompt.system),
                 .init(role: "user", content: QwenPrompt.repair(request: valid, rawResponse: first))
-            ], request: valid)
+            ], request: valid, minimumItems: 1)
             let parsed = try ExplanationParser.parse(repaired)
             return (try validatedRepair(parsed, request: valid), repaired)
         }
@@ -103,7 +103,7 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
                 let repaired = try await generate(messages: [
                     .init(role: "system", content: QwenPrompt.system),
                     .init(role: "user", content: QwenPrompt.repair(request: valid, rawResponse: first))
-                ], request: valid)
+                ], request: valid, minimumItems: 1)
                 latestRaw = repaired
                 let parsed = try ExplanationParser.parse(repaired)
                 return .init(explanation: try validatedRepair(parsed, request: valid), raw: repaired, jsonValid: true)
@@ -117,11 +117,29 @@ public struct OllamaReadingAI<Client: HTTPClient>: ReadingAI, BatchReadingAI {
         do {
             return try explanation.validated(against: request)
         } catch {
+            let grammarPoints = explanation.grammarPoints.filter { point in
+                let candidate = Explanation(
+                    translation: explanation.translation,
+                    sentenceCore: request.targetText,
+                    grammarPoints: [point],
+                    keyPhrases: []
+                )
+                return (try? candidate.validated(against: request)) != nil
+            }
+            let keyPhrases = explanation.keyPhrases.filter { phrase in
+                let candidate = Explanation(
+                    translation: explanation.translation,
+                    sentenceCore: request.targetText,
+                    grammarPoints: [],
+                    keyPhrases: [phrase]
+                )
+                return (try? candidate.validated(against: request)) != nil
+            }
             return try Explanation(
                 translation: explanation.translation,
                 sentenceCore: request.targetText,
-                grammarPoints: [],
-                keyPhrases: []
+                grammarPoints: grammarPoints,
+                keyPhrases: keyPhrases
             ).validated(against: request)
         }
     }
@@ -192,12 +210,13 @@ private indirect enum SchemaValue: Encodable {
     static func explanation(minimumItems: Int, request: ExplanationRequest) -> SchemaValue {
         let explanation = request.explanationLanguage
         let source = request.sourceLanguage
+        let languageRule = QwenPrompt.explanationLanguageRule(for: explanation)
         return .object([
             "type": .string("object"),
             "properties": .object([
                 "translation": .object([
                     "type": .string("string"),
-                    "description": .string("Translate targetText into \(explanation). Write the translation in \(explanation), never in \(source).")
+                    "description": .string("Translate targetText into \(explanation). Write the translation in \(explanation), never in \(source). \(languageRule)")
                 ]),
                 "sentenceCore": .object([
                     "type": .string("string"),
@@ -214,7 +233,7 @@ private indirect enum SchemaValue: Encodable {
                             ]),
                             "explanation": .object([
                                 "type": .string("string"),
-                                "description": .string("Grammar explanation written in \(explanation), concise and accurate")
+                                "description": .string("Grammar explanation written in \(explanation), concise and accurate. \(languageRule)")
                             ])
                         ]),
                         "required": .array([.string("text"), .string("explanation")])
@@ -231,7 +250,7 @@ private indirect enum SchemaValue: Encodable {
                             ]),
                             "meaning": .object([
                                 "type": .string("string"),
-                                "description": .string("Meaning of the phrase written in \(explanation)")
+                                "description": .string("Meaning of the phrase written in \(explanation). \(languageRule)")
                             ])
                         ]),
                         "required": .array([.string("text"), .string("meaning")])

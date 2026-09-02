@@ -12,6 +12,7 @@ public enum QwenPrompt {
     public static func user(_ request: ExplanationRequest) -> String {
         let payload = PromptInput(
             task: "Explain targetText only",
+            outputLanguageRule: explanationLanguageRule(for: request.explanationLanguage),
             sourceLanguage: request.sourceLanguage,
             explanationLanguage: request.explanationLanguage,
             precedingContext: request.precedingContext,
@@ -28,16 +29,31 @@ public enum QwenPrompt {
         return """
         The previous answer failed validation. Start over and analyze only this targetText: \(request.targetText)
         translation and explanations language: \(request.explanationLanguage)
+        \(explanationLanguageRule(for: request.explanationLanguage))
         sentenceCore language: \(request.sourceLanguage)
         translation must be written in \(request.explanationLanguage) and must not be identical to targetText.
         For this retry, set sentenceCore exactly to targetText: \(request.targetText)
-        For this retry, grammarPoints MUST be [] and keyPhrases MUST be []. Only produce a reliable translation. Return JSON only.
+        Return 1 to 3 useful grammarPoints and 1 to 4 useful keyPhrases. Every text value must be exact consecutive words copied from targetText; never translate a text value. Return JSON only.
         """
+    }
+
+    public static func explanationLanguageRule(for language: String) -> String {
+        switch language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "chinese", "zh", "zh-hans", "zh-hant":
+            return "translation, explanation, and meaning MUST use Chinese characters; do not write full English sentences in these fields."
+        case "japanese", "ja":
+            return "translation, explanation, and meaning MUST be written in Japanese."
+        case "korean", "ko":
+            return "translation, explanation, and meaning MUST be written in Korean."
+        default:
+            return "translation, explanation, and meaning MUST be written in \(language)."
+        }
     }
 }
 
 private struct PromptInput: Codable {
     let task: String
+    let outputLanguageRule: String
     let sourceLanguage: String
     let explanationLanguage: String
     let precedingContext: String?

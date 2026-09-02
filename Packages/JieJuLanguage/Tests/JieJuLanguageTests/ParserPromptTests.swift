@@ -33,8 +33,16 @@ import Testing
         let prompt = QwenPrompt.repair(request: request, rawResponse: "FAILED")
         #expect(prompt.contains("targetText: TARGET"))
         #expect(!prompt.contains("FAILED"))
-        #expect(prompt.contains("grammarPoints MUST be []"))
+        #expect(prompt.contains("1 to 3 useful grammarPoints"))
         #expect(!prompt.contains("CONTEXT"))
+    }
+
+    @Test func chinesePromptExplicitlyRequiresChineseExplanations() {
+        let request = ExplanationRequest(targetText: "She continued.", explanationLanguage: "Chinese")
+        let prompt = QwenPrompt.user(request)
+        let repair = QwenPrompt.repair(request: request, rawResponse: "bad")
+        #expect(prompt.contains("MUST use Chinese characters"))
+        #expect(repair.contains("MUST use Chinese characters"))
     }
 }
 

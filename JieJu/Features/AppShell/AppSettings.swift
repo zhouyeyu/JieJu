@@ -15,6 +15,7 @@ enum AIProviderChoice: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var title: String { self == .mock ? "Mock（离线测试）" : "Ollama（本地模型）" }
+    static let defaultProvider: AIProviderChoice = .ollama
 }
 
 @MainActor
@@ -50,7 +51,16 @@ final class AppSettings: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        provider = AIProviderChoice(rawValue: defaults.string(forKey: Keys.provider) ?? "") ?? .mock
+        let storedProvider = AIProviderChoice(rawValue: defaults.string(forKey: Keys.provider) ?? "")
+        if defaults.bool(forKey: Keys.didMigrateToLocalModelDefault) {
+            provider = storedProvider ?? .defaultProvider
+        } else {
+            // Earlier development builds defaulted to Mock and persisted that choice.
+            // Migrate once so existing installations start using the real local model.
+            provider = .defaultProvider
+            defaults.set(AIProviderChoice.defaultProvider.rawValue, forKey: Keys.provider)
+            defaults.set(true, forKey: Keys.didMigrateToLocalModelDefault)
+        }
         ollamaURL = defaults.string(forKey: Keys.ollamaURL) ?? "http://127.0.0.1:11434"
         modelName = defaults.string(forKey: Keys.modelName) ?? OllamaDefaults.model
         explanationLanguage = defaults.string(forKey: Keys.explanationLanguage) ?? "Chinese"
@@ -99,5 +109,6 @@ final class AppSettings: ObservableObject {
         static let ollamaURL = "ai.ollamaURL"
         static let modelName = "ai.modelName"
         static let explanationLanguage = "ai.explanationLanguage"
+        static let didMigrateToLocalModelDefault = "ai.didMigrateToLocalModelDefault"
     }
 }

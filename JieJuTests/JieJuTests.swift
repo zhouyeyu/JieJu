@@ -7,6 +7,33 @@ final class JieJuTests: XCTestCase {
     }
 
     @MainActor
+    func testLegacyMockSettingMigratesToRealLocalModelOnce() {
+        let suite = "JieJuTests.AppSettings.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("mock", forKey: "ai.provider")
+
+        let settings = AppSettings(defaults: defaults)
+
+        XCTAssertEqual(settings.provider, .ollama)
+        XCTAssertEqual(defaults.string(forKey: "ai.provider"), "ollama")
+        XCTAssertTrue(defaults.bool(forKey: "ai.didMigrateToLocalModelDefault"))
+    }
+
+    @MainActor
+    func testExplicitMockChoiceIsPreservedAfterMigration() {
+        let suite = "JieJuTests.AppSettings.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: "ai.didMigrateToLocalModelDefault")
+        defaults.set("mock", forKey: "ai.provider")
+
+        let settings = AppSettings(defaults: defaults)
+
+        XCTAssertEqual(settings.provider, .mock)
+    }
+
+    @MainActor
     func testReaderUpdatesExplanationConfigurationWithoutResettingState() async throws {
         let recorder = ExplanationRequestRecorder()
         let model = ReaderViewModel(explanationProvider: MockReaderExplanationProvider())
