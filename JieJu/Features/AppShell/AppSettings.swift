@@ -18,6 +18,14 @@ enum AIProviderChoice: String, CaseIterable, Identifiable {
     static let defaultProvider: AIProviderChoice = .ollama
 }
 
+enum ExplanationPresentationMode: String, CaseIterable, Identifiable {
+    case sidebar
+    case popover
+
+    var id: String { rawValue }
+    var title: String { self == .sidebar ? "侧边栏" : "弹窗" }
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     static let presetExplanationLanguages = ["Chinese", "English", "Japanese", "Korean", "French", "German"]
@@ -46,6 +54,9 @@ final class AppSettings: ObservableObject {
     @Published var explanationLanguage: String {
         didSet { defaults.set(explanationLanguage, forKey: Keys.explanationLanguage) }
     }
+    @Published var explanationPresentationMode: ExplanationPresentationMode {
+        didSet { defaults.set(explanationPresentationMode.rawValue, forKey: Keys.explanationPresentationMode) }
+    }
 
     private let defaults: UserDefaults
 
@@ -64,6 +75,9 @@ final class AppSettings: ObservableObject {
         ollamaURL = defaults.string(forKey: Keys.ollamaURL) ?? "http://127.0.0.1:11434"
         modelName = defaults.string(forKey: Keys.modelName) ?? OllamaDefaults.model
         explanationLanguage = defaults.string(forKey: Keys.explanationLanguage) ?? "Chinese"
+        explanationPresentationMode = ExplanationPresentationMode(
+            rawValue: defaults.string(forKey: Keys.explanationPresentationMode) ?? ""
+        ) ?? .sidebar
     }
 
     var providerSnapshot: any ReaderExplanationProviding {
@@ -110,5 +124,6 @@ final class AppSettings: ObservableObject {
         static let modelName = "ai.modelName"
         static let explanationLanguage = "ai.explanationLanguage"
         static let didMigrateToLocalModelDefault = "ai.didMigrateToLocalModelDefault"
+        static let explanationPresentationMode = "reader.explanationPresentationMode"
     }
 }

@@ -3,14 +3,21 @@
 ## 本次交接
 
 - 日期：2026-09-02
-- Agent：WorkBuddy
-- 阶段：并行模块首轮集成（PDF-112 已修复）
+- Agent：Codex
+- 阶段：并行模块首轮集成（PDF-114 已完成）
 - 分支：`main`
 - 基线提交：`fbdf02f chore: create macOS project foundation`
 - 模块集成提交：`3529d0f feat: build parallel reader language and storage modules`
 - 语言修复提交：`a427e01 fix: bind target language into Ollama JSON schema`
 
 ## 本次完成内容
+
+- **完善解句布局**（`PDF-113`）：解句面板增加独立滚动容器，翻译、主干、语法点、
+  重点表达改为分区卡片；数组条目逐项显示，长文本固定纵向展开，避免字体拥挤和内容裁切。
+- **侧边栏/弹窗切换**（`PDF-114`）：设置页增加分段选择并持久化；默认侧边栏通过
+  `HSplitView` 与 PDF 并排，弹窗模式保留选区锚定交互。两种模式复用同一个解释面板。
+- 选中原文改为默认折叠的 `DisclosureGroup`；失败状态增加明确图标与文本，不再只依赖颜色。
+- 新增显示方式默认值及持久化回归测试。
 
 - 修复 `AI-211`：Ollama JSON Schema 字段描述现在携带
   `explanationLanguage`/`sourceLanguage`（如 `translation` 描述为
@@ -46,6 +53,7 @@
 - 单句实测：0.5B「火车于六点出发。」、1.5B「火车六点出发。」均正确。
 - `xcodebuild build`：通过。
 - `xcodebuild build-for-testing`：通过，App 单元测试与 UI 测试目标均成功编译。
+- 本轮 `xcodebuild build` 与 `build-for-testing` 均通过；JieJuLanguage 35 项测试通过。
 - macOS App/UI 测试：**无法运行**。本机 `DevToolsSecurity -status` 为 disabled，
   Runner 卡在 `The test runner hung before establishing connection.`。
 - Xcode 人工启动：待用户确认。
@@ -78,8 +86,7 @@
 
 1. **英文释义漏网**：AI-212 只拦截翻译与原文完全相同；同语言释义仍能通过校验。
    可在 `validated(against:)` 增加启发式（如检测翻译为源语言字符集）或交给评测门槛把关。
-3. 无障碍小项：`LearningRecordsView` 删除仅 contextMenu，缺键盘/VoiceOver 路径；
-   `ReaderExplanationPopover` 错误态仅 `foregroundStyle(.red)`，未配图标或文字。
+3. 无障碍小项：`LearningRecordsView` 删除仅 contextMenu，缺键盘/VoiceOver 路径。
 
 ## 已知问题
 

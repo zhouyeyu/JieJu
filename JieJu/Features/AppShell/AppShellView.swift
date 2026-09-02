@@ -43,7 +43,8 @@ struct AppShellView: View {
                         Task { await library.save(payload, modelName: settings.provider == .ollama ? settings.modelName : "mock") }
                     },
                     explanationLanguage: settings.explanationLanguage,
-                    configurationID: "\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)"
+                    configurationID: "\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)",
+                    explanationPresentationMode: settings.explanationPresentationMode
                 )
             case .records:
                 LearningRecordsView(model: library)
@@ -97,6 +98,13 @@ private struct AISettingsView: View {
                 }
                 Text("自定义…").tag(Self.customTag)
             }
+            Picker("解句显示方式", selection: $settings.explanationPresentationMode) {
+                ForEach(ExplanationPresentationMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.explanationPresentationMode")
             if editingCustomLanguage || !AppSettings.presetExplanationLanguages.contains(settings.explanationLanguage) {
                 TextField("自定义语言（英文名，如 Arabic）", text: $settings.explanationLanguage)
                     .accessibilityIdentifier("settings.explanationLanguage")

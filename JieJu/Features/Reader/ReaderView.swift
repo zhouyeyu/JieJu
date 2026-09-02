@@ -5,16 +5,19 @@ struct ReaderView: View {
     private let explanationProvider: any ReaderExplanationProviding
     private let explanationLanguage: String
     private let configurationID: String
+    private let explanationPresentationMode: ExplanationPresentationMode
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
         saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in },
         explanationLanguage: String = "Chinese",
-        configurationID: String = "default"
+        configurationID: String = "default",
+        explanationPresentationMode: ExplanationPresentationMode = .sidebar
     ) {
         self.explanationProvider = explanationProvider
         self.explanationLanguage = explanationLanguage
         self.configurationID = configurationID
+        self.explanationPresentationMode = explanationPresentationMode
         _model = StateObject(wrappedValue: ReaderViewModel(
             explanationProvider: explanationProvider,
             saveHandler: saveHandler,
@@ -56,14 +59,31 @@ struct ReaderView: View {
             }
         case .loaded:
             if let document = model.document {
-                ZStack(alignment: .topLeading) {
-                    PDFReaderView(
-                        document: document,
-                        initialPageIndex: model.restoredPageIndex,
-                        onSelectionChange: model.updateSelection,
-                        onPageChange: model.updateCurrentPage
-                    )
-                    explanationButton
+                HSplitView {
+                    ZStack(alignment: .topLeading) {
+                        PDFReaderView(
+                            document: document,
+                            initialPageIndex: model.restoredPageIndex,
+                            onSelectionChange: model.updateSelection,
+                            onPageChange: model.updateCurrentPage
+                        )
+                        explanationButton
+                    }
+                    .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
+
+                    if explanationPresentationMode == .sidebar,
+                       model.isExplanationPresented,
+                       let selection = model.selection {
+                        ReaderExplanationPanel(
+                            selectedText: selection.targetText,
+                            state: model.explanationState,
+                            save: model.saveExplanation,
+                            retry: model.requestExplanation,
+                            close: model.dismissExplanation,
+                            presentation: .sidebar
+                        )
+                        .frame(minWidth: 340, idealWidth: 400, maxWidth: 480, maxHeight: .infinity)
+                    }
                 }
             }
         }
@@ -93,22 +113,34 @@ struct ReaderView: View {
     @ViewBuilder
     private var explanationButton: some View {
         if let selection = model.selection {
-            Button("解释", systemImage: "text.bubble", action: model.requestExplanation)
+            explanationTrigger(for: selection)
+        }
+    }
+
+    @ViewBuilder
+    private func explanationTrigger(for selection: ReaderSelection) -> some View {
+        let button = Button("解释", systemImage: "text.bubble", action: model.requestExplanation)
                 .buttonStyle(.borderedProminent)
                 .position(
                     x: max(52, selection.anchorRect.midX),
                     y: max(22, selection.anchorRect.minY - 18)
                 )
+
+        if explanationPresentationMode == .popover {
+            button
                 .popover(isPresented: $model.isExplanationPresented, arrowEdge: .bottom) {
-                    ReaderExplanationPopover(
+                    ReaderExplanationPanel(
                         selectedText: selection.targetText,
                         state: model.explanationState,
                         save: model.saveExplanation,
                         retry: model.requestExplanation,
-                        close: model.dismissExplanation
+                        close: model.dismissExplanation,
+                        presentation: .popover
                     )
                 }
                 .accessibilityIdentifier("reader.explain")
+        } else {
+            button.accessibilityIdentifier("reader.explain")
         }
     }
 }
@@ -129,28 +161,57 @@ private struct ReaderEmptyView: View {
     }
 }
 
-private struct ReaderExplanationPopover: View {
+struct ReaderExplanationPanel: View {
+    enum Presentation { case sidebar, popover }
+
     let selectedText: String
     let state: ReaderExplanationState
     let save: () -> Void
     let retry: () -> Void
     let close: () -> Void
+    let presentation: Presentation
+
+    @State private var sourceExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("解句").font(.headline)
+                Label("解句", systemImage: "text.bubble")
+                    .font(.headline)
                 Spacer()
                 Button(action: close) { Image(systemName: "xmark") }
                     .buttonStyle(.plain)
                     .accessibilityLabel("关闭解释")
             }
-            Text(selectedText).font(.body).textSelection(.enabled)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
             Divider()
-            stateContent
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    DisclosureGroup("选中的原文", isExpanded: $sourceExpanded) {
+                        Text(selectedText)
+                            .font(.body)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 8)
+                    }
+                    .font(.subheadline.weight(.semibold))
+
+                    stateContent
+                }
+                .padding(18)
+            }
         }
-        .padding(18)
-        .frame(width: 380)
+        .background(.background)
+        .frame(
+            minWidth: presentation == .popover ? 420 : nil,
+            idealWidth: presentation == .popover ? 440 : nil,
+            maxWidth: presentation == .popover ? 480 : .infinity,
+            minHeight: presentation == .popover ? 280 : nil,
+            idealHeight: presentation == .popover ? 480 : nil,
+            maxHeight: presentation == .popover ? 600 : .infinity
+        )
     }
 
     @ViewBuilder
@@ -160,32 +221,59 @@ private struct ReaderExplanationPopover: View {
             ProgressView("正在解释…")
         case .failed(let message):
             VStack(alignment: .leading, spacing: 10) {
-                Text(message).foregroundStyle(.red)
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
                 Button("重试", action: retry)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         case .loaded(let explanation):
-            VStack(alignment: .leading, spacing: 12) {
-                section("翻译", explanation.translation)
-                section("句子主干", explanation.sentenceCore)
+            LazyVStack(alignment: .leading, spacing: 12) {
+                explanationCard(title: "翻译", systemImage: "character.bubble", value: explanation.translation)
+                explanationCard(title: "句子主干", systemImage: "arrow.triangle.branch", value: explanation.sentenceCore)
                 if !explanation.grammarPoints.isEmpty {
-                    section("语法", explanation.grammarPoints.joined(separator: "\n• "), bullet: true)
+                    itemCard(title: "语法", systemImage: "text.book.closed", items: explanation.grammarPoints)
                 }
                 if !explanation.keyPhrases.isEmpty {
-                    section("重点表达", explanation.keyPhrases.joined(separator: "\n• "), bullet: true)
+                    itemCard(title: "重点表达", systemImage: "quote.bubble", items: explanation.keyPhrases)
                 }
                 Button("保存到学习记录", systemImage: "bookmark", action: save)
                     .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
             }
         }
     }
 
-    private func section(_ title: String, _ value: String, bullet: Bool = false) -> some View {
+    private func explanationCard(title: String, systemImage: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.subheadline.weight(.semibold))
-            Text(bullet ? "• \(value)" : value)
-                .foregroundStyle(.secondary)
+            Label(title, systemImage: systemImage).font(.subheadline.weight(.semibold))
+            Text(value)
                 .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func itemCard(title: String, systemImage: String, items: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: systemImage).font(.subheadline.weight(.semibold))
+            ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(index + 1)")
+                        .font(.caption2.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20, height: 20)
+                        .background(.tertiary.opacity(0.35), in: Circle())
+                    Text(item)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
     }
 }
 

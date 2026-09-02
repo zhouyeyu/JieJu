@@ -34,6 +34,21 @@ final class JieJuTests: XCTestCase {
     }
 
     @MainActor
+    func testExplanationPresentationModeDefaultsToSidebarAndPersists() {
+        let suite = "JieJuTests.AppSettings.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.explanationPresentationMode, .sidebar)
+
+        settings.explanationPresentationMode = .popover
+
+        let restoredSettings = AppSettings(defaults: defaults)
+        XCTAssertEqual(restoredSettings.explanationPresentationMode, .popover)
+    }
+
+    @MainActor
     func testReaderUpdatesExplanationConfigurationWithoutResettingState() async throws {
         let recorder = ExplanationRequestRecorder()
         let model = ReaderViewModel(explanationProvider: MockReaderExplanationProvider())
