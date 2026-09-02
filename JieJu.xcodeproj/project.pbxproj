@@ -32,6 +32,7 @@
 		AA0000000000000000000046 /* minimal.epub in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000040 /* minimal.epub */; };
 		AA0000000000000000000048 /* messy.epub in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000047 /* messy.epub */; };
 		AA0000000000000000000050 /* nocontainer.epub in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000049 /* nocontainer.epub */; };
+		AA0000000000000000000054 /* EPUBReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000055 /* EPUBReaderView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +80,7 @@
 		AA0000000000000000000040 /* minimal.epub */ = {isa = PBXFileReference; lastKnownFileType = file; path = minimal.epub; sourceTree = "<group>"; };
 		AA0000000000000000000047 /* messy.epub */ = {isa = PBXFileReference; lastKnownFileType = file; path = messy.epub; sourceTree = "<group>"; };
 		AA0000000000000000000049 /* nocontainer.epub */ = {isa = PBXFileReference; lastKnownFileType = file; path = nocontainer.epub; sourceTree = "<group>"; };
+		AA0000000000000000000055 /* EPUBReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBReaderView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -150,7 +152,7 @@
 		};
 		AA0000000000000000000069 /* Reader */ = {
 			isa = PBXGroup;
-			children = (AA0000000000000000000018, AA0000000000000000000019, AA000000000000000000001A, AA000000000000000000001B, AA000000000000000000001C);
+			children = (AA0000000000000000000018, AA0000000000000000000019, AA000000000000000000001A, AA0000000000000000000055, AA000000000000000000001B, AA000000000000000000001C);
 			path = Reader;
 			sourceTree = "<group>";
 		};
@@ -275,7 +277,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AA0000000000000000000071 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000001 /* JieJuApp.swift in Sources */, AA0000000000000000000002 /* WelcomeView.swift in Sources */, AA0000000000000000000005, AA0000000000000000000006, AA0000000000000000000007, AA0000000000000000000008, AA0000000000000000000009, AA000000000000000000000C, AA000000000000000000000D, AA000000000000000000000F, AA0000000000000000000010, AA0000000000000000000030, AB0000000000000000000001, AA0000000000000000000033, AA0000000000000000000037); runOnlyForDeploymentPostprocessing = 0; };
+		AA0000000000000000000071 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000001 /* JieJuApp.swift in Sources */, AA0000000000000000000002 /* WelcomeView.swift in Sources */, AA0000000000000000000005, AA0000000000000000000006, AA0000000000000000000007, AA0000000000000000000054, AA0000000000000000000008, AA0000000000000000000009, AA000000000000000000000C, AA000000000000000000000D, AA000000000000000000000F, AA0000000000000000000010, AA0000000000000000000030, AB0000000000000000000001, AA0000000000000000000033, AA0000000000000000000037); runOnlyForDeploymentPostprocessing = 0; };
 		AA0000000000000000000072 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000003 /* JieJuTests.swift in Sources */, AA000000000000000000000A, AA000000000000000000000E, AA0000000000000000000035, AA0000000000000000000039); runOnlyForDeploymentPostprocessing = 0; };
 		AA0000000000000000000073 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000004 /* JieJuUITests.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */

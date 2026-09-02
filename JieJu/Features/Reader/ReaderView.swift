@@ -45,45 +45,57 @@ struct ReaderView: View {
     private var content: some View {
         switch model.documentState {
         case .empty:
-            ReaderEmptyView(openAction: model.choosePDF)
+            ReaderEmptyView(openAction: model.chooseDocument)
         case .loading:
-            ProgressView("正在打开 PDF…")
+            ProgressView("正在打开文档…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failed(let error):
             ContentUnavailableView {
-                Label("无法打开 PDF", systemImage: "exclamationmark.triangle")
+                Label("无法打开文档", systemImage: "exclamationmark.triangle")
             } description: {
                 Text(error.localizedDescription)
             } actions: {
-                Button("选择其他 PDF", action: model.choosePDF)
+                Button("选择其他文档", action: model.chooseDocument)
             }
-        case .loaded:
-            if let document = model.document {
-                HSplitView {
-                    ZStack(alignment: .topLeading) {
+        case .loaded(let metadata):
+            HSplitView {
+                ZStack(alignment: .topLeading) {
+                    switch metadata.kind {
+                    case .pdf:
+                        if let document = model.document {
                         PDFReaderView(
                             document: document,
                             initialPageIndex: model.restoredPageIndex,
                             onSelectionChange: model.updateSelection,
                             onPageChange: model.updateCurrentPage
                         )
+                        }
+                    case .epub:
+                        if let epub = model.epubDocument,
+                           epub.chapters.indices.contains(model.currentPageIndex) {
+                            EPUBReaderView(
+                                chapter: epub.chapters[model.currentPageIndex],
+                                onSelectionChange: model.updateSelection
+                            )
+                            .id(epub.chapters[model.currentPageIndex].id)
+                        }
+                    }
                         explanationButton
-                    }
-                    .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
 
-                    if explanationPresentationMode == .sidebar,
-                       model.isExplanationPresented,
-                       let selection = model.selection {
-                        ReaderExplanationPanel(
-                            selectedText: selection.targetText,
-                            state: model.explanationState,
-                            save: model.saveExplanation,
-                            retry: model.requestExplanation,
-                            close: model.dismissExplanation,
-                            presentation: .sidebar
-                        )
-                        .frame(minWidth: 340, idealWidth: 400, maxWidth: 480, maxHeight: .infinity)
-                    }
+                if explanationPresentationMode == .sidebar,
+                   model.isExplanationPresented,
+                   let selection = model.selection {
+                    ReaderExplanationPanel(
+                        selectedText: selection.targetText,
+                        state: model.explanationState,
+                        save: model.saveExplanation,
+                        retry: model.requestExplanation,
+                        close: model.dismissExplanation,
+                        presentation: .sidebar
+                    )
+                    .frame(minWidth: 340, idealWidth: 400, maxWidth: 480, maxHeight: .infinity)
                 }
             }
         }
@@ -99,11 +111,25 @@ struct ReaderView: View {
                 if let pageLabel = model.pageLabel {
                     Text(pageLabel).monospacedDigit().foregroundStyle(.secondary)
                 }
+                if metadata.kind == .epub {
+                    if let epub = model.epubDocument,
+                       epub.chapters.indices.contains(model.currentPageIndex) {
+                        Text(epub.chapters[model.currentPageIndex].title)
+                            .lineLimit(1)
+                            .foregroundStyle(.secondary)
+                    }
+                    Button(action: model.showPreviousChapter) { Image(systemName: "chevron.left") }
+                        .disabled(model.currentPageIndex == 0)
+                        .accessibilityLabel("上一章")
+                    Button(action: model.showNextChapter) { Image(systemName: "chevron.right") }
+                        .disabled(model.currentPageIndex + 1 >= metadata.pageCount)
+                        .accessibilityLabel("下一章")
+                }
                 Button("关闭", action: model.closeDocument)
             } else {
                 Text("JieJu Reader").font(.headline)
                 Spacer()
-                Button("打开 PDF", action: model.choosePDF)
+                Button("打开文档", action: model.chooseDocument)
             }
         }
         .padding(.horizontal, 16)
@@ -150,13 +176,13 @@ private struct ReaderEmptyView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("打开一份 PDF 开始阅读", systemImage: "doc.richtext")
+            Label("打开一本书开始阅读", systemImage: "books.vertical")
         } description: {
-            Text("第一版支持带可选择文本层的 PDF。")
+            Text("支持带文本层的 PDF，以及可重排阅读的 EPUB。")
         } actions: {
-            Button("打开 PDF", action: openAction)
+            Button("打开 PDF 或 EPUB", action: openAction)
                 .keyboardShortcut("o", modifiers: .command)
-                .accessibilityIdentifier("reader.openPDF")
+                .accessibilityIdentifier("reader.openDocument")
         }
     }
 }

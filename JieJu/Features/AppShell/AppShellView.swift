@@ -62,7 +62,7 @@ private struct LearningRecordsView: View {
     var body: some View {
         Group {
             if model.records.isEmpty {
-                ContentUnavailableView("还没有学习记录", systemImage: "text.badge.plus", description: Text("在 PDF 中选择一句话并保存解释。"))
+                ContentUnavailableView("还没有学习记录", systemImage: "text.badge.plus", description: Text("在 PDF 或 EPUB 中选择一句话并保存解释。"))
             } else {
                 List(model.records) { record in
                     VStack(alignment: .leading, spacing: 6) {

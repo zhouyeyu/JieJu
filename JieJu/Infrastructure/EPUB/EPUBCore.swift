@@ -27,13 +27,24 @@ public struct EPUBDocument: Equatable, Sendable {
     }
 }
 
-public enum EPUBError: Error, Equatable, Sendable {
+public enum EPUBError: LocalizedError, Equatable, Sendable {
     case notAnEPUB(String)
     case invalidContainer
     case missingOPF(String)
     case missingSpineItem(String)
     case unsupportedCompression(String)
     case corruptArchive(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .notAnEPUB(let detail): "文件不是有效的 EPUB（\(detail)）"
+        case .invalidContainer: "缺少或无法读取 EPUB 容器信息"
+        case .missingOPF(let detail): "缺少图书目录（\(detail)）"
+        case .missingSpineItem(let item): "阅读顺序引用了缺失章节（\(item)）"
+        case .unsupportedCompression(let detail): "包含暂不支持的压缩格式（\(detail)）"
+        case .corruptArchive(let detail): "EPUB 压缩包已损坏（\(detail)）"
+        }
+    }
 }
 
 // MARK: - 解析入口

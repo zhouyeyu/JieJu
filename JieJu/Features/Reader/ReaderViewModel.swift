@@ -1,11 +1,13 @@
 import AppKit
 import Foundation
 import PDFKit
+import UniformTypeIdentifiers
 
 @MainActor
 final class ReaderViewModel: ObservableObject {
     @Published private(set) var documentState: ReaderDocumentState = .empty
     @Published private(set) var document: PDFDocument?
+    @Published private(set) var epubDocument: EPUBDocument?
     @Published private(set) var currentPageIndex = 0
     @Published var selection: ReaderSelection?
     @Published var explanationState: ReaderExplanationState = .idle
@@ -20,6 +22,7 @@ final class ReaderViewModel: ObservableObject {
     private let sourceLanguage: String
     private var explanationLanguage: String
     private var explanationTask: Task<Void, Never>?
+    private var documentLoadTask: Task<Void, Never>?
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
@@ -53,11 +56,11 @@ final class ReaderViewModel: ObservableObject {
         }
     }
 
-    func choosePDF() {
+    func chooseDocument() {
         let panel = NSOpenPanel()
-        panel.title = "打开 PDF"
+        panel.title = "打开 PDF 或 EPUB"
         panel.prompt = "打开"
-        panel.allowedContentTypes = [.pdf]
+        panel.allowedContentTypes = [.pdf, UTType(filenameExtension: "epub") ?? .data]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -65,6 +68,7 @@ final class ReaderViewModel: ObservableObject {
     }
 
     func open(_ url: URL) {
+        documentLoadTask?.cancel()
         documentState = .loading(url)
         guard FileManager.default.fileExists(atPath: url.path) else {
             fail(.fileUnavailable)
@@ -74,12 +78,18 @@ final class ReaderViewModel: ObservableObject {
             fail(.unreadableFile)
             return
         }
-        guard let pdf = PDFDocument(url: url) else {
-            fail(.invalidPDF)
-            return
+        switch url.pathExtension.lowercased() {
+        case "pdf": openPDF(url)
+        case "epub": openEPUB(url)
+        default: fail(.unsupportedFormat)
         }
+    }
+
+    private func openPDF(_ url: URL) {
+        guard let pdf = PDFDocument(url: url) else { fail(.invalidPDF); return }
 
         document = pdf
+        epubDocument = nil
         selection = nil
         explanationState = .idle
         restoredPageIndex = nil
@@ -89,15 +99,42 @@ final class ReaderViewModel: ObservableObject {
         } else {
             currentPageIndex = 0
         }
-        documentState = .loaded(.init(url: url, pageCount: pdf.pageCount))
+        documentState = .loaded(.init(url: url, pageCount: pdf.pageCount, kind: .pdf))
+    }
+
+    private func openEPUB(_ url: URL) {
+        documentLoadTask = Task { [weak self] in
+            do {
+                let epub = try await Task.detached(priority: .userInitiated) {
+                    try EPUBCore.parse(url: url)
+                }.value
+                try Task.checkCancellation()
+                guard let self, self.documentState == .loading(url) else { return }
+                self.document = nil
+                self.epubDocument = epub
+                self.selection = nil
+                self.explanationState = .idle
+                let saved = self.positionStore.position(for: url) ?? 0
+                self.currentPageIndex = min(max(0, saved), epub.chapters.count - 1)
+                self.restoredPageIndex = nil
+                self.documentState = .loaded(.init(url: url, pageCount: epub.chapters.count, kind: .epub))
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self, self.documentState == .loading(url) else { return }
+                self.fail(.invalidEPUB(error.localizedDescription))
+            }
+        }
     }
 
     func closeDocument() {
+        documentLoadTask?.cancel()
         explanationTask?.cancel()
         if case let .loaded(metadata) = documentState {
             positionStore.save(currentPageIndex, for: metadata.url)
         }
         document = nil
+        epubDocument = nil
         selection = nil
         currentPageIndex = 0
         restoredPageIndex = nil
@@ -107,12 +144,18 @@ final class ReaderViewModel: ObservableObject {
     }
 
     func updateCurrentPage(_ index: Int) {
-        let clamped = max(0, index)
+        let upperBound: Int
+        if case let .loaded(metadata) = documentState { upperBound = max(0, metadata.pageCount - 1) }
+        else { upperBound = Int.max }
+        let clamped = min(max(0, index), upperBound)
         currentPageIndex = clamped
         if case let .loaded(metadata) = documentState {
             positionStore.save(clamped, for: metadata.url)
         }
     }
+
+    func showPreviousChapter() { updateCurrentPage(currentPageIndex - 1) }
+    func showNextChapter() { updateCurrentPage(currentPageIndex + 1) }
 
     func updateSelection(_ selection: ReaderSelection?) {
         self.selection = selection
@@ -167,6 +210,7 @@ final class ReaderViewModel: ObservableObject {
 
     private func fail(_ error: ReaderDocumentError) {
         document = nil
+        epubDocument = nil
         documentState = .failed(error)
     }
 }

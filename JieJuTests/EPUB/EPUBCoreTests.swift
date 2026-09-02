@@ -55,4 +55,27 @@ final class EPUBCoreTests: XCTestCase {
     func testRejectsEmptyData() {
         XCTAssertThrowsError(try EPUBCore.parse(data: Data()))
     }
+
+    @MainActor
+    func testReaderModelOpensEPUBAndClampsChapterNavigation() async throws {
+        let model = ReaderViewModel()
+        model.open(try fixture("minimal"))
+
+        for _ in 0..<200 {
+            if case .loaded = model.documentState { break }
+            await Task.yield()
+        }
+
+        guard case let .loaded(metadata) = model.documentState else {
+            return XCTFail("EPUB did not finish loading")
+        }
+        XCTAssertEqual(metadata.kind, .epub)
+        XCTAssertNotNil(model.epubDocument)
+        XCTAssertNil(model.document)
+
+        model.showPreviousChapter()
+        XCTAssertEqual(model.currentPageIndex, 0)
+        for _ in 0...metadata.pageCount { model.showNextChapter() }
+        XCTAssertEqual(model.currentPageIndex, metadata.pageCount - 1)
+    }
 }

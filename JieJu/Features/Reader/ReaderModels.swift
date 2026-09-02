@@ -22,8 +22,11 @@ enum ReaderDocumentState: Equatable {
 }
 
 struct ReaderDocumentMetadata: Equatable, Sendable {
+    enum Kind: Equatable, Sendable { case pdf, epub }
+
     let url: URL
     let pageCount: Int
+    let kind: Kind
 
     var displayName: String { url.lastPathComponent }
 }
@@ -32,6 +35,8 @@ enum ReaderDocumentError: LocalizedError, Equatable, Sendable {
     case fileUnavailable
     case unreadableFile
     case invalidPDF
+    case invalidEPUB(String)
+    case unsupportedFormat
 
     var errorDescription: String? {
         switch self {
@@ -41,6 +46,10 @@ enum ReaderDocumentError: LocalizedError, Equatable, Sendable {
             return "没有权限读取所选 PDF。"
         case .invalidPDF:
             return "无法打开这个文件。请确认它是有效的 PDF。"
+        case .invalidEPUB(let message):
+            return "无法打开这个 EPUB：\(message)"
+        case .unsupportedFormat:
+            return "目前只支持 PDF 和 EPUB 文件。"
         }
     }
 }
