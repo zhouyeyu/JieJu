@@ -89,6 +89,9 @@ final class EPUBCoreTests: XCTestCase {
 
         model.showPreviousChapter()
         XCTAssertEqual(model.currentPageIndex, 0)
+        model.updateSelection(.init(targetText: "Selected", precedingContext: nil, followingContext: nil, anchorRect: .zero))
+        model.showNextChapter()
+        XCTAssertNil(model.selection)
         for _ in 0...metadata.pageCount { model.showNextChapter() }
         XCTAssertEqual(model.currentPageIndex, metadata.pageCount - 1)
     }
@@ -115,4 +118,43 @@ final class EPUBCoreTests: XCTestCase {
         model.updateEPUBPage(2, pageCount: 3)
         XCTAssertEqual(store.epubPosition(for: url), EPUBReadingPosition(chapterIndex: 1, pageIndex: 2))
     }
+
+    @MainActor
+    func testSavingExplanationPublishesSuccessStateAndPayload() async throws {
+        let recorder = ReaderSavePayloadRecorder()
+        let model = ReaderViewModel(saveHandler: { payload in
+            await recorder.record(payload)
+        })
+        model.open(try fixture("minimal"))
+        for _ in 0..<200 {
+            if case .loaded = model.documentState { break }
+            await Task.yield()
+        }
+        model.updateSelection(.init(
+            targetText: "The first paragraph.",
+            precedingContext: nil,
+            followingContext: nil,
+            anchorRect: .zero
+        ))
+        model.requestExplanation()
+        for _ in 0..<200 {
+            if case .loaded = model.explanationState { break }
+            await Task.yield()
+        }
+
+        model.saveExplanation()
+        for _ in 0..<200 {
+            if model.saveState == .saved { break }
+            await Task.yield()
+        }
+
+        XCTAssertEqual(model.saveState, .saved)
+        let savedPayload = await recorder.payload
+        XCTAssertEqual(savedPayload?.selection.targetText, "The first paragraph.")
+    }
+}
+
+private actor ReaderSavePayloadRecorder {
+    private(set) var payload: ReaderSavePayload?
+    func record(_ payload: ReaderSavePayload) { self.payload = payload }
 }

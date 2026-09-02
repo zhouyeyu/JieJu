@@ -10,6 +10,19 @@
 - 模块集成提交：`3529d0f feat: build parallel reader language and storage modules`
 - 语言修复提交：`a427e01 fix: bind target language into Ollama JSON schema`
 
+### 2026-09-02 额度中断检查点（接手者先读）
+
+- 本轮修复了注音混入选区、翻页残留选区、误选下一句残片、侧栏重排定位、保存反馈和学习记录详情；
+  日语本地语法同时纠正「十八で」并增加「た形＋ばかり」。
+- 语言包 **51 项通过**；App 单元测试 **46 项通过**；随后加入的 `forceLayout()` 原生回退已通过
+  `xcodebuild build`，但因用户中断，尚未重新跑单元测试。
+- XCTest UI Runner 仍因 `Timed out while enabling automation mode` 无法启动，这不是产品断言失败。
+- 重要：真实 EPUB 首版“稳定两次才上报”曾导致一直停在“正在排版”，已改为有限重试，并新增
+  `WKNavigationDelegate.didFinish` 一秒后的 `forceLayout()` 回退。最后构建成功，但界面复测恰好被
+  中断。下一位 Agent 的第一项任务应是打开《ノルウェイの森》，确认约 1 秒后从“正在排版”进入
+  `本章 P / N 页`；若仍不退出，优先检查 `EPUBWebReaderView.Coordinator.didFinish` 的 JS 返回类型。
+- `.workbuddy/` 仍是用户未跟踪目录，未修改、未纳入提交。
+
 ## 本次完成内容
 
 - 完成 `EPUB-211C`：设置页 EPUB 排版区域增加实时页面预览，字号、行距、左右边距和四种主题均

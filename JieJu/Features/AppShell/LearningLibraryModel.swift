@@ -20,7 +20,7 @@ final class LearningLibraryModel: ObservableObject {
         }
     }
 
-    func save(_ payload: ReaderSavePayload, modelName: String?) async {
+    func save(_ payload: ReaderSavePayload, modelName: String?) async throws {
         let record = SavedExplanationRecord(
             document: DocumentIdentity(id: payload.documentURL.standardizedFileURL.path, fileName: payload.documentURL.lastPathComponent),
             pageIndex: payload.pageIndex,
@@ -44,6 +44,7 @@ final class LearningLibraryModel: ObservableObject {
             await reload()
         } catch {
             errorMessage = error.localizedDescription
+            throw error
         }
     }
 
@@ -56,4 +57,3 @@ final class LearningLibraryModel: ObservableObject {
         }
     }
 }
-

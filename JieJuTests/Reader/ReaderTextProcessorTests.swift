@@ -32,4 +32,13 @@ final class ReaderTextProcessorTests: XCTestCase {
         XCTAssertEqual(result.preceding, "前一句。")
         XCTAssertEqual(result.following, "后一句？")
     }
+
+    func testPreparedSelectionDropsAccidentalTrailingSentenceFragment() {
+        XCTAssertEqual(
+            ReaderTextProcessor.preparedSelection("僕は十八で、大学に入ったばかりだった。東京の"),
+            "僕は十八で、大学に入ったばかりだった。"
+        )
+        XCTAssertEqual(ReaderTextProcessor.preparedSelection("東京の"), "東京の")
+        XCTAssertEqual(ReaderTextProcessor.preparedSelection("第一句。第二句。"), "第一句。第二句。")
+    }
 }

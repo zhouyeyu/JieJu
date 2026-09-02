@@ -188,7 +188,15 @@ public enum JapaneseGrammarAnalyzer {
         var result: [GrammarPoint] = []
         for index in tokens.indices where isSemanticParticle(at: index, tokens: tokens) {
             let token = tokens[index]
-            guard let explanation = table[token.surface], !result.contains(where: { $0.text == token.surface }) else { continue }
+            let explanation: String?
+            if isAgeConnectorDe(at: index, tokens: tokens) {
+                explanation = chinese
+                    ? "这里不是表示场所或手段的格助词，而是名词判断「十八だ」的连接形式「十八で」，相当于“十八岁，并且……”。"
+                    : "Here で is the connective form of the nominal predicate 十八だ, linking 'was eighteen' to the following statement; it is not a location/means particle."
+            } else {
+                explanation = table[token.surface]
+            }
+            guard let explanation, !result.contains(where: { $0.text == token.surface }) else { continue }
             result.append(.init(text: token.surface, explanation: explanation))
         }
         let constructions: [(String, String, String)] = [
@@ -197,6 +205,7 @@ public enum JapaneseGrammarAnalyzer {
             ("ている", "「て形＋いる」表示动作正在进行、反复持续或动作完成后的结果状态。", "The ている construction expresses an ongoing/repeated action or a resulting state."),
             ("ません", "「ます」的否定形式，使谓语成为礼貌体现在／将来否定。", "Negative form of ます, making the predicate a polite non-past negative."),
             ("ました", "「ます」的过去形式，使谓语成为礼貌体过去／完成表达。", "Past form of ます, making the predicate polite past or completed."),
+            ("たばかり", "「动词た形＋ばかり」表示动作刚刚完成；后接「だった」时，整句以过去视角说明当时处于“刚做完”的状态。", "Verb past form + ばかり means an action has just been completed; だった places that resulting state in the past."),
             ("たい", "接在动词连用形后表示说话者想做某事。", "Attaches to a verb stem to express the speaker's desire to act.")
         ]
         for (form, zh, en) in constructions where text.contains(form) && result.count < 6 {
@@ -211,13 +220,17 @@ public enum JapaneseGrammarAnalyzer {
         var components: [SentenceComponent] = []
         var consumed = Set<Int>()
         for index in tokens.indices where isSemanticParticle(at: index, tokens: tokens) && index > 0 {
-            guard let zh = labelsZH[tokens[index].surface], !consumed.contains(index - 1) else { continue }
-            let surface = tokens[index - 1].surface + tokens[index].surface
+            guard let defaultZH = labelsZH[tokens[index].surface], !consumed.contains(index - 1) else { continue }
+            let zh = isAgeConnectorDe(at: index, tokens: tokens) ? "年龄状态／连接" : defaultZH
+            let phraseRange = phraseRange(endingAt: index - 1, tokens: tokens)
+            let surface = tokens[phraseRange].map(\.surface).joined() + tokens[index].surface
             let role = chinese ? zh : "\(tokens[index].surface)-marked phrase"
             parts.append("\(role)(\(surface))")
             components.append(.init(text: surface, role: role,
-                                    explanation: chinese ? "由助词「\(tokens[index].surface)」标记的\(zh)成分。" : "A phrase marked by \(tokens[index].surface)."))
-            consumed.insert(index - 1); consumed.insert(index)
+                                    explanation: chinese && isAgeConnectorDe(at: index, tokens: tokens)
+                                        ? "「\(surface)」连接年龄判断与后续叙述，不表示动作场所或手段。"
+                                        : (chinese ? "由助词「\(tokens[index].surface)」标记的\(zh)成分。" : "A phrase marked by \(tokens[index].surface).")))
+            consumed.formUnion(phraseRange); consumed.insert(index)
         }
         if let verbIndex = tokens.firstIndex(where: { $0.partOfSpeech == "verb" }) {
             let predicate = tokens[verbIndex...].map(\.surface).joined()
@@ -242,6 +255,25 @@ public enum JapaneseGrammarAnalyzer {
         // part of て-form (読んで), not the case particle for location or means.
         if tokens[index].surface == "で", index > 0, tokens[index - 1].partOfSpeech == "verb" { return false }
         return true
+    }
+
+    private static func phraseRange(endingAt end: Int, tokens: [JapaneseMorphologicalToken]) -> ClosedRange<Int> {
+        var start = end
+        while start > 0 {
+            let previous = tokens[start - 1]
+            if previous.partOfSpeech == "particle" || previous.partOfSpeech == "symbol" || previous.partOfSpeech == "verb" {
+                break
+            }
+            start -= 1
+        }
+        return start...end
+    }
+
+    private static func isAgeConnectorDe(at index: Int, tokens: [JapaneseMorphologicalToken]) -> Bool {
+        guard tokens.indices.contains(index), tokens[index].surface == "で", index > 0 else { return false }
+        let phrase = tokens[phraseRange(endingAt: index - 1, tokens: tokens)].map(\.surface).joined()
+        let ageCharacters = CharacterSet(charactersIn: "0123456789〇零一二三四五六七八九十百千歳")
+        return !phrase.isEmpty && phrase.unicodeScalars.allSatisfy { ageCharacters.contains($0) }
     }
 }
 

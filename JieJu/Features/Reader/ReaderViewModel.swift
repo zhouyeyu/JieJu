@@ -13,6 +13,7 @@ final class ReaderViewModel: ObservableObject {
     @Published var selection: ReaderSelection?
     @Published var explanationState: ReaderExplanationState = .idle
     @Published var deepAnalysisState: ReaderDeepAnalysisState = .idle
+    @Published private(set) var saveState: ReaderSaveState = .idle
     @Published var isExplanationPresented = false
     @Published private(set) var epubOpenAtEnd = false
     @Published private(set) var currentEPUBPageIndex = 0
@@ -22,17 +23,18 @@ final class ReaderViewModel: ObservableObject {
     private(set) var restoredEPUBPageIndex: Int?
 
     private var explanationProvider: any ReaderExplanationProviding
-    private let saveHandler: @MainActor (ReaderSavePayload) -> Void
+    private let saveHandler: @MainActor (ReaderSavePayload) async throws -> Void
     private let positionStore: ReadingPositionStore
     private let fallbackSourceLanguage: String
     private var explanationLanguage: String
     private var explanationTask: Task<Void, Never>?
     private var deepAnalysisTask: Task<Void, Never>?
     private var documentLoadTask: Task<Void, Never>?
+    private var saveTask: Task<Void, Never>?
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
-        saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in },
+        saveHandler: @escaping @MainActor (ReaderSavePayload) async throws -> Void = { _ in },
         positionStore: ReadingPositionStore = ReadingPositionStore(),
         sourceLanguage: String = "English",
         explanationLanguage: String = "Chinese"
@@ -56,12 +58,14 @@ final class ReaderViewModel: ObservableObject {
     ) {
         explanationTask?.cancel()
         deepAnalysisTask?.cancel()
+        saveTask?.cancel()
         explanationProvider = provider
         self.explanationLanguage = explanationLanguage
         if isExplanationPresented {
             isExplanationPresented = false
             explanationState = .idle
             deepAnalysisState = .idle
+            saveState = .idle
         }
     }
 
@@ -105,6 +109,7 @@ final class ReaderViewModel: ObservableObject {
         selection = nil
         explanationState = .idle
         deepAnalysisState = .idle
+        saveState = .idle
         restoredPageIndex = nil
         if let saved = positionStore.position(for: url), saved > 0, saved < pdf.pageCount {
             currentPageIndex = saved
@@ -128,6 +133,7 @@ final class ReaderViewModel: ObservableObject {
                 self.selection = nil
                 self.explanationState = .idle
                 self.deepAnalysisState = .idle
+                self.saveState = .idle
                 let savedPosition = self.positionStore.epubPosition(for: url)
                 let savedChapter = savedPosition?.chapterIndex ?? self.positionStore.position(for: url) ?? 0
                 self.currentPageIndex = min(max(0, savedChapter), epub.chapters.count - 1)
@@ -149,6 +155,7 @@ final class ReaderViewModel: ObservableObject {
         documentLoadTask?.cancel()
         explanationTask?.cancel()
         deepAnalysisTask?.cancel()
+        saveTask?.cancel()
         if case let .loaded(metadata) = documentState {
             positionStore.save(currentPageIndex, for: metadata.url)
         }
@@ -161,6 +168,7 @@ final class ReaderViewModel: ObservableObject {
         restoredEPUBPageIndex = nil
         explanationState = .idle
         deepAnalysisState = .idle
+        saveState = .idle
         isExplanationPresented = false
         documentState = .empty
     }
@@ -170,6 +178,11 @@ final class ReaderViewModel: ObservableObject {
         if case let .loaded(metadata) = documentState { upperBound = max(0, metadata.pageCount - 1) }
         else { upperBound = Int.max }
         let clamped = min(max(0, index), upperBound)
+        if clamped != currentPageIndex,
+           case let .loaded(metadata) = documentState,
+           metadata.kind == .epub {
+            updateSelection(nil)
+        }
         currentPageIndex = clamped
         if case let .loaded(metadata) = documentState {
             if metadata.kind == .epub {
@@ -185,6 +198,7 @@ final class ReaderViewModel: ObservableObject {
 
     func showPreviousChapter() {
         guard currentPageIndex > 0 else { return }
+        updateSelection(nil)
         epubOpenAtEnd = true
         restoredEPUBPageIndex = nil
         currentEPUBPageIndex = 0
@@ -194,6 +208,7 @@ final class ReaderViewModel: ObservableObject {
     func showNextChapter() {
         guard case let .loaded(metadata) = documentState,
               currentPageIndex + 1 < metadata.pageCount else { return }
+        updateSelection(nil)
         epubOpenAtEnd = false
         restoredEPUBPageIndex = nil
         currentEPUBPageIndex = 0
@@ -209,6 +224,10 @@ final class ReaderViewModel: ObservableObject {
     }
 
     func updateSelection(_ selection: ReaderSelection?) {
+        if self.selection != selection {
+            saveTask?.cancel()
+            saveState = .idle
+        }
         self.selection = selection
         if selection == nil {
             isExplanationPresented = false
@@ -227,6 +246,7 @@ final class ReaderViewModel: ObservableObject {
         isExplanationPresented = true
         explanationState = .loading
         deepAnalysisState = .idle
+        saveState = .idle
         explanationTask = Task { [weak self, explanationProvider] in
             do {
                 let stream = try await explanationProvider.explanationStream(request)
@@ -284,14 +304,27 @@ final class ReaderViewModel: ObservableObject {
             let selection
         else { return }
         let sourceLanguage = detectedSourceLanguage
-        saveHandler(.init(
+        let payload = ReaderSavePayload(
             documentURL: metadata.url,
             pageIndex: currentPageIndex,
             selection: selection,
             explanation: explanation,
             sourceLanguage: sourceLanguage,
             explanationLanguage: explanationLanguage
-        ))
+        )
+        saveTask?.cancel()
+        saveState = .saving
+        saveTask = Task { [weak self, saveHandler] in
+            do {
+                try await saveHandler(payload)
+                try Task.checkCancellation()
+                self?.saveState = .saved
+            } catch is CancellationError {
+                return
+            } catch {
+                self?.saveState = .failed(error.localizedDescription)
+            }
+        }
     }
 
     private var detectedSourceLanguage: String {

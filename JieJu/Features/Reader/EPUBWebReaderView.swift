@@ -16,26 +16,38 @@ struct EPUBPagedReaderView: View {
     @State private var pageIndex = 0
     @State private var pageCount = 1
     @State private var command = EPUBPageCommand.none
+    @State private var isPaginationReady = false
 
     private var chapter: EPUBChapter { document.chapters[chapterIndex] }
 
     var body: some View {
         VStack(spacing: 0) {
-            EPUBWebReaderView(
-                document: document,
-                chapter: chapter,
-                initialPageIndex: initialPageIndex,
-                initialPageAtEnd: initialPageAtEnd,
-                readingStyle: readingStyle,
-                command: command,
-                onPaginationChange: { page, count in
-                    pageIndex = page
-                    pageCount = max(1, count)
-                    onPageChange(page, count)
-                },
-                onSelectionChange: onSelectionChange
-            )
-            .id(chapter.id)
+            ZStack {
+                EPUBWebReaderView(
+                    document: document,
+                    chapter: chapter,
+                    initialPageIndex: initialPageIndex,
+                    initialPageAtEnd: initialPageAtEnd,
+                    readingStyle: readingStyle,
+                    command: command,
+                    onPaginationChange: { page, count in
+                        pageIndex = page
+                        pageCount = max(1, count)
+                        isPaginationReady = true
+                        onPageChange(page, count)
+                    },
+                    onSelectionChange: onSelectionChange
+                )
+                .id(chapter.id)
+
+                if !isPaginationReady {
+                    readingStyle.theme.swiftUIColor
+                        .ignoresSafeArea()
+                    ProgressView("正在排版…")
+                        .padding(18)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
 
             Divider()
             HStack(spacing: 14) {
@@ -46,7 +58,9 @@ struct EPUBPagedReaderView: View {
                 ProgressView(value: Double(pageIndex + 1), total: Double(pageCount))
                     .progressViewStyle(.linear)
                     .frame(width: 120)
-                Text("第 \(chapterIndex + 1) / \(document.chapters.count) 章 · 本章 \(pageIndex + 1) / \(pageCount) 页")
+                Text(isPaginationReady
+                     ? "第 \(chapterIndex + 1) / \(document.chapters.count) 章 · 本章 \(pageIndex + 1) / \(pageCount) 页"
+                     : "第 \(chapterIndex + 1) / \(document.chapters.count) 章 · 正在排版…")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .frame(minWidth: 180)
@@ -62,15 +76,18 @@ struct EPUBPagedReaderView: View {
             pageIndex = 0
             pageCount = 1
             command = .none
+            isPaginationReady = false
         }
     }
 
     private func previousPage() {
+        onSelectionChange(nil)
         if pageIndex > 0 { command = .previous(UUID()) }
         else { onPreviousChapter() }
     }
 
     private func nextPage() {
+        onSelectionChange(nil)
         if pageIndex + 1 < pageCount { command = .next(UUID()) }
         else { onNextChapter() }
     }
@@ -169,7 +186,7 @@ private struct EPUBWebReaderView: NSViewRepresentable {
         }
 
         private func receiveSelection(_ body: [String: Any]) {
-            let text = ReaderTextProcessor.clean(body["text"] as? String ?? "")
+            let text = ReaderTextProcessor.preparedSelection(body["text"] as? String ?? "")
             guard !text.isEmpty else { parent.onSelectionChange(nil); return }
             let surrounding = body["surrounding"] as? String ?? ""
             let context = ReaderTextProcessor.context(for: text, in: surrounding)
@@ -194,6 +211,18 @@ private struct EPUBWebReaderView: NSViewRepresentable {
                 decisionHandler(.cancel); return
             }
             decisionHandler(scheme == EPUBSchemeHandler.scheme ? .allow : .cancel)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self, weak webView] in
+                guard let self, let webView else { return }
+                webView.evaluateJavaScript("window.JieJuReader && window.JieJuReader.forceLayout()") { result, _ in
+                    guard let body = result as? [String: Any] else { return }
+                    let page = body["page"] as? Int ?? 0
+                    let count = body["count"] as? Int ?? 1
+                    self.parent.onPaginationChange(page, count)
+                }
+            }
         }
     }
 }
@@ -276,6 +305,7 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         ::selection { background: color-mix(in srgb, \(readingStyle.theme.linkCSS) 35%, transparent) !important; }
         img, svg { max-width: 100%; max-height: 80vh; object-fit: contain; }
         ruby rt { display: \(rubyVisibility); font-size: 0.55em; user-select: none; -webkit-user-select: none; }
+        ruby rt[data-jieju-reading]::before { content: attr(data-jieju-reading); }
         ruby rp { display: none; user-select: none; -webkit-user-select: none; }
         </style>
         <script>
@@ -283,6 +313,8 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         window.addEventListener('load', () => JieJuReader.observeAndLayout());
         window.addEventListener('resize', () => JieJuReader.scheduleLayout());
         document.addEventListener('mouseup', () => setTimeout(() => JieJuReader.selection(), 0));
+        document.addEventListener('DOMContentLoaded', () =>
+          setTimeout(() => JieJuReader.makeReadingsPresentationOnly(), 0));
         \(furiganaScript)
         </script>
         """
@@ -304,6 +336,8 @@ private extension EPUBReaderTheme {
         case .sage: NSColor(deviceRed: 221 / 255, green: 232 / 255, blue: 213 / 255, alpha: 1)
         }
     }
+
+    var swiftUIColor: Color { Color(nsColor: webBackgroundColor) }
 }
 
 enum EPUBWebScript {
@@ -312,6 +346,9 @@ enum EPUBWebScript {
         window.JieJuReader = {
           page: 0,
           layoutTimer: null,
+          layoutAttempts: 0,
+          committedPageCount: 1,
+          pendingAnchor: null,
           viewportWidth: function() {
             return Math.max(1, document.documentElement.clientWidth || window.innerWidth);
           },
@@ -324,6 +361,64 @@ enum EPUBWebScript {
             clearTimeout(this.layoutTimer);
             this.layoutTimer = setTimeout(() => this.layout(), 80);
           },
+          captureAnchor: function() {
+            if (!this.didApplyInitialPage) return null;
+            const fallback = (this.page + 0.5) / Math.max(1, this.committedPageCount);
+            if (!document.caretRangeFromPoint) return {fallback: fallback};
+            const x = Math.min(this.viewportWidth() - 2, \(horizontalMargin) + 8);
+            for (let y = 42; y < Math.min(window.innerHeight - 24, 260); y += 28) {
+              const range = document.caretRangeFromPoint(x, y);
+              if (range && range.startContainer) {
+                return {node: range.startContainer, offset: range.startOffset, fallback: fallback};
+              }
+            }
+            return {fallback: fallback};
+          },
+          pageForAnchor: function(anchor, count, width) {
+            if (anchor && anchor.node && document.contains(anchor.node)) {
+              try {
+                const range = document.createRange();
+                const length = anchor.node.nodeType === Node.TEXT_NODE ? anchor.node.length : anchor.node.childNodes.length;
+                range.setStart(anchor.node, Math.min(anchor.offset, length));
+                range.collapse(true);
+                const rect = range.getBoundingClientRect();
+                const absoluteX = rect.left + window.scrollX;
+                if (Number.isFinite(absoluteX) && absoluteX >= 0) {
+                  return Math.min(count - 1, Math.max(0, Math.floor(absoluteX / width)));
+                }
+              } catch (_) {}
+            }
+            const fallback = anchor && Number.isFinite(anchor.fallback) ? anchor.fallback : 0;
+            return Math.min(count - 1, Math.max(0, Math.floor(fallback * count)));
+          },
+          commitLayout: function(count, width) {
+            if (location.hash === '#jieju-end' && !this.didApplyInitialPage) {
+              this.page = count - 1; this.didApplyInitialPage = true;
+            } else if (location.hash.startsWith('#jieju-page-') && !this.didApplyInitialPage) {
+              const restored = Number.parseInt(location.hash.slice('#jieju-page-'.length), 10);
+              this.page = Number.isFinite(restored) ? Math.min(Math.max(0, restored), count - 1) : 0;
+              this.didApplyInitialPage = true;
+            } else if (!this.didApplyInitialPage) {
+              this.page = 0; this.didApplyInitialPage = true;
+            } else {
+              this.page = this.pageForAnchor(this.pendingAnchor, count, width);
+            }
+            this.committedPageCount = count;
+            this.pendingAnchor = null;
+            window.scrollTo(this.page * width, 0);
+            const result = {page: this.page, count: count};
+            webkit.messageHandlers.pagination.postMessage(result);
+            return result;
+          },
+          forceLayout: function() {
+            const width = this.viewportWidth();
+            if (!document.body || width < 1) return {page: 0, count: 1};
+            if (!this.pendingAnchor) this.pendingAnchor = this.captureAnchor();
+            document.body.style.width = width + 'px';
+            document.body.style.height = window.innerHeight + 'px';
+            document.body.style.columnWidth = Math.max(1, width - \(horizontalMargin * 2)) + 'px';
+            return this.commitLayout(this.pageCount(), width);
+          },
           observeAndLayout: function() {
             document.body.querySelectorAll('img, svg, video').forEach(element => {
               if (!element.complete) element.addEventListener('load', () => this.scheduleLayout(), {once: true});
@@ -335,23 +430,29 @@ enum EPUBWebScript {
           },
           layout: function() {
             const width = this.viewportWidth();
+            if (width < 200 || window.innerHeight < 200 || !document.body) {
+              this.scheduleLayout(); return;
+            }
+            if (!this.pendingAnchor) this.pendingAnchor = this.captureAnchor();
             document.body.style.width = width + 'px';
             document.body.style.height = window.innerHeight + 'px';
             document.body.style.columnWidth = Math.max(1, width - \(horizontalMargin * 2)) + 'px';
             requestAnimationFrame(() => {
               const count = this.pageCount();
-              if (location.hash === '#jieju-end' && !this.didApplyInitialPage) {
-                this.page = count - 1; this.didApplyInitialPage = true;
-              } else if (location.hash.startsWith('#jieju-page-') && !this.didApplyInitialPage) {
-                const restored = Number.parseInt(location.hash.slice('#jieju-page-'.length), 10);
-                this.page = Number.isFinite(restored) ? Math.min(Math.max(0, restored), count - 1) : 0;
-                this.didApplyInitialPage = true;
-              } else { this.page = Math.min(this.page, count - 1); }
-              window.scrollTo(this.page * width, 0);
-              webkit.messageHandlers.pagination.postMessage({page: this.page, count: count});
+              const textLength = (document.body.innerText || '').trim().length;
+              if (count === 1 && textLength > 1200 && this.layoutAttempts < 10) {
+                this.layoutAttempts += 1;
+                this.scheduleLayout();
+                return;
+              }
+              this.layoutAttempts = 0;
+              this.commitLayout(count, width);
             });
           },
           turnPage: function(delta) {
+            const selection = window.getSelection();
+            if (selection) selection.removeAllRanges();
+            webkit.messageHandlers.selection.postMessage({text: ''});
             const width = this.viewportWidth();
             const count = this.pageCount();
             this.page = Math.max(0, Math.min(count - 1, this.page + delta));
@@ -375,6 +476,15 @@ enum EPUBWebScript {
             const surrounding = this.textWithoutReadings(document.body);
             webkit.messageHandlers.selection.postMessage({text: text, surrounding: surrounding,
               x: rect.x, y: rect.y, width: rect.width, height: rect.height});
+          },
+          makeReadingsPresentationOnly: function() {
+            document.querySelectorAll('rt').forEach(rt => {
+              if (!rt.hasAttribute('data-jieju-reading')) {
+                rt.setAttribute('data-jieju-reading', rt.textContent || '');
+                rt.textContent = '';
+              }
+              rt.setAttribute('aria-hidden', 'true');
+            });
           }
         };
         """

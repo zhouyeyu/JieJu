@@ -12,7 +12,7 @@ struct ReaderView: View {
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
-        saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in },
+        saveHandler: @escaping @MainActor (ReaderSavePayload) async throws -> Void = { _ in },
         explanationLanguage: String = "Chinese",
         configurationID: String = "default",
         explanationPresentationMode: ExplanationPresentationMode = .sidebar,
@@ -106,6 +106,7 @@ struct ReaderView: View {
                             state: model.explanationState,
                             deepAnalysisState: model.deepAnalysisState,
                             save: model.saveExplanation,
+                            saveState: model.saveState,
                             retry: model.requestExplanation,
                             analyzeDeep: model.requestDeepAnalysis,
                             furiganaDisplayMode: furiganaDisplayMode,
@@ -179,6 +180,7 @@ struct ReaderView: View {
                         state: model.explanationState,
                         deepAnalysisState: model.deepAnalysisState,
                         save: model.saveExplanation,
+                        saveState: model.saveState,
                         retry: model.requestExplanation,
                         analyzeDeep: model.requestDeepAnalysis,
                         furiganaDisplayMode: furiganaDisplayMode,
@@ -216,6 +218,7 @@ struct ReaderExplanationPanel: View {
     let state: ReaderExplanationState
     let deepAnalysisState: ReaderDeepAnalysisState
     let save: () -> Void
+    let saveState: ReaderSaveState
     let retry: () -> Void
     let analyzeDeep: () -> Void
     let furiganaDisplayMode: FuriganaDisplayMode
@@ -304,9 +307,31 @@ struct ReaderExplanationPanel: View {
                 }
             } else {
                 deepAnalysisContent
-                Button("保存到学习记录", systemImage: "bookmark", action: save)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                saveControl
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var saveControl: some View {
+        switch saveState {
+        case .idle:
+            Button("保存到学习记录", systemImage: "bookmark", action: save)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+        case .saving:
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small)
+                Text("正在保存…").foregroundStyle(.secondary)
+            }
+        case .saved:
+            Label("已保存到学习记录", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 8) {
+                Label("保存失败：\(message)", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+                Button("重试保存", action: save)
             }
         }
     }

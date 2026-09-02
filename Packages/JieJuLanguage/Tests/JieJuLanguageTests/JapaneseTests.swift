@@ -75,4 +75,22 @@ import Testing
         #expect(enriched.japaneseWords?.contains { $0.text == "読ん" && $0.baseForm == "読む" } == true)
         #expect(try enriched.validated(against: request) == enriched)
     }
+
+    @Test func ageConnectorDeIsNotExplainedAsLocationOrMeans() throws {
+        let request = ExplanationRequest(
+            targetText: "僕は十八で、大学に入ったばかりだった。",
+            sourceLanguage: "Japanese",
+            explanationLanguage: "Chinese"
+        )
+        let enriched = JapaneseGrammarAnalyzer.enrich(
+            DeepAnalysis(sentenceType: "", sentencePattern: "", components: [], clauses: [], grammarPoints: [], interpretation: "我十八岁，刚上大学。", japaneseWords: []),
+            request: request
+        )
+
+        let de = try #require(enriched.grammarPoints.first { $0.text == "で" })
+        #expect(de.explanation.contains("十八だ"))
+        #expect(!de.explanation.contains("标记动作发生的场所"))
+        #expect(enriched.sentencePattern.contains("年龄状态／连接(十八で)"))
+        #expect(enriched.grammarPoints.contains { $0.text == "たばかり" && $0.explanation.contains("刚刚完成") })
+    }
 }

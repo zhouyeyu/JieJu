@@ -184,6 +184,13 @@ enum ReaderExplanationState: Equatable, Sendable {
     case failed(String)
 }
 
+enum ReaderSaveState: Equatable, Sendable {
+    case idle
+    case saving
+    case saved
+    case failed(String)
+}
+
 protocol ReaderExplanationProviding: Sendable {
     func explain(_ request: ReaderExplanationRequest) async throws -> ReaderExplanation
     func explanationStream(_ request: ReaderExplanationRequest) async throws -> AsyncThrowingStream<ReaderExplanation, Error>

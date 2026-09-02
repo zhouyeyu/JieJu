@@ -63,7 +63,7 @@ struct AppShellView: View {
         ReaderView(
             explanationProvider: settings.providerSnapshot,
             saveHandler: { payload in
-                Task { await library.save(payload, modelName: settings.provider == .ollama ? settings.modelName : "mock") }
+                try await library.save(payload, modelName: settings.provider == .ollama ? settings.modelName : "mock")
             },
             explanationLanguage: settings.explanationLanguage,
             configurationID: "\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)",
@@ -82,23 +82,117 @@ struct AppShellView: View {
 
 private struct LearningRecordsView: View {
     @ObservedObject var model: LearningLibraryModel
+    @State private var selectedRecordID: UUID?
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            if let error = model.errorMessage {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+                    .padding(12)
+            }
             if model.records.isEmpty {
                 ContentUnavailableView("还没有学习记录", systemImage: "text.badge.plus", description: Text("在 PDF 或 EPUB 中选择一句话并保存解释。"))
             } else {
-                List(model.records) { record in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(record.request.targetText).font(.headline)
-                        Text(record.explanation.translation).foregroundStyle(.secondary)
-                        Text(record.document.fileName).font(.caption).foregroundStyle(.tertiary)
+                HSplitView {
+                    List(model.records, selection: $selectedRecordID) { record in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(record.request.targetText).font(.headline).lineLimit(2)
+                            Text(record.explanation.translation).foregroundStyle(.secondary).lineLimit(2)
+                            Text(record.document.fileName).font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                        }
+                        .tag(record.id)
+                        .contextMenu { Button("删除", role: .destructive) { Task { await model.delete(record) } } }
                     }
-                    .contextMenu { Button("删除", role: .destructive) { Task { await model.delete(record) } } }
+                    .frame(minWidth: 280, idealWidth: 340, maxWidth: 440)
+
+                    if let record = selectedRecord {
+                        LearningRecordDetail(record: record) {
+                            Task { await model.delete(record) }
+                        }
+                    } else {
+                        ContentUnavailableView("选择一条学习记录", systemImage: "text.book.closed")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
             }
         }
         .navigationTitle("学习记录")
+        .onChange(of: model.records.map(\.id), initial: true) { _, ids in
+            if let selectedRecordID, ids.contains(selectedRecordID) { return }
+            selectedRecordID = ids.first
+        }
+    }
+
+    private var selectedRecord: SavedExplanationRecord? {
+        guard let selectedRecordID else { return nil }
+        return model.records.first { $0.id == selectedRecordID }
+    }
+}
+
+private struct LearningRecordDetail: View {
+    let record: SavedExplanationRecord
+    let delete: () -> Void
+    @State private var confirmsDeletion = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(record.request.targetText)
+                    .font(.title3.weight(.semibold))
+                    .textSelection(.enabled)
+
+                detailCard("翻译", value: record.explanation.translation)
+                detailCard("句子主干", value: record.explanation.sentenceCore)
+                if !record.explanation.grammarPoints.isEmpty {
+                    listCard("语法", values: record.explanation.grammarPoints.map(\.explanation))
+                }
+                if !record.explanation.keyPhrases.isEmpty {
+                    listCard("重点表达", values: record.explanation.keyPhrases.map(\.meaning))
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(record.document.fileName).lineLimit(2)
+                    if let page = record.pageIndex { Text("位置：\(page + 1)") }
+                    if let model = record.explanation.modelName { Text("模型：\(model)") }
+                    Text(record.updatedAt.formatted(date: .abbreviated, time: .shortened))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                Button("删除这条记录", systemImage: "trash", role: .destructive) {
+                    confirmsDeletion = true
+                }
+            }
+            .frame(maxWidth: 720, alignment: .leading)
+            .padding(24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .confirmationDialog("确定删除这条学习记录？", isPresented: $confirmsDeletion) {
+            Button("删除", role: .destructive, action: delete)
+        }
+    }
+
+    private func detailCard(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.headline)
+            Text(value).textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func listCard(_ title: String, values: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(title).font(.headline)
+            ForEach(Array(values.enumerated()), id: \.offset) { index, value in
+                Text("\(index + 1). \(value)").textSelection(.enabled)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
     }
 }
 

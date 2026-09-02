@@ -92,6 +92,22 @@ final class JieJuTests: XCTestCase {
         XCTAssertTrue(script.contains("range.cloneContents()"))
         XCTAssertTrue(script.contains("querySelectorAll('rt, rp')"))
         XCTAssertTrue(script.contains("textWithoutReadings(document.body)"))
+        XCTAssertTrue(script.contains("makeReadingsPresentationOnly"))
+        XCTAssertTrue(script.contains("data-jieju-reading"))
+        XCTAssertTrue(script.contains("rt.textContent = ''"))
+        XCTAssertTrue(script.contains("selection.removeAllRanges()"))
+    }
+
+    func testEPUBScriptWaitsForStablePaginationAndPreservesTextAnchor() {
+        let script = EPUBWebScript.script(horizontalMargin: 54)
+
+        XCTAssertTrue(script.contains("layoutAttempts"))
+        XCTAssertTrue(script.contains("textLength > 1200"))
+        XCTAssertTrue(script.contains("captureAnchor"))
+        XCTAssertTrue(script.contains("pageForAnchor"))
+        XCTAssertTrue(script.contains("forceLayout"))
+        XCTAssertTrue(script.contains("document.caretRangeFromPoint"))
+        XCTAssertTrue(script.contains("requestAnimationFrame"))
     }
 
     func testEPUBInjectionBuildsPaginatedBodyViewportForLongChapter() {
@@ -124,6 +140,7 @@ final class JieJuTests: XCTestCase {
             XCTAssertTrue(renderedHTML.contains("body * { color: \(theme.foregroundCSS) !important"))
             XCTAssertTrue(renderedHTML.contains("font-size: 18.0px !important"))
             XCTAssertTrue(renderedHTML.contains("line-height: 1.75 !important"))
+            XCTAssertTrue(renderedHTML.contains("rt[data-jieju-reading]::before"))
         }
     }
 

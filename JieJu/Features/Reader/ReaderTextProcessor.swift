@@ -34,6 +34,19 @@ enum ReaderTextProcessor {
         return (preceding?.nilIfEmpty, following?.nilIfEmpty)
     }
 
+    /// Removes an accidental trailing sentence fragment while preserving deliberate
+    /// fragment-only and multi-sentence selections.
+    static func preparedSelection(_ text: String) -> String {
+        let cleaned = clean(text)
+        guard let terminator = cleaned.lastIndex(where: { ".!?。！？".contains($0) }) else {
+            return cleaned
+        }
+        let remainder = cleaned[cleaned.index(after: terminator)...]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !remainder.isEmpty else { return cleaned }
+        return String(cleaned[...terminator])
+    }
+
     private static func sentenceRanges(in text: String) -> [Range<String.Index>] {
         var result: [Range<String.Index>] = []
         var start = text.startIndex
