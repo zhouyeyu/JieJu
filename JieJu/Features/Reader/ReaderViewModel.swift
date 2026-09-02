@@ -12,6 +12,7 @@ final class ReaderViewModel: ObservableObject {
     @Published var selection: ReaderSelection?
     @Published var explanationState: ReaderExplanationState = .idle
     @Published var isExplanationPresented = false
+    @Published private(set) var epubOpenAtEnd = false
 
     /// 打开文档时希望 PDFView 定位到的页码；为 nil 表示从第一页开始。
     private(set) var restoredPageIndex: Int?
@@ -86,6 +87,7 @@ final class ReaderViewModel: ObservableObject {
     }
 
     private func openPDF(_ url: URL) {
+        epubOpenAtEnd = false
         guard let pdf = PDFDocument(url: url) else { fail(.invalidPDF); return }
 
         document = pdf
@@ -117,6 +119,7 @@ final class ReaderViewModel: ObservableObject {
                 let saved = self.positionStore.position(for: url) ?? 0
                 self.currentPageIndex = min(max(0, saved), epub.chapters.count - 1)
                 self.restoredPageIndex = nil
+                self.epubOpenAtEnd = false
                 self.documentState = .loaded(.init(url: url, pageCount: epub.chapters.count, kind: .epub))
             } catch is CancellationError {
                 return
@@ -154,8 +157,18 @@ final class ReaderViewModel: ObservableObject {
         }
     }
 
-    func showPreviousChapter() { updateCurrentPage(currentPageIndex - 1) }
-    func showNextChapter() { updateCurrentPage(currentPageIndex + 1) }
+    func showPreviousChapter() {
+        guard currentPageIndex > 0 else { return }
+        epubOpenAtEnd = true
+        updateCurrentPage(currentPageIndex - 1)
+    }
+
+    func showNextChapter() {
+        guard case let .loaded(metadata) = documentState,
+              currentPageIndex + 1 < metadata.pageCount else { return }
+        epubOpenAtEnd = false
+        updateCurrentPage(currentPageIndex + 1)
+    }
 
     func updateSelection(_ selection: ReaderSelection?) {
         self.selection = selection

@@ -31,6 +31,12 @@ struct ReaderDocumentMetadata: Equatable, Sendable {
     var displayName: String { url.lastPathComponent }
 }
 
+struct EPUBReadingStyle: Equatable, Sendable {
+    var fontSize: Double = 18
+    var lineHeight: Double = 1.75
+    var horizontalMargin: Double = 54
+}
+
 enum ReaderDocumentError: LocalizedError, Equatable, Sendable {
     case fileUnavailable
     case unreadableFile

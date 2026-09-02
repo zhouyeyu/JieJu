@@ -57,6 +57,9 @@ final class AppSettings: ObservableObject {
     @Published var explanationPresentationMode: ExplanationPresentationMode {
         didSet { defaults.set(explanationPresentationMode.rawValue, forKey: Keys.explanationPresentationMode) }
     }
+    @Published var epubFontSize: Double { didSet { defaults.set(epubFontSize, forKey: Keys.epubFontSize) } }
+    @Published var epubLineHeight: Double { didSet { defaults.set(epubLineHeight, forKey: Keys.epubLineHeight) } }
+    @Published var epubHorizontalMargin: Double { didSet { defaults.set(epubHorizontalMargin, forKey: Keys.epubHorizontalMargin) } }
 
     private let defaults: UserDefaults
 
@@ -78,6 +81,9 @@ final class AppSettings: ObservableObject {
         explanationPresentationMode = ExplanationPresentationMode(
             rawValue: defaults.string(forKey: Keys.explanationPresentationMode) ?? ""
         ) ?? .sidebar
+        epubFontSize = defaults.object(forKey: Keys.epubFontSize) as? Double ?? 18
+        epubLineHeight = defaults.object(forKey: Keys.epubLineHeight) as? Double ?? 1.75
+        epubHorizontalMargin = defaults.object(forKey: Keys.epubHorizontalMargin) as? Double ?? 54
     }
 
     var providerSnapshot: any ReaderExplanationProviding {
@@ -125,5 +131,8 @@ final class AppSettings: ObservableObject {
         static let explanationLanguage = "ai.explanationLanguage"
         static let didMigrateToLocalModelDefault = "ai.didMigrateToLocalModelDefault"
         static let explanationPresentationMode = "reader.explanationPresentationMode"
+        static let epubFontSize = "reader.epub.fontSize"
+        static let epubLineHeight = "reader.epub.lineHeight"
+        static let epubHorizontalMargin = "reader.epub.horizontalMargin"
     }
 }

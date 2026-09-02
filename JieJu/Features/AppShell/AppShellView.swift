@@ -44,7 +44,12 @@ struct AppShellView: View {
                     },
                     explanationLanguage: settings.explanationLanguage,
                     configurationID: "\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)",
-                    explanationPresentationMode: settings.explanationPresentationMode
+                    explanationPresentationMode: settings.explanationPresentationMode,
+                    epubReadingStyle: EPUBReadingStyle(
+                        fontSize: settings.epubFontSize,
+                        lineHeight: settings.epubLineHeight,
+                        horizontalMargin: settings.epubHorizontalMargin
+                    )
                 )
             case .records:
                 LearningRecordsView(model: library)
@@ -105,6 +110,17 @@ private struct AISettingsView: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("settings.explanationPresentationMode")
+            Section("EPUB 排版") {
+                LabeledContent("字号 \(Int(settings.epubFontSize))") {
+                    Slider(value: $settings.epubFontSize, in: 14...28, step: 1)
+                }
+                LabeledContent("行距 \(settings.epubLineHeight, format: .number.precision(.fractionLength(2)))") {
+                    Slider(value: $settings.epubLineHeight, in: 1.3...2.2, step: 0.05)
+                }
+                LabeledContent("页边距 \(Int(settings.epubHorizontalMargin))") {
+                    Slider(value: $settings.epubHorizontalMargin, in: 24...90, step: 2)
+                }
+            }
             if editingCustomLanguage || !AppSettings.presetExplanationLanguages.contains(settings.explanationLanguage) {
                 TextField("自定义语言（英文名，如 Arabic）", text: $settings.explanationLanguage)
                     .accessibilityIdentifier("settings.explanationLanguage")

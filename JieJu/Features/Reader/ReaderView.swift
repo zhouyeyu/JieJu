@@ -6,18 +6,21 @@ struct ReaderView: View {
     private let explanationLanguage: String
     private let configurationID: String
     private let explanationPresentationMode: ExplanationPresentationMode
+    private let epubReadingStyle: EPUBReadingStyle
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
         saveHandler: @escaping @MainActor (ReaderSavePayload) -> Void = { _ in },
         explanationLanguage: String = "Chinese",
         configurationID: String = "default",
-        explanationPresentationMode: ExplanationPresentationMode = .sidebar
+        explanationPresentationMode: ExplanationPresentationMode = .sidebar,
+        epubReadingStyle: EPUBReadingStyle = EPUBReadingStyle()
     ) {
         self.explanationProvider = explanationProvider
         self.explanationLanguage = explanationLanguage
         self.configurationID = configurationID
         self.explanationPresentationMode = explanationPresentationMode
+        self.epubReadingStyle = epubReadingStyle
         _model = StateObject(wrappedValue: ReaderViewModel(
             explanationProvider: explanationProvider,
             saveHandler: saveHandler,
@@ -73,11 +76,16 @@ struct ReaderView: View {
                     case .epub:
                         if let epub = model.epubDocument,
                            epub.chapters.indices.contains(model.currentPageIndex) {
-                            EPUBReaderView(
-                                chapter: epub.chapters[model.currentPageIndex],
+                            EPUBPagedReaderView(
+                                document: epub,
+                                chapterIndex: model.currentPageIndex,
+                                initialPageAtEnd: model.epubOpenAtEnd,
+                                readingStyle: epubReadingStyle,
+                                onPreviousChapter: model.showPreviousChapter,
+                                onNextChapter: model.showNextChapter,
                                 onSelectionChange: model.updateSelection
                             )
-                            .id(epub.chapters[model.currentPageIndex].id)
+                            .id("\(epub.chapters[model.currentPageIndex].id)-\(epubReadingStyle.fontSize)-\(epubReadingStyle.lineHeight)-\(epubReadingStyle.horizontalMargin)")
                         }
                     }
                         explanationButton
@@ -114,16 +122,18 @@ struct ReaderView: View {
                 if metadata.kind == .epub {
                     if let epub = model.epubDocument,
                        epub.chapters.indices.contains(model.currentPageIndex) {
-                        Text(epub.chapters[model.currentPageIndex].title)
-                            .lineLimit(1)
-                            .foregroundStyle(.secondary)
+                        Picker("章节", selection: Binding(
+                            get: { model.currentPageIndex },
+                            set: { model.updateCurrentPage($0) }
+                        )) {
+                            ForEach(Array(epub.chapters.enumerated()), id: \.element.id) { index, chapter in
+                                Text(chapter.title).tag(index)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 240)
+                        .accessibilityLabel("章节目录")
                     }
-                    Button(action: model.showPreviousChapter) { Image(systemName: "chevron.left") }
-                        .disabled(model.currentPageIndex == 0)
-                        .accessibilityLabel("上一章")
-                    Button(action: model.showNextChapter) { Image(systemName: "chevron.right") }
-                        .disabled(model.currentPageIndex + 1 >= metadata.pageCount)
-                        .accessibilityLabel("下一章")
                 }
                 Button("关闭", action: model.closeDocument)
             } else {

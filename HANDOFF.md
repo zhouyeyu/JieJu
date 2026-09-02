@@ -15,6 +15,9 @@
 - 重排后续计划为 Track E（WebKit 动态分页）、Track F（深度句法）和 Track G（日语假名）。
 - 完成 `EPUB-201`：`EPUBDocument.resources` 暴露 manifest 资源数据、MIME 类型和标准包内路径；
   `EPUBChapter.resourcePath` 记录章节 XHTML 位置，并增加资源路径与内容回归测试。
+- 完成 EPUB WebKit 正式阅读主链路：受限自定义 scheme、CSP 离线边界、XHTML/CSS/图片、
+  动态多栏分页、页内/跨章翻页、方向键、章节菜单和 WebKit 选区解句桥接。
+- 设置页新增 EPUB 字号、行距和页边距，变化后自动重新排版并持久化；系统明暗模式自动适配。
 
 - **EPUB 阅读界面**（`EPUB-101`）：统一打开面板支持 PDF/EPUB；以 `NSTextView` 实现
   原生可重排正文和滚动阅读，工具栏支持上一章/下一章并显示当前章节，章节进度可恢复。

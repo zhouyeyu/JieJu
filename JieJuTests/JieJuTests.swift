@@ -49,6 +49,26 @@ final class JieJuTests: XCTestCase {
     }
 
     @MainActor
+    func testEPUBReadingStyleDefaultsAndPersists() {
+        let suite = "JieJuTests.AppSettings.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.epubFontSize, 18)
+        XCTAssertEqual(settings.epubLineHeight, 1.75)
+        XCTAssertEqual(settings.epubHorizontalMargin, 54)
+
+        settings.epubFontSize = 22
+        settings.epubLineHeight = 1.9
+        settings.epubHorizontalMargin = 64
+        let restored = AppSettings(defaults: defaults)
+        XCTAssertEqual(restored.epubFontSize, 22)
+        XCTAssertEqual(restored.epubLineHeight, 1.9)
+        XCTAssertEqual(restored.epubHorizontalMargin, 64)
+    }
+
+    @MainActor
     func testReaderUpdatesExplanationConfigurationWithoutResettingState() async throws {
         let recorder = ExplanationRequestRecorder()
         let model = ReaderViewModel(explanationProvider: MockReaderExplanationProvider())
