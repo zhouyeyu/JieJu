@@ -142,6 +142,17 @@ private struct ReviewSessionView: View {
                     description: Text("暂时没有适合重温的词。不必每天打卡，想起来时再回来。")
                 )
             }
+
+            Divider()
+            Text("语言不是一条需要赶完的路。读一点，记一点，忘了也没关系；在漫长的相遇里，它终会成为你的一部分。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .frame(maxWidth: 680)
+                .padding(.horizontal, 28)
+                .padding(.vertical, 16)
+                .accessibilityIdentifier("review.philosophy")
         }
         .navigationTitle("随手温习")
         .task { await model.reload() }
