@@ -140,6 +140,21 @@
 正式 Provider 使用固定 revision 的 Mecab-Swift + IPADic；高频小词典仅作为词典初始化失败时的保守回退。
 EPUB 注入跳过已有 `<ruby>`、脚本和样式；同一章节出现多个读音的相同表层词不自动注音。
 
+## Track I：跨平台基础
+
+- [x] `XPLAT-001` 建立 `Shared/Contracts/v1`，覆盖 AI 请求/结果、深度分析、学习记录和 Reader Bridge
+- [x] `XPLAT-002` 增加契约清单、安全字段检查、本地引用解析和 Swift 编码字段一致性测试
+- [x] `XPLAT-003` 建立无依赖 `Shared/ReaderWeb` Bridge，统一 WKWebView/WebView2 消息封装
+- [x] `XPLAT-004` 建立 `Apps/Windows` 边界、技术选型和首条垂直链路说明
+- [x] `XPLAT-005` 将共享契约与 Reader Web 测试接入统一测试脚本
+- [ ] `XPLAT-101` macOS EPUB 改用统一 `jiejuBridge`，兼容迁移现有 selection/pagination handler
+- [ ] `XPLAT-102` 将 EPUB 主题和排版 CSS 从 Swift 字符串迁入 `Shared/ReaderWeb`
+- [ ] `XPLAT-103` 将分页状态机迁入共享 Web 层并补浏览器尺寸回归测试
+- [ ] `XPLAT-104` 将选区、上下文清理和 Ruby 排除迁入共享 Web 层
+- [ ] `XPLAT-105` 使用 EPUB CFI/文本锚点保存稳定位置，动态页码仅用于显示
+- [ ] `WIN-001` 在 Windows 开发机创建并验证 WinUI 3 + WebView2 Solution
+- [ ] `WIN-002` 完成“打开 EPUB → 分页 → 选择 → Ollama → 保存”的 Windows 垂直闭环
+
 ## Later
 
 - [ ] OCR

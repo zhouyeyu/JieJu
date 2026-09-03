@@ -11,6 +11,9 @@ JieJu 是一个面向 macOS 的语言学习型 PDF/EPUB 阅读器。项目目前
 
 任务状态见 `TODO.md`，最近进度见 `PROGRESS.md`，跨 Agent 交接见 `HANDOFF.md`。
 
+跨平台规范位于 `Shared/Contracts`，EPUB Web 共享层位于 `Shared/ReaderWeb`，Windows 接入边界位于
+`Apps/Windows`。当前 macOS 工程暂不搬迁；后续步骤见 `Docs/CROSS_PLATFORM.md`。
+
 ## 推理服务
 
 默认使用本机 Ollama。在 App 的“设置 → 解释服务”中也可以选择“云端 API（OpenAI 兼容）”，

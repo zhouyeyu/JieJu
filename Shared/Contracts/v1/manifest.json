@@ -1,0 +1,10 @@
+{
+  "contractVersion": 1,
+  "schemas": [
+    "explanation-request.schema.json",
+    "explanation.schema.json",
+    "deep-analysis.schema.json",
+    "learning-library.schema.json",
+    "reader-bridge.schema.json"
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieju.app/contracts/v1/learning-library.schema.json",
+  "title": "PersistenceLibrary",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "readingProgress": { "type": "array", "items": { "$ref": "#/$defs/readingProgress" } },
+    "savedExplanations": { "type": "array", "items": { "$ref": "#/$defs/savedExplanation" } }
+  },
+  "required": ["schemaVersion", "readingProgress", "savedExplanations"],
+  "$defs": {
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "fileName": { "type": "string", "minLength": 1 },
+        "fingerprint": { "type": ["string", "null"] }
+      },
+      "required": ["id", "fileName"]
+    },
+    "readingProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "document": { "$ref": "#/$defs/document" },
+        "pageIndex": { "type": "integer", "minimum": 0 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["document", "pageIndex", "updatedAt"]
+    },
+    "persistedExplanation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "translation": { "type": "string" },
+        "sentenceCore": { "type": "string" },
+        "grammarPoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "title": { "type": "string" }, "explanation": { "type": "string" } },
+            "required": ["title", "explanation"]
+          }
+        },
+        "keyPhrases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "text": { "type": "string" },
+              "meaning": { "type": "string" },
+              "example": { "type": ["string", "null"] }
+            },
+            "required": ["text", "meaning"]
+          }
+        },
+        "modelName": { "type": ["string", "null"] }
+      },
+      "required": ["translation", "sentenceCore", "grammarPoints", "keyPhrases"]
+    },
+    "savedExplanation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "document": { "$ref": "#/$defs/document" },
+        "pageIndex": { "type": ["integer", "null"], "minimum": 0 },
+        "request": { "$ref": "explanation-request.schema.json" },
+        "explanation": { "$ref": "#/$defs/persistedExplanation" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "document", "request", "explanation", "createdAt", "updatedAt"]
+    }
+  }
+}

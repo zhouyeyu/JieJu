@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieju.app/contracts/v1/reader-bridge.schema.json",
+  "title": "ReaderBridgeMessage",
+  "oneOf": [
+    { "$ref": "#/$defs/selectionChanged" },
+    { "$ref": "#/$defs/locationChanged" },
+    { "$ref": "#/$defs/paginationChanged" },
+    { "$ref": "#/$defs/ready" },
+    { "$ref": "#/$defs/error" },
+    { "$ref": "#/$defs/configure" },
+    { "$ref": "#/$defs/turnPage" },
+    { "$ref": "#/$defs/restoreLocation" },
+    { "$ref": "#/$defs/clearSelection" }
+  ],
+  "$defs": {
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" }, "y": { "type": "number" },
+        "width": { "type": "number", "minimum": 0 }, "height": { "type": "number", "minimum": 0 }
+      },
+      "required": ["x", "y", "width", "height"]
+    },
+    "locator": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "pdf" }, "pageIndex": { "type": "integer", "minimum": 0 },
+            "textOffset": { "type": ["integer", "null"], "minimum": 0 }, "textHash": { "type": ["string", "null"] }
+          },
+          "required": ["kind", "pageIndex"]
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "epub" }, "chapterHref": { "type": "string", "minLength": 1 },
+            "cfi": { "type": ["string", "null"] }, "textAnchor": { "type": ["string", "null"] },
+            "displayPageIndex": { "type": ["integer", "null"], "minimum": 0 }
+          },
+          "required": ["kind", "chapterHref"]
+        }
+      ]
+    },
+    "selectionPayload": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "targetText": { "type": "string" }, "precedingContext": { "type": ["string", "null"] },
+        "followingContext": { "type": ["string", "null"] }, "anchorRect": { "$ref": "#/$defs/rect" },
+        "locator": { "oneOf": [{ "$ref": "#/$defs/locator" }, { "type": "null" }] }
+      },
+      "required": ["targetText", "precedingContext", "followingContext", "anchorRect"]
+    },
+    "locationPayload": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "locator": { "$ref": "#/$defs/locator" } }, "required": ["locator"]
+    },
+    "paginationPayload": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "chapterIndex": { "type": "integer", "minimum": 0 }, "pageIndex": { "type": "integer", "minimum": 0 },
+        "pageCount": { "type": "integer", "minimum": 1 }, "isLayoutStable": { "type": "boolean" }
+      },
+      "required": ["chapterIndex", "pageIndex", "pageCount", "isLayoutStable"]
+    },
+    "configurePayload": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "fontSize": { "type": "number", "minimum": 8 }, "lineHeight": { "type": "number", "minimum": 1 },
+        "horizontalMargin": { "type": "number", "minimum": 0 }, "theme": { "enum": ["paper", "night", "sepia", "sage"] },
+        "showsFurigana": { "type": "boolean" }
+      },
+      "required": ["fontSize", "lineHeight", "horizontalMargin", "theme", "showsFurigana"]
+    },
+    "selectionChanged": { "$ref": "#/$defs/messageSelectionChanged" },
+    "messageSelectionChanged": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "contractVersion": { "const": 1 }, "type": { "const": "selectionChanged" }, "payload": { "$ref": "#/$defs/selectionPayload" } },
+      "required": ["contractVersion", "type", "payload"]
+    },
+    "locationChanged": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "contractVersion": { "const": 1 }, "type": { "const": "locationChanged" }, "payload": { "$ref": "#/$defs/locationPayload" } },
+      "required": ["contractVersion", "type", "payload"]
+    },
+    "paginationChanged": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "contractVersion": { "const": 1 }, "type": { "const": "paginationChanged" }, "payload": { "$ref": "#/$defs/paginationPayload" } },
+      "required": ["contractVersion", "type", "payload"]
+    },
+    "ready": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "contractVersion": { "const": 1 }, "type": { "const": "ready" },
+        "payload": { "type": "object", "additionalProperties": false, "properties": { "readerKind": { "enum": ["pdf", "epub"] } }, "required": ["readerKind"] }
+      },
+      "required": ["contractVersion", "type", "payload"]
+    },
+    "error": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "contractVersion": { "const": 1 }, "type": { "const": "error" },
+        "payload": { "type": "object", "additionalProperties": false, "properties": { "code": { "type": "string", "minLength": 1 }, "message": { "type": "string", "minLength": 1 } }, "required": ["code", "message"] }
+      },
+      "required": ["contractVersion", "type", "payload"]
+    },
+    "configure": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "contractVersion": { "const": 1 }, "type": { "const": "configure" }, "payload": { "$ref": "#/$defs/configurePayload" } },
+      "required": ["contractVersion", "type", "payload"]
+    },
+    "turnPage": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "contractVersion": { "const": 1 }, "type": { "const": "turnPage" },
+        "payload": { "type": "object", "additionalProperties": false, "properties": { "delta": { "enum": [-1, 1] } }, "required": ["delta"] }
+      },
+      "required": ["contractVersion", "type", "payload"]
+    },
+    "restoreLocation": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "contractVersion": { "const": 1 }, "type": { "const": "restoreLocation" }, "payload": { "$ref": "#/$defs/locationPayload" } },
+      "required": ["contractVersion", "type", "payload"]
+    },
+    "clearSelection": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "contractVersion": { "const": 1 }, "type": { "const": "clearSelection" }, "payload": { "type": "object", "maxProperties": 0 } },
+      "required": ["contractVersion", "type", "payload"]
+    }
+  }
+}

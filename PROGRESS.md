@@ -8,6 +8,16 @@
 
 ## 已完成
 
+- **2026-09-03 跨平台骨架**：新增 `Shared/Contracts/v1`，用 Draft 2020-12 JSON Schema 固定
+  ExplanationRequest、Explanation、DeepAnalysis、learning-library 和 Reader Bridge；API Key 等
+  安全字段明确排除。新增 `Shared/ReaderWeb` 无依赖 Bridge，可自动适配 WKWebView 的
+  `jiejuBridge` 与 WebView2 的 `chrome.webview`，并校验消息版本和方向。`Apps/Windows` 记录
+  WinUI 3/WebView2 边界和首个 EPUB 垂直闭环，但暂不提交未经 Windows SDK 验证的工程文件。
+- **防漂移测试**：Node 测试会核对契约清单、版本、本地 `$ref`、安全字段、稳定 locator 和两种
+  WebView 通道；Swift 语言包测试反向核对 Codable 字段与输入/输出上限，App 测试核对持久化
+  schemaVersion。统一测试入口已先执行这些跨平台检查。本检查点验证结果为 Node **7 项**、
+  JieJuLanguage **57 项**、App 单元测试 **48 项**全部通过。
+
 - **2026-09-03 窗口、常驻解句栏和可选云端推理**：阅读器顶部空白区域现在可拖动窗口；侧边栏
   模式在打开文档后始终保留解句区域，未选择或关闭解释时显示引导空状态，正文不会再因解句出现
   而改变宽度。设置页保留 Ollama 为默认，同时新增 OpenAI Chat Completions 兼容的云端模式，可配置

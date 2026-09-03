@@ -10,6 +10,9 @@ JieJu 是一个 macOS 原生、以语言学习为目标的 PDF/EPUB 阅读器。
 
 MVP 优先验证 PDF 阅读与“划线解句”闭环。EPUB、OCR、云同步和完整复习系统不属于第一阶段。
 
+项目已为未来 Windows 支持建立跨平台边界。修改 AI DTO、持久化格式、Reader Web 消息或 EPUB
+脚本前，还必须阅读 `Docs/CROSS_PLATFORM.md` 与 `Shared/Contracts/README.md`。
+
 ## 开始任务前
 
 每个 Agent 必须先阅读：
@@ -30,12 +33,13 @@ MVP 优先验证 PDF 阅读与“划线解句”闭环。EPUB、OCR、云同步�
 3. SwiftUI 视图不直接调用 Ollama、网络或持久化实现。
 4. AI 能力必须通过 `ReadingAI` 协议访问；自动测试默认使用可预测的 Mock。
 5. 新增业务逻辑必须有单元测试；关键用户路径应有 UI 测试。
-6. 完成前运行 `./scripts/test-all.sh`。
-7. 测试失败时不得宣称完成；记录无法解决的阻塞及复现方法。
-8. 架构或产品边界发生变化时，更新 `DECISIONS.md`。
-9. 每项任务结束时更新 `TODO.md`、`PROGRESS.md` 和 `HANDOFF.md`。
-10. 仅在工作树内容清晰、测试通过时创建小而明确的 Git commit。
-11. 未经用户明确授权，不推送远程仓库、不合并分支、不改写 Git 历史。
+6. 跨平台字段以 `Shared/Contracts/v1` 为事实来源；破坏性变化创建新版本，不直接改写 v1。
+7. 完成前运行 `./scripts/test-all.sh`。
+8. 测试失败时不得宣称完成；记录无法解决的阻塞及复现方法。
+9. 架构或产品边界发生变化时，更新 `DECISIONS.md`。
+10. 每项任务结束时更新 `TODO.md`、`PROGRESS.md` 和 `HANDOFF.md`。
+11. 仅在工作树内容清晰、测试通过时创建小而明确的 Git commit。
+12. 未经用户明确授权，不推送远程仓库、不合并分支、不改写 Git 历史。
 
 ## 多 Agent 协作
 
@@ -65,4 +69,3 @@ MVP 优先验证 PDF 阅读与“划线解句”闭环。EPUB、OCR、云同步�
 - `test: cover explanation response parsing`
 - `fix: preserve reading position on reopen`
 - `docs: record local model decision`
-

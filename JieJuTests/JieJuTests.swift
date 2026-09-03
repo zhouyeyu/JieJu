@@ -7,6 +7,13 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual("JieJu", "JieJu")
     }
 
+    func testPersistenceLibraryKeepsStableV1CodingKeys() throws {
+        XCTAssertEqual(PersistenceLibrary.currentSchemaVersion, 1)
+        let encoded = try JSONEncoder().encode(PersistenceLibrary())
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(Set(object.keys), Set(["schemaVersion", "readingProgress", "savedExplanations"]))
+    }
+
     @MainActor
     func testLegacyMockSettingMigratesToRealLocalModelOnce() {
         let suite = "JieJuTests.AppSettings.\(UUID().uuidString)"

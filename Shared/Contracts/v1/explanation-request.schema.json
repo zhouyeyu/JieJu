@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieju.app/contracts/v1/explanation-request.schema.json",
+  "title": "ExplanationRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "targetText": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "precedingContext": { "type": ["string", "null"], "maxLength": 2000 },
+    "followingContext": { "type": ["string", "null"], "maxLength": 2000 },
+    "sourceLanguage": { "type": "string", "minLength": 1 },
+    "explanationLanguage": { "type": "string", "minLength": 1 }
+  },
+  "required": ["targetText", "sourceLanguage", "explanationLanguage"]
+}

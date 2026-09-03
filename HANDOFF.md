@@ -12,6 +12,16 @@
 
 ### 2026-09-03 最新检查点
 
+- 已建立跨平台骨架：`Shared/Contracts/v1` 是新的跨语言数据事实来源，`Shared/ReaderWeb` 是 EPUB
+  Web 代码的渐进迁移目标，`Apps/Windows` 只记录经确认的边界，尚未伪造 WinUI 工程。完整顺序见
+  `Docs/CROSS_PLATFORM.md` 和 TODO Track I。
+- 现有 macOS EPUB 仍使用 `EPUBWebReaderView.swift` 内联脚本，不能误称已经迁移。下一步应先做
+  `XPLAT-101`，以兼容方式引入统一 `jiejuBridge`，再逐项迁移排版、分页和选区；禁止一次性替换。
+- `scripts/test-all.sh` 现在先跑 Node 内置测试。此测试无 npm 依赖，但开发机/CI 需要 Node 20+。
+- 本检查点验证结果：跨平台 Node 测试 **7 项通过**、JieJuLanguage **57 项通过**、App 单元测试
+  **48 项通过**。首次 App 全量运行曾因测试进程从源码目录读取 schema 而卡住；已改为 App 侧只
+  校验稳定 v1 编码键，schema 本体及 `$ref` 由 Node 与 Swift Package 契约测试负责，复跑通过。
+
 - Ollama 仍是默认解释服务；设置页新增“云端 API（OpenAI 兼容）”，当前实现面向
   `/v1/chat/completions`、`response_format=json_object` 和 SSE `data:` 流，API 地址应填写到
   API 版本根路径（例如 `https://api.openai.com/v1`）。

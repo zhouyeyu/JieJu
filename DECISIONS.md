@@ -1,5 +1,12 @@
 # JieJu Decisions
 
+## 2026-09-03：多平台采用原生外壳 + 共享契约 + 共享 Reader Web
+
+Windows 支持不通过立即重写 SwiftUI 实现。macOS 保留 SwiftUI/PDFKit/WKWebView，Windows 计划
+使用 WinUI 3/WebView2；双方共享版本化 JSON Schema、EPUB Web 层、评测和 fixture。当前先建立
+`Shared/Contracts/v1`、Reader Bridge 与 Windows 接入骨架，EPUB 脚本后续逐项迁移并维持 macOS
+回归。暂不决定 Rust 核心，也不创建无法在 Windows SDK 下验证的占位 WinUI 工程。
+
 ## 2026-09-02：EPUB 正式模式改用 WebKit 动态分页
 
 实际试读表明“一章一个长滚动页”会把十几章误呈现为十几页，不符合桌面图书阅读预期。

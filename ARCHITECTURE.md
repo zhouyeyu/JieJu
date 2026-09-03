@@ -9,6 +9,24 @@
 - 测试：XCTest 与 XCUITest
 - 本地模型：首选 Ollama；后续可增加 MLX 或系统模型 Provider
 
+当前产品仍以 macOS 为实现平台，但架构边界已经扩展为多平台准备状态。Windows 采用独立原生
+外壳，跨平台共享契约和 Reader Web，不要求 SwiftUI 代码在 Windows 编译。完整路线见
+`Docs/CROSS_PLATFORM.md`。
+
+## 跨平台边界
+
+```text
+macOS SwiftUI ─┐
+               ├─ Shared/Contracts/v1 ─ AI / Persistence
+Windows WinUI ─┘           │
+                    Shared/ReaderWeb
+```
+
+- `Shared/Contracts/v1`：解释请求、解释结果、深度分析、学习记录和 Reader Bridge 的版本化规范；
+- `Shared/ReaderWeb`：未来由 WKWebView/WebView2 共同加载的 EPUB 排版、分页和选区层；
+- `Apps/Windows`：Windows 原生外壳预留目录；
+- 当前 `JieJu/`、`JieJu.xcodeproj`：继续作为稳定的 macOS 实现，暂不移动。
+
 ## 模块边界
 
 ```text
@@ -64,6 +82,9 @@ protocol ReadingAI: Sendable {
 - 手工验收：PDFKit 文本选择、弹层定位和真实模型质量。
 
 所有自动测试必须可离线重复运行。
+
+共享契约和 Reader Web Bridge 使用 Node 内置测试运行器，不引入 npm 运行时依赖；Swift 测试同时
+检查编码字段和 v1 Schema，防止平台实现与共享契约静默漂移。
 
 ## 依赖规则
 

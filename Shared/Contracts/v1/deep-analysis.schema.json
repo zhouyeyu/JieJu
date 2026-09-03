@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieju.app/contracts/v1/deep-analysis.schema.json",
+  "title": "DeepAnalysis",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sentenceType": { "type": "string", "minLength": 1 },
+    "sentencePattern": { "type": "string", "minLength": 1 },
+    "components": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/sentenceComponent" } },
+    "clauses": { "type": "array", "maxItems": 6, "items": { "$ref": "#/$defs/clause" } },
+    "grammarPoints": { "type": "array", "maxItems": 6, "items": { "$ref": "explanation.schema.json#/$defs/grammarPoint" } },
+    "interpretation": { "type": "string", "minLength": 1 },
+    "japaneseWords": { "type": ["array", "null"], "maxItems": 12, "items": { "$ref": "#/$defs/japaneseWord" } }
+  },
+  "required": ["sentenceType", "sentencePattern", "components", "clauses", "grammarPoints", "interpretation"],
+  "$defs": {
+    "sentenceComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "explanation": { "type": "string", "minLength": 1 },
+        "modifies": { "type": ["string", "null"] }
+      },
+      "required": ["text", "role", "explanation"]
+    },
+    "clause": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "function": { "type": "string", "minLength": 1 },
+        "explanation": { "type": "string", "minLength": 1 }
+      },
+      "required": ["text", "type", "function", "explanation"]
+    },
+    "japaneseWord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "baseForm": { "type": "string", "minLength": 1 },
+        "reading": { "type": "string", "minLength": 1 },
+        "inflectionType": { "type": "string", "minLength": 1 },
+        "grammaticalFunction": { "type": "string", "minLength": 1 }
+      },
+      "required": ["text", "baseForm", "reading", "inflectionType", "grammaticalFunction"]
+    }
+  }
+}

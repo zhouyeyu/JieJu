@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieju.app/contracts/v1/explanation.schema.json",
+  "title": "Explanation",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "translation": { "type": "string", "minLength": 1 },
+    "sentenceCore": { "type": "string", "minLength": 1 },
+    "grammarPoints": {
+      "type": "array",
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/grammarPoint" }
+    },
+    "keyPhrases": {
+      "type": "array",
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/keyPhrase" }
+    }
+  },
+  "required": ["translation", "sentenceCore", "grammarPoints", "keyPhrases"],
+  "$defs": {
+    "grammarPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "explanation": { "type": "string", "minLength": 1 }
+      },
+      "required": ["text", "explanation"]
+    },
+    "keyPhrase": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "meaning": { "type": "string", "minLength": 1 }
+      },
+      "required": ["text", "meaning"]
+    }
+  }
+}
