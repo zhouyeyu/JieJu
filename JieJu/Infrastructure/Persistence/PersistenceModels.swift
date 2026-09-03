@@ -214,10 +214,10 @@ enum ReviewRating: String, Codable, CaseIterable, Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .again: "忘记"
-        case .hard: "困难"
-        case .good: "良好"
-        case .easy: "简单"
+        case .again: "没想起"
+        case .hard: "有点模糊"
+        case .good: "想起来了"
+        case .easy: "很熟悉"
         }
     }
 }

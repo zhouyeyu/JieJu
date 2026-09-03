@@ -3,6 +3,10 @@ import XCTest
 import JieJuLanguage
 
 final class JieJuTests: XCTestCase {
+    func testReviewRatingsDescribeFamiliarityWithoutJudgment() {
+        XCTAssertEqual(ReviewRating.allCases.map(\.title), ["没想起", "有点模糊", "想起来了", "很熟悉"])
+    }
+
     func testProjectFoundationLoads() {
         XCTAssertEqual("JieJu", "JieJu")
     }

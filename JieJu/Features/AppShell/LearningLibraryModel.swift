@@ -116,10 +116,6 @@ final class LearningLibraryModel: ObservableObject {
         }
     }
 
-    var reviewedTodayCount: Int {
-        let calendar = Calendar.current
-        return reviewLogs.filter { calendar.isDateInToday($0.reviewedAt) }.count
-    }
 }
 
 struct ReviewQueueItem: Identifiable, Equatable {

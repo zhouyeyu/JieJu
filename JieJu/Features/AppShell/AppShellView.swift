@@ -14,7 +14,7 @@ private enum AppSection: String, CaseIterable, Identifiable {
         case .reader: "阅读"
         case .records: "学习记录"
         case .vocabulary: "生词本"
-        case .review: "今日复习"
+        case .review: "随手温习"
         case .settings: "设置"
         }
     }
@@ -58,7 +58,9 @@ struct AppShellView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(.background)
                 } else if activeSection == .review {
-                    ReviewSessionView(model: library)
+                    ReviewSessionView(model: library) {
+                        selection = .reader
+                    }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(.background)
                 } else if activeSection == .settings {
@@ -97,26 +99,35 @@ struct AppShellView: View {
 
 private struct ReviewSessionView: View {
     @ObservedObject var model: LearningLibraryModel
+    let returnToReading: () -> Void
     @State private var showsAnswer = false
     @State private var isSubmittingRating = false
+    @State private var sessionReviewedCount = 0
 
-    private var current: ReviewQueueItem? { model.dueReviewItems.first }
+    private let gentleSessionSize = 10
+    private var hasReachedGentlePause: Bool { sessionReviewedCount >= gentleSessionSize }
+    private var current: ReviewQueueItem? {
+        hasReachedGentlePause ? nil : model.dueReviewItems.first
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("今日复习").font(.title2.bold())
-                    Text("已复习 \(model.reviewedTodayCount) · 待复习 \(model.dueReviewItems.count)")
+                    Text("随手温习").font(.title2.bold())
+                    Text("想看几张都可以，随时回到阅读")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
+                Button("回到阅读", systemImage: "book") { returnToReading() }
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
             Divider()
 
-            if let current {
+            if hasReachedGentlePause {
+                gentlePauseView
+            } else if let current {
                 reviewCard(current)
             } else if model.vocabularyEntries.isEmpty {
                 ContentUnavailableView(
@@ -126,15 +137,30 @@ private struct ReviewSessionView: View {
                 )
             } else {
                 ContentUnavailableView(
-                    "今天已经完成",
-                    systemImage: "checkmark.circle",
-                    description: Text("没有到期卡片。继续阅读，或者下次按计划复习。")
+                    "先去读点喜欢的内容吧",
+                    systemImage: "book.pages",
+                    description: Text("暂时没有适合重温的词。不必每天打卡，想起来时再回来。")
                 )
             }
         }
-        .navigationTitle("今日复习")
+        .navigationTitle("随手温习")
         .task { await model.reload() }
         .onChange(of: current?.id) { _, _ in showsAnswer = false }
+    }
+
+    private var gentlePauseView: some View {
+        ContentUnavailableView {
+            Label("这次先看到这里", systemImage: "leaf")
+        } description: {
+            Text("语言学习是一件长期的事，不急于一时。你可以继续阅读，也可以按自己的心情再看几张。")
+        } actions: {
+            Button("回到阅读") { returnToReading() }
+                .buttonStyle(.borderedProminent)
+            Button("再看几张") {
+                sessionReviewedCount = 0
+                showsAnswer = false
+            }
+        }
     }
 
     private func reviewCard(_ item: ReviewQueueItem) -> some View {
@@ -179,6 +205,9 @@ private struct ReviewSessionView: View {
                     .background(.quaternary.opacity(0.28), in: RoundedRectangle(cornerRadius: 12))
 
                     ratingButtons(for: item)
+                    Text("按此刻的感觉选择就好，没有对错。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 } else {
                     Button("显示答案", systemImage: "eye") { showsAnswer = true }
                         .buttonStyle(.borderedProminent)
@@ -201,19 +230,17 @@ private struct ReviewSessionView: View {
                         guard !isSubmittingRating else { return }
                         isSubmittingRating = true
                         await model.review(item, rating: rating)
+                        sessionReviewedCount += 1
                         showsAnswer = false
                         isSubmittingRating = false
                     }
                 } label: {
                     VStack(spacing: 3) {
                         Text(rating.title).fontWeight(.semibold)
-                        Text(intervalLabel(for: item.card, rating: rating))
-                            .font(.caption2).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .tint(rating == .again ? .red : nil)
                 .disabled(isSubmittingRating)
                 .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [])
                 .accessibilityIdentifier("review.rate.\(rating.rawValue)")
@@ -221,14 +248,6 @@ private struct ReviewSessionView: View {
         }
     }
 
-    private func intervalLabel(for card: ReviewCard, rating: ReviewRating) -> String {
-        let now = Date()
-        let due = JieJuReviewScheduler().preview(card, rating: rating, at: now)
-        let seconds = max(0, due.timeIntervalSince(now))
-        if seconds < 3_600 { return "\(max(1, Int((seconds / 60).rounded()))) 分钟" }
-        if seconds < 86_400 { return "\(max(1, Int((seconds / 3_600).rounded()))) 小时" }
-        return "\(max(1, Int((seconds / 86_400).rounded()))) 天"
-    }
 }
 
 private struct VocabularyBookView: View {

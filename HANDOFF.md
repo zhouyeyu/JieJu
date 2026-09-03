@@ -5,6 +5,11 @@
 - 日期：2026-09-03
 - Agent：Codex
 - 阶段：PDF/EPUB 阅读闭环集成（EPUB-102 已完成）
+- 最新产品原则：复习是可选的“随手温习”，不是每日任务。界面不显示积压数、完成率或精确间隔，
+  不做提醒/红点/连续打卡；每轮 10 张后温和暂停，并始终提供“回到阅读”。四档反馈的持久化 raw
+  value 未变，仅用户文案改为熟悉程度，因此无需数据迁移。
+- 本轮契约测试 9 项、语言包 57 项、App 单元测试 55 项通过。新增温习入口 UI 用例；macOS UI
+  自动化服务连续两次初始化超时，下一位 Agent 可在自动化服务恢复后重跑。
 - 分支：`main`
 - 基线提交：`fbdf02f chore: create macOS project foundation`
 - 模块集成提交：`3529d0f feat: build parallel reader language and storage modules`
