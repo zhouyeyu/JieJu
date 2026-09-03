@@ -70,6 +70,18 @@ test("v2 adds vocabulary without changing the v1 library", async () => {
   assert.equal(JSON.stringify(schema).toLowerCase().includes("apikey"), false);
 });
 
+test("v3 adds versioned review cards and append-only review logs", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../v3/manifest.json", import.meta.url), "utf8"));
+  const schema = JSON.parse(await readFile(new URL("../v3/learning-library.schema.json", import.meta.url), "utf8"));
+  assert.equal(manifest.contractVersion, 3);
+  assert.equal(schema.properties.schemaVersion.const, 3);
+  assert.ok(schema.properties.reviewCards);
+  assert.ok(schema.properties.reviewLogs);
+  assert.deepEqual(schema.$defs.reviewLog.properties.rating.enum, ["again", "hard", "good", "easy"]);
+  assert.ok(schema.$defs.reviewLog.properties.schedulerVersion);
+  assert.equal(JSON.stringify(schema).toLowerCase().includes("apikey"), false);
+});
+
 function referencesIn(value, result = []) {
   if (Array.isArray(value)) value.forEach(item => referencesIn(item, result));
   else if (value && typeof value === "object") {

@@ -43,7 +43,7 @@ final class JSONPersistenceStoreTests: XCTestCase {
         XCTAssertTrue(reloaded.vocabularyEntries.isEmpty)
     }
 
-    func testMigratesV1LibraryAndPreservesExistingData() async throws {
+    func testMigratesV1LibraryToCurrentVersionAndPreservesExistingData() async throws {
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         let v1 = """
         {"schemaVersion":1,"readingProgress":[],"savedExplanations":[]}
@@ -52,14 +52,36 @@ final class JSONPersistenceStoreTests: XCTestCase {
 
         let migrated = try await JSONPersistenceStore(fileURL: fileURL).load()
 
-        XCTAssertEqual(migrated.schemaVersion, 2)
+        XCTAssertEqual(migrated.schemaVersion, 3)
         XCTAssertTrue(migrated.vocabularyEntries.isEmpty)
         let disk = try JSONDecoder.iso8601.decode(PersistenceLibrary.self, from: Data(contentsOf: fileURL))
-        XCTAssertEqual(disk.schemaVersion, 2)
+        XCTAssertEqual(disk.schemaVersion, 3)
+    }
+
+    func testMigratesV2VocabularyAndCreatesDueRecognitionCard() async throws {
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let entry = makeVocabularyEntry(surface: "continue", meaning: "继续", sentence: "They continue.")
+        let oldLibrary = PersistenceLibrary(schemaVersion: 2, vocabularyEntries: [entry])
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder.iso8601.encode(oldLibrary)) as? [String: Any])
+        object.removeValue(forKey: "reviewCards")
+        object.removeValue(forKey: "reviewLogs")
+        try JSONSerialization.data(withJSONObject: object).write(to: fileURL)
+        let fixedTimestamp = timestamp
+        let store = JSONPersistenceStore(fileURL: fileURL, now: { fixedTimestamp })
+
+        let migrated = try await store.load()
+
+        XCTAssertEqual(migrated.schemaVersion, 3)
+        XCTAssertEqual(migrated.vocabularyEntries, [entry])
+        XCTAssertEqual(migrated.reviewCards.count, 1)
+        XCTAssertEqual(migrated.reviewCards.first?.vocabularyEntryID, entry.id)
+        XCTAssertEqual(migrated.reviewCards.first?.dueAt, timestamp)
+        XCTAssertTrue(migrated.reviewLogs.isEmpty)
     }
 
     func testVocabularyDeduplicatesAndMergesMeaningsAndSources() async throws {
-        let store = JSONPersistenceStore(fileURL: fileURL)
+        let fixedTimestamp = timestamp
+        let store = JSONPersistenceStore(fileURL: fileURL, now: { fixedTimestamp })
         let first = makeVocabularyEntry(
             surface: "continued",
             meaning: "继续",
@@ -86,10 +108,22 @@ final class JSONPersistenceStoreTests: XCTestCase {
         let entriesAfterMerge = try await store.vocabularyEntries()
         XCTAssertEqual(entriesAfterMerge.count, 1)
 
+        let cards = try await store.reviewCards()
+        XCTAssertEqual(cards.count, 1)
+        XCTAssertEqual(cards.first?.vocabularyEntryID, merged.id)
+        let reviewed = try await store.reviewCard(id: try XCTUnwrap(cards.first?.id), rating: .good, at: timestamp)
+        XCTAssertEqual(reviewed.intervalDays, 2)
+        let logsAfterReview = try await store.reviewLogs()
+        XCTAssertEqual(logsAfterReview.count, 1)
+
         let didDelete = try await store.deleteVocabularyEntry(id: merged.id)
         XCTAssertTrue(didDelete)
         let entriesAfterDelete = try await store.vocabularyEntries()
         XCTAssertTrue(entriesAfterDelete.isEmpty)
+        let cardsAfterDelete = try await store.reviewCards()
+        let logsAfterDelete = try await store.reviewLogs()
+        XCTAssertTrue(cardsAfterDelete.isEmpty)
+        XCTAssertTrue(logsAfterDelete.isEmpty)
     }
 
     func testCorruptFileIsBackedUpAndRecovered() async throws {
@@ -219,5 +253,13 @@ private extension JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
+    }
+}
+
+private extension JSONEncoder {
+    static var iso8601: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
     }
 }

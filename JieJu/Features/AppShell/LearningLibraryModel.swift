@@ -4,6 +4,8 @@ import Foundation
 final class LearningLibraryModel: ObservableObject {
     @Published private(set) var records: [SavedExplanationRecord] = []
     @Published private(set) var vocabularyEntries: [VocabularyEntry] = []
+    @Published private(set) var dueReviewItems: [ReviewQueueItem] = []
+    @Published private(set) var reviewLogs: [ReviewLog] = []
     @Published private(set) var errorMessage: String?
 
     private let store: JSONPersistenceStore
@@ -16,6 +18,12 @@ final class LearningLibraryModel: ObservableObject {
         do {
             records = try await store.savedExplanations().sorted { $0.updatedAt > $1.updatedAt }
             vocabularyEntries = try await store.vocabularyEntries().sorted { $0.updatedAt > $1.updatedAt }
+            let dueCards = try await store.dueReviewCards(limit: 50)
+            let entriesByID = Dictionary(uniqueKeysWithValues: vocabularyEntries.map { ($0.id, $0) })
+            dueReviewItems = dueCards.compactMap { card in
+                entriesByID[card.vocabularyEntryID].map { ReviewQueueItem(card: card, entry: $0) }
+            }
+            reviewLogs = try await store.reviewLogs()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -98,4 +106,24 @@ final class LearningLibraryModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    func review(_ item: ReviewQueueItem, rating: ReviewRating) async {
+        do {
+            _ = try await store.reviewCard(id: item.card.id, rating: rating)
+            await reload()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    var reviewedTodayCount: Int {
+        let calendar = Calendar.current
+        return reviewLogs.filter { calendar.isDateInToday($0.reviewedAt) }.count
+    }
+}
+
+struct ReviewQueueItem: Identifiable, Equatable {
+    let card: ReviewCard
+    let entry: VocabularyEntry
+    var id: UUID { card.id }
 }

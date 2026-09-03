@@ -7,11 +7,34 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual("JieJu", "JieJu")
     }
 
-    func testPersistenceLibraryKeepsStableV2CodingKeys() throws {
-        XCTAssertEqual(PersistenceLibrary.currentSchemaVersion, 2)
+    func testPersistenceLibraryKeepsStableV3CodingKeys() throws {
+        XCTAssertEqual(PersistenceLibrary.currentSchemaVersion, 3)
         let encoded = try JSONEncoder().encode(PersistenceLibrary())
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
-        XCTAssertEqual(Set(object.keys), Set(["schemaVersion", "readingProgress", "savedExplanations", "vocabularyEntries"]))
+        XCTAssertEqual(Set(object.keys), Set([
+            "schemaVersion", "readingProgress", "savedExplanations", "vocabularyEntries", "reviewCards", "reviewLogs"
+        ]))
+    }
+
+    func testReviewSchedulerProgressesAndHandlesLapse() {
+        let scheduler = JieJuReviewScheduler()
+        let start = Date(timeIntervalSince1970: 1_704_164_645)
+        let original = ReviewCard(vocabularyEntryID: UUID(), dueAt: start, createdAt: start, updatedAt: start)
+
+        let first = scheduler.review(original, rating: .good, at: start)
+        XCTAssertEqual(first.card.state, .review)
+        XCTAssertEqual(first.card.intervalDays, 2)
+        XCTAssertEqual(first.card.dueAt, start.addingTimeInterval(2 * 86_400))
+        XCTAssertEqual(first.log.schedulerVersion, "jieju-interval-v1")
+
+        let second = scheduler.review(first.card, rating: .good, at: first.card.dueAt)
+        XCTAssertEqual(second.card.intervalDays, 5)
+
+        let lapse = scheduler.review(second.card, rating: .again, at: second.card.dueAt)
+        XCTAssertEqual(lapse.card.state, .learning)
+        XCTAssertEqual(lapse.card.dueAt, second.card.dueAt.addingTimeInterval(10 * 60))
+        XCTAssertEqual(lapse.card.lapses, 1)
+        XCTAssertEqual(lapse.card.repetitions, 0)
     }
 
     func testLikelyWordSelectionDistinguishesWordsFromSentences() {

@@ -12,9 +12,14 @@
 
 ### 2026-09-03 最新检查点
 
+- 间隔复习首个闭环已实现：保存生词自动建 recognition card；“今日复习”先问词形，再揭示读音、
+  词义和来源，四档按钮和 1～4 键会持久化下一到期时间。`jieju-interval-v1` 是明确标记的过渡算法，
+  不是 FSRS；ReviewLog 只追加并记录 schedulerVersion，后续可重算。`PersistenceLibrary` 已到 v3，
+  v1/v2 自动迁移，删除生词会同步清理其卡片和日志。最新验证：Node **9**、语言包 **57**、App
+  **54** 项通过。尚未实现 cloze 卡、暂停/难词、复杂统计和 FSRS 对照。
 - Track H 首个闭环已实现：重点表达、日语词形和直接划选词均可收藏；侧栏新增生词本列表、详情和
-  删除。`PersistenceLibrary.currentSchemaVersion` 已升至 2，v1 缺少 `vocabularyEntries` 时自动
-  补空并原子写回 v2；共享 v1 未改动，新增 `Shared/Contracts/v2`。当前直接选词仍复用句子解释
+  删除。生词结构最初由 `Shared/Contracts/v2` 引入，随后由最新 v3 增加复习数据；旧版本均未改写。
+  当前直接选词仍复用句子解释
   Provider，原形暂以表面词形保存；更丰富的词性/原形/语境义需后续 `WORD-001/002` 专用协议。
   最新验证：Node **8 项**、JieJuLanguage **57 项**、App **52 项**通过。
 - 已建立跨平台骨架：`Shared/Contracts/v1` 是新的跨语言数据事实来源，`Shared/ReaderWeb` 是 EPUB

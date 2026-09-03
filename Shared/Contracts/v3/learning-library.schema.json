@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieju.app/contracts/v3/learning-library.schema.json",
+  "title": "PersistenceLibrary",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 3 },
+    "readingProgress": { "type": "array", "items": { "$ref": "../v1/learning-library.schema.json#/$defs/readingProgress" } },
+    "savedExplanations": { "type": "array", "items": { "$ref": "../v1/learning-library.schema.json#/$defs/savedExplanation" } },
+    "vocabularyEntries": { "type": "array", "items": { "$ref": "../v2/learning-library.schema.json#/$defs/vocabularyEntry" } },
+    "reviewCards": { "type": "array", "items": { "$ref": "#/$defs/reviewCard" } },
+    "reviewLogs": { "type": "array", "items": { "$ref": "#/$defs/reviewLog" } }
+  },
+  "required": ["schemaVersion", "readingProgress", "savedExplanations", "vocabularyEntries", "reviewCards", "reviewLogs"],
+  "$defs": {
+    "reviewCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "vocabularyEntryID": { "type": "string", "format": "uuid" },
+        "template": { "enum": ["recognition", "cloze"] },
+        "state": { "enum": ["new", "learning", "review", "suspended"] },
+        "dueAt": { "type": "string", "format": "date-time" },
+        "intervalDays": { "type": "number", "minimum": 0 },
+        "easeFactor": { "type": "number", "minimum": 1.3, "maximum": 3 },
+        "repetitions": { "type": "integer", "minimum": 0 },
+        "lapses": { "type": "integer", "minimum": 0 },
+        "lastReviewedAt": { "type": ["string", "null"], "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "vocabularyEntryID", "template", "state", "dueAt", "intervalDays", "easeFactor", "repetitions", "lapses", "createdAt", "updatedAt"]
+    },
+    "reviewLog": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "cardID": { "type": "string", "format": "uuid" },
+        "vocabularyEntryID": { "type": "string", "format": "uuid" },
+        "rating": { "enum": ["again", "hard", "good", "easy"] },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "previousState": { "enum": ["new", "learning", "review", "suspended"] },
+        "previousIntervalDays": { "type": "number", "minimum": 0 },
+        "scheduledIntervalDays": { "type": "number", "minimum": 0 },
+        "scheduledDueAt": { "type": "string", "format": "date-time" },
+        "schedulerVersion": { "type": "string", "minLength": 1 }
+      },
+      "required": ["id", "cardID", "vocabularyEntryID", "rating", "reviewedAt", "previousState", "previousIntervalDays", "scheduledIntervalDays", "scheduledDueAt", "schedulerVersion"]
+    }
+  }
+}

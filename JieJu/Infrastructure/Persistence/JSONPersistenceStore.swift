@@ -14,16 +14,19 @@ actor JSONPersistenceStore {
 
     private let fileManager: FileManager
     private let now: @Sendable () -> Date
+    private let reviewScheduler: any ReviewScheduling
     private var cachedLibrary: PersistenceLibrary?
 
     init(
         fileURL: URL = JSONPersistenceStore.defaultFileURL(),
         fileManager: FileManager = .default,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        reviewScheduler: any ReviewScheduling = JieJuReviewScheduler()
     ) {
         self.fileURL = fileURL
         self.fileManager = fileManager
         self.now = now
+        self.reviewScheduler = reviewScheduler
     }
 
     static func defaultFileURL(fileManager: FileManager = .default) -> URL {
@@ -51,8 +54,9 @@ actor JSONPersistenceStore {
             let data = try Data(contentsOf: fileURL)
             var library = try Self.makeDecoder().decode(PersistenceLibrary.self, from: data)
             switch library.schemaVersion {
-            case 1:
+            case 1, 2:
                 library.schemaVersion = PersistenceLibrary.currentSchemaVersion
+                addMissingRecognitionCards(to: &library, dueAt: now())
                 try write(library)
             case PersistenceLibrary.currentSchemaVersion:
                 break
@@ -163,10 +167,12 @@ actor JSONPersistenceStore {
         if let index = library.vocabularyEntries.firstIndex(where: { Self.isDuplicate($0, entry) }) {
             let merged = Self.merging(library.vocabularyEntries[index], with: entry)
             library.vocabularyEntries[index] = merged
+            addMissingRecognitionCard(for: merged, to: &library, dueAt: now())
             try persist(library)
             return merged
         }
         library.vocabularyEntries.append(entry)
+        addMissingRecognitionCard(for: entry, to: &library, dueAt: now())
         try persist(library)
         return entry
     }
@@ -188,8 +194,55 @@ actor JSONPersistenceStore {
         let previousCount = library.vocabularyEntries.count
         library.vocabularyEntries.removeAll { $0.id == id }
         guard previousCount != library.vocabularyEntries.count else { return false }
+        let removedCardIDs = Set(library.reviewCards.filter { $0.vocabularyEntryID == id }.map(\.id))
+        library.reviewCards.removeAll { $0.vocabularyEntryID == id }
+        library.reviewLogs.removeAll { $0.vocabularyEntryID == id || removedCardIDs.contains($0.cardID) }
         try persist(library)
         return true
+    }
+
+    func reviewCards() throws -> [ReviewCard] {
+        try load().reviewCards
+    }
+
+    func reviewLogs() throws -> [ReviewLog] {
+        try load().reviewLogs
+    }
+
+    func dueReviewCards(at date: Date? = nil, limit: Int = 100) throws -> [ReviewCard] {
+        let reference = date ?? now()
+        return try load().reviewCards
+            .filter { $0.state != .suspended && $0.dueAt <= reference }
+            .sorted { lhs, rhs in
+                if lhs.dueAt == rhs.dueAt { return lhs.createdAt < rhs.createdAt }
+                return lhs.dueAt < rhs.dueAt
+            }
+            .prefix(max(0, limit))
+            .map { $0 }
+    }
+
+    @discardableResult
+    func reviewCard(id: UUID, rating: ReviewRating, at date: Date? = nil) throws -> ReviewCard {
+        var library = try load()
+        guard let index = library.reviewCards.firstIndex(where: { $0.id == id }) else {
+            throw PersistenceStoreError.recordNotFound(id)
+        }
+        let outcome = reviewScheduler.review(library.reviewCards[index], rating: rating, at: date ?? now())
+        library.reviewCards[index] = outcome.card
+        library.reviewLogs.append(outcome.log)
+        try persist(library)
+        return outcome.card
+    }
+
+    func reviewPreviews(for cardID: UUID, at date: Date? = nil) throws -> [ReviewRating: Date] {
+        let library = try load()
+        guard let card = library.reviewCards.first(where: { $0.id == cardID }) else {
+            throw PersistenceStoreError.recordNotFound(cardID)
+        }
+        let reference = date ?? now()
+        return Dictionary(uniqueKeysWithValues: ReviewRating.allCases.map {
+            ($0, reviewScheduler.preview(card, rating: $0, at: reference))
+        })
     }
 
     private func persist(_ library: PersistenceLibrary) throws {
@@ -269,6 +322,24 @@ actor JSONPersistenceStore {
         }
         merged.updatedAt = max(existing.updatedAt, incoming.updatedAt)
         return merged
+    }
+
+    private func addMissingRecognitionCards(to library: inout PersistenceLibrary, dueAt: Date) {
+        for entry in library.vocabularyEntries {
+            addMissingRecognitionCard(for: entry, to: &library, dueAt: dueAt)
+        }
+    }
+
+    private func addMissingRecognitionCard(for entry: VocabularyEntry, to library: inout PersistenceLibrary, dueAt: Date) {
+        guard !library.reviewCards.contains(where: {
+            $0.vocabularyEntryID == entry.id && $0.template == .recognition
+        }) else { return }
+        library.reviewCards.append(.init(
+            vocabularyEntryID: entry.id,
+            dueAt: dueAt,
+            createdAt: dueAt,
+            updatedAt: dueAt
+        ))
     }
 
     private static func normalized(_ value: String?) -> String {

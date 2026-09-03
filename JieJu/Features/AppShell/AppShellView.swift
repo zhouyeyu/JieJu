@@ -5,6 +5,7 @@ private enum AppSection: String, CaseIterable, Identifiable {
     case reader
     case records
     case vocabulary
+    case review
     case settings
 
     var id: String { rawValue }
@@ -13,6 +14,7 @@ private enum AppSection: String, CaseIterable, Identifiable {
         case .reader: "阅读"
         case .records: "学习记录"
         case .vocabulary: "生词本"
+        case .review: "今日复习"
         case .settings: "设置"
         }
     }
@@ -21,6 +23,7 @@ private enum AppSection: String, CaseIterable, Identifiable {
         case .reader: "book"
         case .records: "text.badge.checkmark"
         case .vocabulary: "character.book.closed"
+        case .review: "rectangle.stack.badge.play"
         case .settings: "gearshape"
         }
     }
@@ -54,6 +57,10 @@ struct AppShellView: View {
                     VocabularyBookView(model: library)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(.background)
+                } else if activeSection == .review {
+                    ReviewSessionView(model: library)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.background)
                 } else if activeSection == .settings {
                     AISettingsView(settings: settings)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -85,6 +92,142 @@ struct AppShellView: View {
                 theme: settings.epubReaderTheme
             )
         )
+    }
+}
+
+private struct ReviewSessionView: View {
+    @ObservedObject var model: LearningLibraryModel
+    @State private var showsAnswer = false
+    @State private var isSubmittingRating = false
+
+    private var current: ReviewQueueItem? { model.dueReviewItems.first }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("今日复习").font(.title2.bold())
+                    Text("已复习 \(model.reviewedTodayCount) · 待复习 \(model.dueReviewItems.count)")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
+            Divider()
+
+            if let current {
+                reviewCard(current)
+            } else if model.vocabularyEntries.isEmpty {
+                ContentUnavailableView(
+                    "还没有复习卡片",
+                    systemImage: "rectangle.stack.badge.plus",
+                    description: Text("从阅读解句中收藏生词后，会自动生成第一张记忆卡片。")
+                )
+            } else {
+                ContentUnavailableView(
+                    "今天已经完成",
+                    systemImage: "checkmark.circle",
+                    description: Text("没有到期卡片。继续阅读，或者下次按计划复习。")
+                )
+            }
+        }
+        .navigationTitle("今日复习")
+        .task { await model.reload() }
+        .onChange(of: current?.id) { _, _ in showsAnswer = false }
+    }
+
+    private func reviewCard(_ item: ReviewQueueItem) -> some View {
+        ScrollView {
+            VStack(spacing: 22) {
+                VStack(spacing: 10) {
+                    Text(item.entry.lemma)
+                        .font(.system(size: 36, weight: .semibold, design: .rounded))
+                        .textSelection(.enabled)
+                    Text(item.entry.language)
+                        .font(.caption).foregroundStyle(.secondary)
+                    if !showsAnswer {
+                        Text("回想它的含义\(item.entry.reading == nil ? "" : "和读音")")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 180)
+                .padding(24)
+                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 16))
+
+                if showsAnswer {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if let reading = item.entry.reading, !reading.isEmpty {
+                            LabeledContent("读音") { Text(reading).textSelection(.enabled) }
+                        }
+                        if let partOfSpeech = item.entry.partOfSpeech, !partOfSpeech.isEmpty {
+                            LabeledContent("词形/词性") { Text(partOfSpeech) }
+                        }
+                        ForEach(item.entry.senses) { sense in
+                            Text(sense.meaning).font(.title3).textSelection(.enabled)
+                        }
+                        if let source = item.entry.sources.last {
+                            Divider()
+                            Text(source.sentence)
+                                .font(.body).italic().textSelection(.enabled)
+                            Text(source.document.fileName)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(18)
+                    .background(.quaternary.opacity(0.28), in: RoundedRectangle(cornerRadius: 12))
+
+                    ratingButtons(for: item)
+                } else {
+                    Button("显示答案", systemImage: "eye") { showsAnswer = true }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .keyboardShortcut(.space, modifiers: [])
+                        .accessibilityIdentifier("review.showAnswer")
+                }
+            }
+            .frame(maxWidth: 720)
+            .padding(28)
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func ratingButtons(for item: ReviewQueueItem) -> some View {
+        HStack(spacing: 10) {
+            ForEach(Array(ReviewRating.allCases.enumerated()), id: \.element) { index, rating in
+                Button {
+                    Task {
+                        guard !isSubmittingRating else { return }
+                        isSubmittingRating = true
+                        await model.review(item, rating: rating)
+                        showsAnswer = false
+                        isSubmittingRating = false
+                    }
+                } label: {
+                    VStack(spacing: 3) {
+                        Text(rating.title).fontWeight(.semibold)
+                        Text(intervalLabel(for: item.card, rating: rating))
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(rating == .again ? .red : nil)
+                .disabled(isSubmittingRating)
+                .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: [])
+                .accessibilityIdentifier("review.rate.\(rating.rawValue)")
+            }
+        }
+    }
+
+    private func intervalLabel(for card: ReviewCard, rating: ReviewRating) -> String {
+        let now = Date()
+        let due = JieJuReviewScheduler().preview(card, rating: rating, at: now)
+        let seconds = max(0, due.timeIntervalSince(now))
+        if seconds < 3_600 { return "\(max(1, Int((seconds / 60).rounded()))) 分钟" }
+        if seconds < 86_400 { return "\(max(1, Int((seconds / 3_600).rounded()))) 小时" }
+        return "\(max(1, Int((seconds / 86_400).rounded()))) 天"
     }
 }
 
