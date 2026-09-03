@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieju.app/contracts/v2/learning-library.schema.json",
+  "title": "PersistenceLibrary",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "readingProgress": { "type": "array", "items": { "$ref": "../v1/learning-library.schema.json#/$defs/readingProgress" } },
+    "savedExplanations": { "type": "array", "items": { "$ref": "../v1/learning-library.schema.json#/$defs/savedExplanation" } },
+    "vocabularyEntries": { "type": "array", "items": { "$ref": "#/$defs/vocabularyEntry" } }
+  },
+  "required": ["schemaVersion", "readingProgress", "savedExplanations", "vocabularyEntries"],
+  "$defs": {
+    "vocabularySense": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "meaning": { "type": "string", "minLength": 1 },
+        "explanationLanguage": { "type": "string", "minLength": 1 }
+      },
+      "required": ["id", "meaning", "explanationLanguage"]
+    },
+    "vocabularySource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "document": { "$ref": "../v1/learning-library.schema.json#/$defs/document" },
+        "pageIndex": { "type": ["integer", "null"], "minimum": 0 },
+        "sentence": { "type": "string", "minLength": 1 },
+        "surface": { "type": "string", "minLength": 1 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "document", "sentence", "surface", "createdAt"]
+    },
+    "vocabularyEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "language": { "type": "string", "minLength": 1 },
+        "lemma": { "type": "string", "minLength": 1 },
+        "reading": { "type": ["string", "null"] },
+        "partOfSpeech": { "type": ["string", "null"] },
+        "surfaceForms": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "senses": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/vocabularySense" } },
+        "sources": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/vocabularySource" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "language", "lemma", "surfaceForms", "senses", "sources", "createdAt", "updatedAt"]
+    }
+  }
+}

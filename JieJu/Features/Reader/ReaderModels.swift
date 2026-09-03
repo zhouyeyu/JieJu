@@ -132,7 +132,12 @@ struct ReaderExplanation: Equatable, Sendable {
     let translation: String
     let sentenceCore: String
     let grammarPoints: [String]
-    let keyPhrases: [String]
+    let keyPhrases: [ReaderKeyPhrase]
+}
+
+struct ReaderKeyPhrase: Equatable, Sendable {
+    let text: String
+    let meaning: String
 }
 
 struct ReaderSentenceComponent: Equatable, Sendable {
@@ -176,6 +181,27 @@ struct ReaderSavePayload: Sendable {
     let explanationLanguage: String
 }
 
+struct ReaderVocabularyCandidate: Equatable, Sendable {
+    let surface: String
+    let lemma: String
+    let reading: String?
+    let partOfSpeech: String?
+    let meaning: String
+
+    var stableKey: String {
+        "\(lemma.lowercased())|\((reading ?? "").lowercased())"
+    }
+}
+
+struct ReaderVocabularySavePayload: Sendable {
+    let documentURL: URL
+    let pageIndex: Int
+    let sentence: String
+    let sourceLanguage: String
+    let explanationLanguage: String
+    let candidate: ReaderVocabularyCandidate
+}
+
 enum ReaderExplanationState: Equatable, Sendable {
     case idle
     case loading
@@ -217,7 +243,7 @@ struct MockReaderExplanationProvider: ReaderExplanationProviding {
             translation: "这是“\(request.targetText)”的示例翻译。",
             sentenceCore: request.targetText,
             grammarPoints: ["Mock：这里将展示句子的语法结构。"],
-            keyPhrases: ["Mock：这里将展示重点表达。"]
+            keyPhrases: [.init(text: request.targetText, meaning: "Mock：这里将展示重点表达。")]
         )
     }
 

@@ -4,6 +4,7 @@ import JieJuLanguage
 private enum AppSection: String, CaseIterable, Identifiable {
     case reader
     case records
+    case vocabulary
     case settings
 
     var id: String { rawValue }
@@ -11,6 +12,7 @@ private enum AppSection: String, CaseIterable, Identifiable {
         switch self {
         case .reader: "阅读"
         case .records: "学习记录"
+        case .vocabulary: "生词本"
         case .settings: "设置"
         }
     }
@@ -18,6 +20,7 @@ private enum AppSection: String, CaseIterable, Identifiable {
         switch self {
         case .reader: "book"
         case .records: "text.badge.checkmark"
+        case .vocabulary: "character.book.closed"
         case .settings: "gearshape"
         }
     }
@@ -47,6 +50,10 @@ struct AppShellView: View {
                     LearningRecordsView(model: library)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(.background)
+                } else if activeSection == .vocabulary {
+                    VocabularyBookView(model: library)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.background)
                 } else if activeSection == .settings {
                     AISettingsView(settings: settings)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -65,6 +72,7 @@ struct AppShellView: View {
             saveHandler: { payload in
                 try await library.save(payload, modelName: settings.activeModelName)
             },
+            vocabularySaveHandler: library.saveVocabulary,
             explanationLanguage: settings.explanationLanguage,
             configurationID: settings.providerConfigurationID,
             explanationPresentationMode: settings.explanationPresentationMode,
@@ -77,6 +85,117 @@ struct AppShellView: View {
                 theme: settings.epubReaderTheme
             )
         )
+    }
+}
+
+private struct VocabularyBookView: View {
+    @ObservedObject var model: LearningLibraryModel
+    @State private var selectedEntryID: UUID?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let error = model.errorMessage {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+                    .padding(12)
+            }
+            if model.vocabularyEntries.isEmpty {
+                ContentUnavailableView(
+                    "还没有生词",
+                    systemImage: "character.book.closed",
+                    description: Text("从解句结果的重点表达或日语词形中收藏，也可以直接划选单词解释后收藏。")
+                )
+            } else {
+                HSplitView {
+                    List(model.vocabularyEntries, selection: $selectedEntryID) { entry in
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(entry.lemma).font(.headline)
+                                if let reading = entry.reading, !reading.isEmpty {
+                                    Text(reading).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Text(entry.senses.first?.meaning ?? "暂无释义")
+                                .foregroundStyle(.secondary).lineLimit(2)
+                            Text("\(entry.sources.count) 个语境 · \(entry.language)")
+                                .font(.caption).foregroundStyle(.tertiary)
+                        }
+                        .tag(entry.id)
+                    }
+                    .frame(minWidth: 260, idealWidth: 320, maxWidth: 420)
+
+                    if let entry = selectedEntry {
+                        VocabularyEntryDetail(entry: entry) {
+                            Task { await model.deleteVocabulary(entry) }
+                        }
+                    } else {
+                        ContentUnavailableView("选择一个生词", systemImage: "character.book.closed")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+            }
+        }
+        .navigationTitle("生词本")
+        .onChange(of: model.vocabularyEntries.map(\.id), initial: true) { _, ids in
+            if let selectedEntryID, ids.contains(selectedEntryID) { return }
+            selectedEntryID = ids.first
+        }
+    }
+
+    private var selectedEntry: VocabularyEntry? {
+        guard let selectedEntryID else { return nil }
+        return model.vocabularyEntries.first { $0.id == selectedEntryID }
+    }
+}
+
+private struct VocabularyEntryDetail: View {
+    let entry: VocabularyEntry
+    let delete: () -> Void
+    @State private var confirmsDeletion = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(entry.lemma).font(.title2.bold()).textSelection(.enabled)
+                    if let reading = entry.reading, !reading.isEmpty {
+                        Text("【\(reading)】").foregroundStyle(.secondary).textSelection(.enabled)
+                    }
+                }
+                if let partOfSpeech = entry.partOfSpeech, !partOfSpeech.isEmpty {
+                    Text(partOfSpeech).font(.caption).foregroundStyle(.secondary)
+                }
+                ForEach(entry.senses) { sense in
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(sense.meaning).textSelection(.enabled)
+                        Text("解释语言：\(sense.explanationLanguage)")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+                }
+                Text("来源语境").font(.headline)
+                ForEach(entry.sources) { source in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(source.sentence).textSelection(.enabled)
+                        Text("\(source.document.fileName)\(source.pageIndex.map { " · 位置 \($0 + 1)" } ?? "")")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+                }
+                Button("删除这个生词", systemImage: "trash", role: .destructive) {
+                    confirmsDeletion = true
+                }
+            }
+            .frame(maxWidth: 720, alignment: .leading)
+            .padding(24)
+        }
+        .confirmationDialog("确定删除这个生词及其来源？", isPresented: $confirmsDeletion) {
+            Button("删除", role: .destructive, action: delete)
+        }
     }
 }
 

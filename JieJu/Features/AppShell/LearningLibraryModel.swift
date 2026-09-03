@@ -3,6 +3,7 @@ import Foundation
 @MainActor
 final class LearningLibraryModel: ObservableObject {
     @Published private(set) var records: [SavedExplanationRecord] = []
+    @Published private(set) var vocabularyEntries: [VocabularyEntry] = []
     @Published private(set) var errorMessage: String?
 
     private let store: JSONPersistenceStore
@@ -14,6 +15,7 @@ final class LearningLibraryModel: ObservableObject {
     func reload() async {
         do {
             records = try await store.savedExplanations().sorted { $0.updatedAt > $1.updatedAt }
+            vocabularyEntries = try await store.vocabularyEntries().sorted { $0.updatedAt > $1.updatedAt }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -35,7 +37,7 @@ final class LearningLibraryModel: ObservableObject {
                 translation: payload.explanation.translation,
                 sentenceCore: payload.explanation.sentenceCore,
                 grammarPoints: payload.explanation.grammarPoints.map { .init(title: $0, explanation: $0) },
-                keyPhrases: payload.explanation.keyPhrases.map { .init(text: $0, meaning: $0, example: nil) },
+                keyPhrases: payload.explanation.keyPhrases.map { .init(text: $0.text, meaning: $0.meaning, example: nil) },
                 modelName: modelName
             )
         )
@@ -48,9 +50,49 @@ final class LearningLibraryModel: ObservableObject {
         }
     }
 
+    func saveVocabulary(_ payload: ReaderVocabularySavePayload) async throws {
+        let timestamp = Date()
+        let entry = VocabularyEntry(
+            language: payload.sourceLanguage,
+            lemma: payload.candidate.lemma,
+            reading: payload.candidate.reading,
+            partOfSpeech: payload.candidate.partOfSpeech,
+            surfaceForms: [payload.candidate.surface],
+            senses: [.init(meaning: payload.candidate.meaning, explanationLanguage: payload.explanationLanguage)],
+            sources: [.init(
+                document: DocumentIdentity(
+                    id: payload.documentURL.standardizedFileURL.path,
+                    fileName: payload.documentURL.lastPathComponent
+                ),
+                pageIndex: payload.pageIndex,
+                sentence: payload.sentence,
+                surface: payload.candidate.surface,
+                createdAt: timestamp
+            )],
+            createdAt: timestamp,
+            updatedAt: timestamp
+        )
+        do {
+            _ = try await store.saveVocabularyEntry(entry)
+            await reload()
+        } catch {
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
     func delete(_ record: SavedExplanationRecord) async {
         do {
             _ = try await store.deleteExplanation(id: record.id)
+            await reload()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteVocabulary(_ entry: VocabularyEntry) async {
+        do {
+            _ = try await store.deleteVocabularyEntry(id: entry.id)
             await reload()
         } catch {
             errorMessage = error.localizedDescription

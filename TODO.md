@@ -74,7 +74,7 @@
 - [x] 语言引擎 57 项离线测试通过
 - [x] 本机已安装 Ollama 与默认模型（0.5B、1.5B 均已拉取）
 - [ ] 开启开发者模式（`sudo DevToolsSecurity -enable`，需用户执行并重启）
-- [x] macOS App 单元测试恢复并通过 48 项
+- [x] macOS App 单元测试恢复并通过 52 项
 - [ ] 恢复当前机器的 XCTest UI Runner 并重跑完整 UI 测试
 - [x] 0.5B/1.5B 双模型冒烟评测（1.5B 定为默认模型，见 DECISIONS.md）
 - [ ] 人工评分冒烟集输出（`Evaluation/report-*.md` Manual scoring）
@@ -152,19 +152,20 @@ EPUB 注入跳过已有 `<ruby>`、脚本和样式；同一章节出现多个读
   读音、词性、当前语境义、简明释义、词形变化和常用搭配
 - [ ] `WORD-002` 定义独立 `VocabularyAI` 协议，复用 Ollama/OpenAI-compatible HTTP 层，但不扩大
   现有 `ReadingAI` 的职责
-- [ ] `WORD-003` 在重点表达、日语词形和阅读器单词选区上提供“解释单词”与“加入生词本”操作
+- [x] `WORD-003` 在重点表达、日语词形和阅读器单词选区上提供“解释单词”与“加入生词本”操作
 - [ ] `WORD-004` 日语读音、原形和活用优先使用本地 MeCab/IPADic；模型只补充当前语境义和说明
 - [ ] `WORD-005` 为结构化输出、目标词一致性、上下文串线、取消和流式预览增加离线测试
 
 ### H2：生词本
 
-- [ ] `VOCAB-001` 定义 `VocabularyEntry`、`VocabularySense` 和 `VocabularySource`；一个词可关联多个
+- [x] `VOCAB-001` 定义 `VocabularyEntry`、`VocabularySense` 和 `VocabularySource`；一个词可关联多个
   文档、句子和语境义
-- [ ] `VOCAB-002` 以“语言 + 规范化原形 + 可选读音”去重，保留不同表面词形和来源语境
+- [x] `VOCAB-002` 以“语言 + 规范化原形 + 可选读音”去重，保留不同表面词形和来源语境
 - [ ] `VOCAB-003` 支持用户编辑词义、读音、标签和备注，并标明 AI 生成内容可修正
 - [ ] `VOCAB-004` 创建生词本列表、搜索、筛选、详情和删除流程
-- [ ] `VOCAB-005` 新建 `learning-library` v2 schema 和 v1→v2 迁移；禁止直接修改已发布的 v1 schema
-- [ ] `VOCAB-006` 生词保存、合并、编辑、删除和迁移测试
+- [x] `VOCAB-005` 新建 `learning-library` v2 schema 和 v1→v2 迁移；禁止直接修改已发布的 v1 schema
+- [x] `VOCAB-006` 生词保存、合并、删除和迁移测试
+- [ ] `VOCAB-007` 生词编辑、搜索和筛选测试
 
 ### H3：卡片与遗忘曲线
 

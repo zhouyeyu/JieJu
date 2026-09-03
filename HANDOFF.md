@@ -12,9 +12,11 @@
 
 ### 2026-09-03 最新检查点
 
-- 已规划 Track H 生词本与间隔复习，但尚未实现源码。关键边界是 Explanation、VocabularyEntry、
-  VocabularySource、ReviewCard、ReviewLog 分离；模型候选词必须由用户确认收藏，复习日志只追加。
-  存储实现应新建 learning-library v2 并提供 v1→v2 迁移，禁止修改 `Shared/Contracts/v1`。
+- Track H 首个闭环已实现：重点表达、日语词形和直接划选词均可收藏；侧栏新增生词本列表、详情和
+  删除。`PersistenceLibrary.currentSchemaVersion` 已升至 2，v1 缺少 `vocabularyEntries` 时自动
+  补空并原子写回 v2；共享 v1 未改动，新增 `Shared/Contracts/v2`。当前直接选词仍复用句子解释
+  Provider，原形暂以表面词形保存；更丰富的词性/原形/语境义需后续 `WORD-001/002` 专用协议。
+  最新验证：Node **8 项**、JieJuLanguage **57 项**、App **52 项**通过。
 - 已建立跨平台骨架：`Shared/Contracts/v1` 是新的跨语言数据事实来源，`Shared/ReaderWeb` 是 EPUB
   Web 代码的渐进迁移目标，`Apps/Windows` 只记录经确认的边界，尚未伪造 WinUI 工程。完整顺序见
   `Docs/CROSS_PLATFORM.md` 和 TODO Track I。

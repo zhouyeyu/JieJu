@@ -40,6 +40,56 @@ final class JSONPersistenceStoreTests: XCTestCase {
 
         XCTAssertEqual(reloaded.readingProgress, [progress])
         XCTAssertEqual(reloaded.savedExplanations, [saved])
+        XCTAssertTrue(reloaded.vocabularyEntries.isEmpty)
+    }
+
+    func testMigratesV1LibraryAndPreservesExistingData() async throws {
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let v1 = """
+        {"schemaVersion":1,"readingProgress":[],"savedExplanations":[]}
+        """
+        try Data(v1.utf8).write(to: fileURL)
+
+        let migrated = try await JSONPersistenceStore(fileURL: fileURL).load()
+
+        XCTAssertEqual(migrated.schemaVersion, 2)
+        XCTAssertTrue(migrated.vocabularyEntries.isEmpty)
+        let disk = try JSONDecoder.iso8601.decode(PersistenceLibrary.self, from: Data(contentsOf: fileURL))
+        XCTAssertEqual(disk.schemaVersion, 2)
+    }
+
+    func testVocabularyDeduplicatesAndMergesMeaningsAndSources() async throws {
+        let store = JSONPersistenceStore(fileURL: fileURL)
+        let first = makeVocabularyEntry(
+            surface: "continued",
+            meaning: "继续",
+            sentence: "She continued."
+        )
+        let saved = try await store.saveVocabularyEntry(first)
+        var second = makeVocabularyEntry(
+            surface: "continue",
+            meaning: "持续做某事",
+            sentence: "They continue reading."
+        )
+        second.language = " english "
+        second.lemma = "CONTINUE"
+        second.reading = "kənˈtɪnjuː"
+        second.updatedAt = timestamp.addingTimeInterval(60)
+
+        let merged = try await store.saveVocabularyEntry(second)
+
+        XCTAssertEqual(merged.id, saved.id)
+        XCTAssertEqual(Set(merged.surfaceForms), Set(["continued", "continue"]))
+        XCTAssertEqual(merged.reading, "kənˈtɪnjuː")
+        XCTAssertEqual(merged.senses.count, 2)
+        XCTAssertEqual(merged.sources.count, 2)
+        let entriesAfterMerge = try await store.vocabularyEntries()
+        XCTAssertEqual(entriesAfterMerge.count, 1)
+
+        let didDelete = try await store.deleteVocabularyEntry(id: merged.id)
+        XCTAssertTrue(didDelete)
+        let entriesAfterDelete = try await store.vocabularyEntries()
+        XCTAssertTrue(entriesAfterDelete.isEmpty)
     }
 
     func testCorruptFileIsBackedUpAndRecovered() async throws {
@@ -146,6 +196,18 @@ final class JSONPersistenceStoreTests: XCTestCase {
                 keyPhrases: [.init(text: "fall asleep", meaning: "入睡", example: nil)],
                 modelName: "qwen2.5:0.5b-instruct"
             ),
+            createdAt: timestamp,
+            updatedAt: timestamp
+        )
+    }
+
+    private func makeVocabularyEntry(surface: String, meaning: String, sentence: String) -> VocabularyEntry {
+        VocabularyEntry(
+            language: "English",
+            lemma: "continue",
+            surfaceForms: [surface],
+            senses: [.init(meaning: meaning, explanationLanguage: "Chinese")],
+            sources: [.init(document: document, pageIndex: 3, sentence: sentence, surface: surface, createdAt: timestamp)],
             createdAt: timestamp,
             updatedAt: timestamp
         )

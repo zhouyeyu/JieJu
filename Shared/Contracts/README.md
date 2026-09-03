@@ -11,4 +11,5 @@
 - 阅读位置使用稳定 locator；动态页码只用于显示，不能作为跨设备唯一位置。
 - 修改 Schema 时必须同步更新示例、对应平台测试、`manifest.json` 和本目录版本说明。
 
-当前 `v1` 与现有 Swift 数据结构对齐，并为 EPUB CFI/DOM 锚点及 Windows WebView2 预留字段。
+`v1` 固定初始阅读与解句结构。`v2` 为 learning library 增加生词条目，并通过引用复用未变化的
+v1 定义；已有版本目录保持不可变，App 必须显式执行 v1→v2 迁移。

@@ -14,6 +14,7 @@ struct ReaderView: View {
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
         saveHandler: @escaping @MainActor (ReaderSavePayload) async throws -> Void = { _ in },
+        vocabularySaveHandler: @escaping @MainActor (ReaderVocabularySavePayload) async throws -> Void = { _ in },
         explanationLanguage: String = "Chinese",
         configurationID: String = "default",
         explanationPresentationMode: ExplanationPresentationMode = .sidebar,
@@ -29,6 +30,7 @@ struct ReaderView: View {
         _model = StateObject(wrappedValue: ReaderViewModel(
             explanationProvider: explanationProvider,
             saveHandler: saveHandler,
+            vocabularySaveHandler: vocabularySaveHandler,
             explanationLanguage: explanationLanguage
         ))
     }
@@ -110,6 +112,7 @@ struct ReaderView: View {
                                 saveState: model.saveState,
                                 retry: model.requestExplanation,
                                 analyzeDeep: model.requestDeepAnalysis,
+                                saveVocabulary: model.saveVocabulary,
                                 furiganaDisplayMode: furiganaDisplayMode,
                                 close: model.dismissExplanation,
                                 presentation: .sidebar
@@ -171,7 +174,11 @@ struct ReaderView: View {
 
     @ViewBuilder
     private func explanationTrigger(for selection: ReaderSelection) -> some View {
-        let button = Button("解释", systemImage: "text.bubble", action: model.requestExplanation)
+        let button = Button(
+            ReaderVocabularySelection.isLikelyWord(selection.targetText) ? "解释单词" : "解释",
+            systemImage: "text.bubble",
+            action: model.requestExplanation
+        )
                 .buttonStyle(.borderedProminent)
                 .position(
                     x: max(52, selection.anchorRect.midX),
@@ -189,6 +196,7 @@ struct ReaderView: View {
                         saveState: model.saveState,
                         retry: model.requestExplanation,
                         analyzeDeep: model.requestDeepAnalysis,
+                        saveVocabulary: model.saveVocabulary,
                         furiganaDisplayMode: furiganaDisplayMode,
                         close: model.dismissExplanation,
                         presentation: .popover
@@ -258,11 +266,13 @@ struct ReaderExplanationPanel: View {
     let saveState: ReaderSaveState
     let retry: () -> Void
     let analyzeDeep: () -> Void
+    let saveVocabulary: (ReaderVocabularyCandidate) async throws -> Void
     let furiganaDisplayMode: FuriganaDisplayMode
     let close: () -> Void
     let presentation: Presentation
 
     @State private var sourceExpanded = false
+    @State private var vocabularySaveStates: [String: VocabularySaveState] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -327,6 +337,15 @@ struct ReaderExplanationPanel: View {
         LazyVStack(alignment: .leading, spacing: 12) {
             if !explanation.translation.isEmpty {
                 explanationCard(title: "翻译", systemImage: "character.bubble", value: explanation.translation)
+                if ReaderVocabularySelection.isLikelyWord(selectedText) {
+                    vocabularyButton(for: .init(
+                        surface: selectedText.trimmingCharacters(in: .whitespacesAndNewlines),
+                        lemma: selectedText.trimmingCharacters(in: .whitespacesAndNewlines),
+                        reading: nil,
+                        partOfSpeech: nil,
+                        meaning: explanation.translation
+                    ), label: "把选中单词加入生词本")
+                }
             }
             if !explanation.sentenceCore.isEmpty {
                 explanationCard(title: "句子主干", systemImage: "arrow.triangle.branch", value: explanation.sentenceCore)
@@ -335,7 +354,7 @@ struct ReaderExplanationPanel: View {
                 itemCard(title: "语法", systemImage: "text.book.closed", items: explanation.grammarPoints)
             }
             if !explanation.keyPhrases.isEmpty {
-                itemCard(title: "重点表达", systemImage: "quote.bubble", items: explanation.keyPhrases)
+                keyPhraseCard(explanation.keyPhrases)
             }
             if isStreaming {
                 HStack(spacing: 10) {
@@ -412,6 +431,13 @@ struct ReaderExplanationPanel: View {
                         Text("\(word.text)【\(word.reading)】").font(.body.weight(.semibold))
                         Text("原形：\(word.baseForm) · \(word.inflectionType)").font(.caption).foregroundStyle(.secondary)
                         Text(word.grammaticalFunction).fixedSize(horizontal: false, vertical: true)
+                        vocabularyButton(for: .init(
+                            surface: word.text,
+                            lemma: word.baseForm,
+                            reading: word.reading,
+                            partOfSpeech: word.inflectionType,
+                            meaning: word.grammaticalFunction
+                        ), label: "加入生词本")
                     }
                 }
                 Text("读音、原形和词性来自本地 MeCab/IPADic，不依赖语言模型。")
@@ -491,6 +517,94 @@ struct ReaderExplanationPanel: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func keyPhraseCard(_ phrases: [ReaderKeyPhrase]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("重点表达", systemImage: "quote.bubble").font(.subheadline.weight(.semibold))
+            ForEach(Array(phrases.enumerated()), id: \.offset) { index, phrase in
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\(index + 1)")
+                            .font(.caption2.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 20, height: 20)
+                            .background(.tertiary.opacity(0.35), in: Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(phrase.text).fontWeight(.semibold).textSelection(.enabled)
+                            Text(phrase.meaning).textSelection(.enabled)
+                        }
+                    }
+                    vocabularyButton(for: .init(
+                        surface: phrase.text,
+                        lemma: phrase.text,
+                        reading: nil,
+                        partOfSpeech: nil,
+                        meaning: phrase.meaning
+                    ), label: "加入生词本")
+                    .padding(.leading, 28)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private func vocabularyButton(for candidate: ReaderVocabularyCandidate, label: String) -> some View {
+        switch vocabularySaveStates[candidate.stableKey, default: .idle] {
+        case .idle:
+            Button(label, systemImage: "character.book.closed") {
+                vocabularySaveStates[candidate.stableKey] = .saving
+                Task {
+                    do {
+                        try await saveVocabulary(candidate)
+                        vocabularySaveStates[candidate.stableKey] = .saved
+                    } catch {
+                        vocabularySaveStates[candidate.stableKey] = .failed(error.localizedDescription)
+                    }
+                }
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+            .accessibilityIdentifier("reader.saveVocabulary")
+        case .saving:
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text("正在收藏…")
+            }
+            .font(.caption).foregroundStyle(.secondary)
+        case .saved:
+            Label("已加入生词本", systemImage: "checkmark.circle.fill")
+                .font(.caption).foregroundStyle(.green)
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 4) {
+                Label("收藏失败：\(message)", systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.red)
+                Button("重试", systemImage: "arrow.clockwise") {
+                    vocabularySaveStates[candidate.stableKey] = .idle
+                }
+                .controlSize(.small)
+            }
+        }
+    }
+}
+
+private enum VocabularySaveState: Equatable {
+    case idle
+    case saving
+    case saved
+    case failed(String)
+}
+
+enum ReaderVocabularySelection {
+    static func isLikelyWord(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count <= 40 else { return false }
+        let terminators = CharacterSet(charactersIn: ".!?。！？；;\n")
+        guard trimmed.rangeOfCharacter(from: terminators) == nil else { return false }
+        return trimmed.split(whereSeparator: { $0.isWhitespace }).count <= 3
     }
 }
 

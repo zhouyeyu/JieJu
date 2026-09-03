@@ -11,7 +11,7 @@ struct OllamaReaderExplanationProvider: ReaderExplanationProviding {
             translation: result.translation,
             sentenceCore: result.sentenceCore,
             grammarPoints: result.grammarPoints.map { "\($0.text)：\($0.explanation)" },
-            keyPhrases: result.keyPhrases.map { "\($0.text)：\($0.meaning)" }
+            keyPhrases: result.keyPhrases.map { .init(text: $0.text, meaning: $0.meaning) }
         )
     }
 
@@ -57,7 +57,7 @@ struct OllamaReaderExplanationProvider: ReaderExplanationProviding {
             translation: result.translation,
             sentenceCore: result.sentenceCore,
             grammarPoints: result.grammarPoints.map { "\($0.text)：\($0.explanation)" },
-            keyPhrases: result.keyPhrases.map { "\($0.text)：\($0.meaning)" }
+            keyPhrases: result.keyPhrases.map { .init(text: $0.text, meaning: $0.meaning) }
         )
     }
 }

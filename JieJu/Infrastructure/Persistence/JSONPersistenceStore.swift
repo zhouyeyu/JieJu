@@ -4,6 +4,7 @@ enum PersistenceStoreError: Error, Equatable {
     case unsupportedSchemaVersion(Int)
     case invalidPageIndex(Int)
     case recordNotFound(UUID)
+    case vocabularyEntryNotFound(UUID)
 }
 
 actor JSONPersistenceStore {
@@ -48,8 +49,14 @@ actor JSONPersistenceStore {
 
         do {
             let data = try Data(contentsOf: fileURL)
-            let library = try Self.makeDecoder().decode(PersistenceLibrary.self, from: data)
-            guard library.schemaVersion == PersistenceLibrary.currentSchemaVersion else {
+            var library = try Self.makeDecoder().decode(PersistenceLibrary.self, from: data)
+            switch library.schemaVersion {
+            case 1:
+                library.schemaVersion = PersistenceLibrary.currentSchemaVersion
+                try write(library)
+            case PersistenceLibrary.currentSchemaVersion:
+                break
+            default:
                 throw PersistenceStoreError.unsupportedSchemaVersion(library.schemaVersion)
             }
             cachedLibrary = library
@@ -146,6 +153,45 @@ actor JSONPersistenceStore {
         return true
     }
 
+    func vocabularyEntries() throws -> [VocabularyEntry] {
+        try load().vocabularyEntries
+    }
+
+    @discardableResult
+    func saveVocabularyEntry(_ entry: VocabularyEntry) throws -> VocabularyEntry {
+        var library = try load()
+        if let index = library.vocabularyEntries.firstIndex(where: { Self.isDuplicate($0, entry) }) {
+            let merged = Self.merging(library.vocabularyEntries[index], with: entry)
+            library.vocabularyEntries[index] = merged
+            try persist(library)
+            return merged
+        }
+        library.vocabularyEntries.append(entry)
+        try persist(library)
+        return entry
+    }
+
+    @discardableResult
+    func updateVocabularyEntry(_ entry: VocabularyEntry) throws -> VocabularyEntry {
+        var library = try load()
+        guard let index = library.vocabularyEntries.firstIndex(where: { $0.id == entry.id }) else {
+            throw PersistenceStoreError.vocabularyEntryNotFound(entry.id)
+        }
+        library.vocabularyEntries[index] = entry
+        try persist(library)
+        return entry
+    }
+
+    @discardableResult
+    func deleteVocabularyEntry(id: UUID) throws -> Bool {
+        var library = try load()
+        let previousCount = library.vocabularyEntries.count
+        library.vocabularyEntries.removeAll { $0.id == id }
+        guard previousCount != library.vocabularyEntries.count else { return false }
+        try persist(library)
+        return true
+    }
+
     private func persist(_ library: PersistenceLibrary) throws {
         try write(library)
         cachedLibrary = library
@@ -190,6 +236,39 @@ actor JSONPersistenceStore {
             && normalized(lhs.request.targetText) == normalized(rhs.request.targetText)
             && normalized(lhs.request.precedingContext) == normalized(rhs.request.precedingContext)
             && normalized(lhs.request.followingContext) == normalized(rhs.request.followingContext)
+    }
+
+    private static func isDuplicate(_ lhs: VocabularyEntry, _ rhs: VocabularyEntry) -> Bool {
+        let lhsReading = normalized(lhs.reading)
+        let rhsReading = normalized(rhs.reading)
+        return normalized(lhs.language) == normalized(rhs.language)
+            && normalized(lhs.lemma) == normalized(rhs.lemma)
+            && (lhsReading.isEmpty || rhsReading.isEmpty || lhsReading == rhsReading)
+    }
+
+    private static func merging(_ existing: VocabularyEntry, with incoming: VocabularyEntry) -> VocabularyEntry {
+        var merged = existing
+        if merged.reading?.isEmpty != false { merged.reading = incoming.reading }
+        if merged.partOfSpeech?.isEmpty != false { merged.partOfSpeech = incoming.partOfSpeech }
+        for surface in incoming.surfaceForms where !merged.surfaceForms.contains(where: { normalized($0) == normalized(surface) }) {
+            merged.surfaceForms.append(surface)
+        }
+        for sense in incoming.senses where !merged.senses.contains(where: {
+            normalized($0.meaning) == normalized(sense.meaning)
+                && normalized($0.explanationLanguage) == normalized(sense.explanationLanguage)
+        }) {
+            merged.senses.append(sense)
+        }
+        for source in incoming.sources where !merged.sources.contains(where: {
+            $0.document.id == source.document.id
+                && $0.pageIndex == source.pageIndex
+                && normalized($0.sentence) == normalized(source.sentence)
+                && normalized($0.surface) == normalized(source.surface)
+        }) {
+            merged.sources.append(source)
+        }
+        merged.updatedAt = max(existing.updatedAt, incoming.updatedAt)
+        return merged
     }
 
     private static func normalized(_ value: String?) -> String {

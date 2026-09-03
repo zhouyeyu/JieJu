@@ -24,6 +24,7 @@ final class ReaderViewModel: ObservableObject {
 
     private var explanationProvider: any ReaderExplanationProviding
     private let saveHandler: @MainActor (ReaderSavePayload) async throws -> Void
+    private let vocabularySaveHandler: @MainActor (ReaderVocabularySavePayload) async throws -> Void
     private let positionStore: ReadingPositionStore
     private let fallbackSourceLanguage: String
     private var explanationLanguage: String
@@ -35,12 +36,14 @@ final class ReaderViewModel: ObservableObject {
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
         saveHandler: @escaping @MainActor (ReaderSavePayload) async throws -> Void = { _ in },
+        vocabularySaveHandler: @escaping @MainActor (ReaderVocabularySavePayload) async throws -> Void = { _ in },
         positionStore: ReadingPositionStore = ReadingPositionStore(),
         sourceLanguage: String = "English",
         explanationLanguage: String = "Chinese"
     ) {
         self.explanationProvider = explanationProvider
         self.saveHandler = saveHandler
+        self.vocabularySaveHandler = vocabularySaveHandler
         self.positionStore = positionStore
         self.fallbackSourceLanguage = sourceLanguage
         self.explanationLanguage = explanationLanguage
@@ -325,6 +328,18 @@ final class ReaderViewModel: ObservableObject {
                 self?.saveState = .failed(error.localizedDescription)
             }
         }
+    }
+
+    func saveVocabulary(_ candidate: ReaderVocabularyCandidate) async throws {
+        guard case let .loaded(metadata) = documentState, let selection else { return }
+        try await vocabularySaveHandler(.init(
+            documentURL: metadata.url,
+            pageIndex: currentPageIndex,
+            sentence: selection.targetText,
+            sourceLanguage: detectedSourceLanguage,
+            explanationLanguage: explanationLanguage,
+            candidate: candidate
+        ))
     }
 
     private var detectedSourceLanguage: String {

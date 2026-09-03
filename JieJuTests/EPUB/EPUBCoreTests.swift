@@ -152,9 +152,49 @@ final class EPUBCoreTests: XCTestCase {
         let savedPayload = await recorder.payload
         XCTAssertEqual(savedPayload?.selection.targetText, "The first paragraph.")
     }
+
+    @MainActor
+    func testSavingVocabularyIncludesCurrentDocumentAndSentence() async throws {
+        let recorder = ReaderVocabularyPayloadRecorder()
+        let model = ReaderViewModel(vocabularySaveHandler: { payload in
+            await recorder.record(payload)
+        })
+        let url = try fixture("minimal")
+        model.open(url)
+        for _ in 0..<200 {
+            if case .loaded = model.documentState { break }
+            await Task.yield()
+        }
+        model.updateSelection(.init(
+            targetText: "The first paragraph has emphasis.",
+            precedingContext: nil,
+            followingContext: nil,
+            anchorRect: .zero
+        ))
+        let candidate = ReaderVocabularyCandidate(
+            surface: "emphasis",
+            lemma: "emphasis",
+            reading: nil,
+            partOfSpeech: "noun",
+            meaning: "强调"
+        )
+
+        try await model.saveVocabulary(candidate)
+
+        let payload = await recorder.payload
+        XCTAssertEqual(payload?.documentURL, url)
+        XCTAssertEqual(payload?.sentence, "The first paragraph has emphasis.")
+        XCTAssertEqual(payload?.candidate, candidate)
+        XCTAssertEqual(payload?.sourceLanguage, "English")
+    }
 }
 
 private actor ReaderSavePayloadRecorder {
     private(set) var payload: ReaderSavePayload?
     func record(_ payload: ReaderSavePayload) { self.payload = payload }
+}
+
+private actor ReaderVocabularyPayloadRecorder {
+    private(set) var payload: ReaderVocabularySavePayload?
+    func record(_ payload: ReaderVocabularySavePayload) { self.payload = payload }
 }

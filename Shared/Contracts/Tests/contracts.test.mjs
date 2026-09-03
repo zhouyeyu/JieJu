@@ -59,6 +59,17 @@ test("every local schema reference resolves", async () => {
   }
 });
 
+test("v2 adds vocabulary without changing the v1 library", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../v2/manifest.json", import.meta.url), "utf8"));
+  const schema = JSON.parse(await readFile(new URL("../v2/learning-library.schema.json", import.meta.url), "utf8"));
+  assert.equal(manifest.contractVersion, 2);
+  assert.deepEqual(manifest.schemas, ["learning-library.schema.json"]);
+  assert.equal(schema.properties.schemaVersion.const, 2);
+  assert.ok(schema.properties.vocabularyEntries);
+  assert.ok(schema.$defs.vocabularyEntry.properties.sources);
+  assert.equal(JSON.stringify(schema).toLowerCase().includes("apikey"), false);
+});
+
 function referencesIn(value, result = []) {
   if (Array.isArray(value)) value.forEach(item => referencesIn(item, result));
   else if (value && typeof value === "object") {

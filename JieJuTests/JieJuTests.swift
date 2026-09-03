@@ -7,11 +7,19 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual("JieJu", "JieJu")
     }
 
-    func testPersistenceLibraryKeepsStableV1CodingKeys() throws {
-        XCTAssertEqual(PersistenceLibrary.currentSchemaVersion, 1)
+    func testPersistenceLibraryKeepsStableV2CodingKeys() throws {
+        XCTAssertEqual(PersistenceLibrary.currentSchemaVersion, 2)
         let encoded = try JSONEncoder().encode(PersistenceLibrary())
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
-        XCTAssertEqual(Set(object.keys), Set(["schemaVersion", "readingProgress", "savedExplanations"]))
+        XCTAssertEqual(Set(object.keys), Set(["schemaVersion", "readingProgress", "savedExplanations", "vocabularyEntries"]))
+    }
+
+    func testLikelyWordSelectionDistinguishesWordsFromSentences() {
+        XCTAssertTrue(ReaderVocabularySelection.isLikelyWord("continued"))
+        XCTAssertTrue(ReaderVocabularySelection.isLikelyWord("読みます"))
+        XCTAssertTrue(ReaderVocabularySelection.isLikelyWord("look forward to"))
+        XCTAssertFalse(ReaderVocabularySelection.isLikelyWord("She continued."))
+        XCTAssertFalse(ReaderVocabularySelection.isLikelyWord(String(repeating: "a", count: 41)))
     }
 
     @MainActor
