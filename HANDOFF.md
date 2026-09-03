@@ -12,6 +12,9 @@
 
 ### 2026-09-03 最新检查点
 
+- 已规划 Track H 生词本与间隔复习，但尚未实现源码。关键边界是 Explanation、VocabularyEntry、
+  VocabularySource、ReviewCard、ReviewLog 分离；模型候选词必须由用户确认收藏，复习日志只追加。
+  存储实现应新建 learning-library v2 并提供 v1→v2 迁移，禁止修改 `Shared/Contracts/v1`。
 - 已建立跨平台骨架：`Shared/Contracts/v1` 是新的跨语言数据事实来源，`Shared/ReaderWeb` 是 EPUB
   Web 代码的渐进迁移目标，`Apps/Windows` 只记录经确认的边界，尚未伪造 WinUI 工程。完整顺序见
   `Docs/CROSS_PLATFORM.md` 和 TODO Track I。

@@ -36,11 +36,14 @@ JieJuApp
   │   ├── Reader
   │   ├── Selection
   │   ├── Explanation
+  │   ├── Vocabulary
   │   └── Review
   ├── Domain
   │   ├── Document
   │   ├── Highlight
-  │   └── Explanation
+  │   ├── Explanation
+  │   ├── Vocabulary
+  │   └── Review
   └── Infrastructure
       ├── PDFKit
       ├── Persistence
@@ -73,6 +76,11 @@ protocol ReadingAI: Sendable {
 ## 本地数据
 
 学习记录和阅读进度写入 Application Support 下的版本化 `library.json`。存储使用 actor 隔离、原子替换和损坏文件备份。持久化 DTO 不直接依赖模型 Provider。
+
+生词与复习采用三层关系：`VocabularyEntry` 保存可编辑词条，`VocabularySource` 保存它出现过的
+文档和原句，`ReviewCard` 保存复习方向与调度状态。`ReviewLog` 只追加、不覆盖，确保调度算法升级
+后可以重算。解句记录和生词通过 ID 关联而不互相拥有生命周期；共享存储扩展必须新建 v2 schema，
+不能改写 `Shared/Contracts/v1`。
 
 ## 测试策略
 

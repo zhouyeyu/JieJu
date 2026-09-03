@@ -1,5 +1,14 @@
 # JieJu Decisions
 
+## 2026-09-03：生词、来源语境和复习卡片分层保存
+
+单词解释是解句后的可选操作，但生词不能作为 `SavedExplanationRecord` 的内嵌附属数据。
+`VocabularyEntry` 保存用户可修正的词义，`VocabularySource` 保留多个原句和文档来源，
+`ReviewCard` 与只追加的 `ReviewLog` 负责间隔复习。模型只提出候选和语境义，不自动收藏；日语
+读音、原形和活用继续优先采用本地 MeCab/IPADic。调度器通过协议隔离，首版评估并固定一个
+FSRS/Anki 风格版本，保留日志以支持未来算法迁移。该功能通过新的 learning-library v2 引入，
+不修改已经固定的跨平台 v1 schema。
+
 ## 2026-09-03：多平台采用原生外壳 + 共享契约 + 共享 Reader Web
 
 Windows 支持不通过立即重写 SwiftUI 实现。macOS 保留 SwiftUI/PDFKit/WKWebView，Windows 计划

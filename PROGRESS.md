@@ -8,6 +8,9 @@
 
 ## 已完成
 
+- **2026-09-03 生词与复习规划**：新增 TODO Track H，将上下文单词解释、生词本和间隔复习拆为
+  独立层。明确词条可编辑、一个词保留多个来源语境、模型候选不自动收藏、复习日志只追加，未来
+  通过 learning-library v2 加入跨平台数据，不修改现有 v1。
 - **2026-09-03 跨平台骨架**：新增 `Shared/Contracts/v1`，用 Draft 2020-12 JSON Schema 固定
   ExplanationRequest、Explanation、DeepAnalysis、learning-library 和 Reader Bridge；API Key 等
   安全字段明确排除。新增 `Shared/ReaderWeb` 无依赖 Bridge，可自动适配 WKWebView 的
