@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import JieJuLanguage
 
 struct ReaderView: View {
@@ -98,21 +99,25 @@ struct ReaderView: View {
                 }
                 .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
 
-                if explanationPresentationMode == .sidebar,
-                   model.isExplanationPresented,
-                   let selection = model.selection {
-                    ReaderExplanationPanel(
-                        selectedText: selection.targetText,
-                            state: model.explanationState,
-                            deepAnalysisState: model.deepAnalysisState,
-                            save: model.saveExplanation,
-                            saveState: model.saveState,
-                            retry: model.requestExplanation,
-                            analyzeDeep: model.requestDeepAnalysis,
-                            furiganaDisplayMode: furiganaDisplayMode,
-                        close: model.dismissExplanation,
-                        presentation: .sidebar
-                    )
+                if explanationPresentationMode == .sidebar {
+                    Group {
+                        if model.isExplanationPresented, let selection = model.selection {
+                            ReaderExplanationPanel(
+                                selectedText: selection.targetText,
+                                state: model.explanationState,
+                                deepAnalysisState: model.deepAnalysisState,
+                                save: model.saveExplanation,
+                                saveState: model.saveState,
+                                retry: model.requestExplanation,
+                                analyzeDeep: model.requestDeepAnalysis,
+                                furiganaDisplayMode: furiganaDisplayMode,
+                                close: model.dismissExplanation,
+                                presentation: .sidebar
+                            )
+                        } else {
+                            ReaderExplanationSidebarPlaceholder()
+                        }
+                    }
                     .frame(minWidth: 340, idealWidth: 400, maxWidth: 480, maxHeight: .infinity)
                 }
             }
@@ -154,6 +159,7 @@ struct ReaderView: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 48)
+        .background(WindowDragRegion())
     }
 
     @ViewBuilder
@@ -192,6 +198,37 @@ struct ReaderView: View {
         } else {
             button.accessibilityIdentifier("reader.explain")
         }
+    }
+}
+
+private struct ReaderExplanationSidebarPlaceholder: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Label("解句", systemImage: "text.bubble").font(.headline)
+                Spacer()
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            Divider()
+            ContentUnavailableView(
+                "选择一句话",
+                systemImage: "selection.pin.in.out",
+                description: Text("在正文中划选文本，然后点击“解释”。")
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(.background)
+        .accessibilityIdentifier("reader.explanationSidebar")
+    }
+}
+
+private struct WindowDragRegion: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DraggableView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DraggableView: NSView {
+        override var mouseDownCanMoveWindow: Bool { true }
     }
 }
 

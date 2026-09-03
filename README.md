@@ -11,6 +11,12 @@ JieJu 是一个面向 macOS 的语言学习型 PDF/EPUB 阅读器。项目目前
 
 任务状态见 `TODO.md`，最近进度见 `PROGRESS.md`，跨 Agent 交接见 `HANDOFF.md`。
 
+## 推理服务
+
+默认使用本机 Ollama。在 App 的“设置 → 解释服务”中也可以选择“云端 API（OpenAI 兼容）”，
+填写 API 版本根地址、API Key 和模型名称后检查连接。云端模式会发送选中句及前后文；API Key
+只保存在 macOS 系统钥匙串，不写入项目配置或学习记录。
+
 ## 本地语言实验
 
 启动 Ollama 并安装 `qwen2.5:0.5b-instruct` 后：

@@ -35,6 +35,28 @@ final class JieJuTests: XCTestCase {
     }
 
     @MainActor
+    func testCloudSettingsPersistButAPIKeyUsesCredentialStore() {
+        let suite = "JieJuTests.AppSettings.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let credentials = MemoryAPIKeyStore()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: "ai.didMigrateToLocalModelDefault")
+
+        let settings = AppSettings(defaults: defaults, apiKeyStore: credentials)
+        settings.provider = .cloud
+        settings.cloudURL = "https://example.com/v1"
+        settings.cloudModelName = "test-model"
+        settings.cloudAPIKey = "sk-private"
+
+        let restored = AppSettings(defaults: defaults, apiKeyStore: credentials)
+        XCTAssertEqual(restored.provider, .cloud)
+        XCTAssertEqual(restored.cloudURL, "https://example.com/v1")
+        XCTAssertEqual(restored.cloudModelName, "test-model")
+        XCTAssertEqual(restored.cloudAPIKey, "sk-private")
+        XCTAssertNil(defaults.string(forKey: "ai.cloudAPIKey"))
+    }
+
+    @MainActor
     func testExplanationPresentationModeDefaultsToSidebarAndPersists() {
         let suite = "JieJuTests.AppSettings.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -256,6 +278,18 @@ final class JieJuTests: XCTestCase {
         let script = EPUBFuriganaInjection.script(for: xhtml, provider: provider)
         XCTAssertTrue(script.contains("closest('ruby, rt, script, style, head, textarea')"))
         XCTAssertTrue(script.contains("DOMContentLoaded"))
+    }
+}
+
+private final class MemoryAPIKeyStore: APIKeyStoring, @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = ""
+
+    func load() -> String { lock.withLock { value } }
+
+    func save(_ value: String) -> Bool {
+        lock.withLock { self.value = value }
+        return true
     }
 }
 

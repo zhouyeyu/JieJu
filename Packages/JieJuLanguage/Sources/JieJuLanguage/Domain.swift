@@ -249,9 +249,9 @@ extension ReadingAIError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .invalidInput(let message): "Invalid input: \(message)"
-        case .serviceUnavailable(let message): "Ollama unavailable: \(message)"
+        case .serviceUnavailable(let message): "AI service unavailable: \(message)"
         case .modelMissing(let model): "Model is not installed: \(model)"
-        case .timeout: "The Ollama request timed out"
+        case .timeout: "The AI request timed out"
         case .transport(let message): "Network error: \(message)"
         case .invalidResponse(let message): "Invalid model response: \(message)"
         }

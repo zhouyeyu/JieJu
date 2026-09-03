@@ -63,10 +63,10 @@ struct AppShellView: View {
         ReaderView(
             explanationProvider: settings.providerSnapshot,
             saveHandler: { payload in
-                try await library.save(payload, modelName: settings.provider == .ollama ? settings.modelName : "mock")
+                try await library.save(payload, modelName: settings.activeModelName)
             },
             explanationLanguage: settings.explanationLanguage,
-            configurationID: "\(settings.provider.rawValue)-\(settings.ollamaURL)-\(settings.modelName)-\(settings.explanationLanguage)",
+            configurationID: settings.providerConfigurationID,
             explanationPresentationMode: settings.explanationPresentationMode,
             furiganaDisplayMode: settings.furiganaDisplayMode,
             epubReadingStyle: EPUBReadingStyle(
@@ -206,10 +206,22 @@ private struct AISettingsView: View {
             Picker("解释服务", selection: $settings.provider) {
                 ForEach(AIProviderChoice.allCases) { Text($0.title).tag($0) }
             }
-            TextField("Ollama 地址", text: $settings.ollamaURL)
-                .disabled(settings.provider != .ollama)
-            TextField("模型名称", text: $settings.modelName)
-                .disabled(settings.provider != .ollama)
+            if settings.provider == .ollama {
+                TextField("Ollama 地址", text: $settings.ollamaURL)
+                TextField("模型名称", text: $settings.modelName)
+                Text("内容仅在本机处理，不会发送到云端。")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if settings.provider == .cloud {
+                TextField("API 地址", text: $settings.cloudURL)
+                    .textContentType(.URL)
+                    .accessibilityIdentifier("settings.cloudURL")
+                SecureField("API Key（保存在系统钥匙串）", text: $settings.cloudAPIKey)
+                    .accessibilityIdentifier("settings.cloudAPIKey")
+                TextField("模型名称", text: $settings.cloudModelName)
+                    .accessibilityIdentifier("settings.cloudModelName")
+                Label("云端模式会把选中句子及前后文发送给所选服务。", systemImage: "lock.shield")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Picker("解释语言", selection: languageBinding) {
                 ForEach(AppSettings.presetExplanationLanguages, id: \.self) { language in
                     Text(AppSettings.localizedName(of: language)).tag(language)
@@ -257,8 +269,10 @@ private struct AISettingsView: View {
                     .accessibilityIdentifier("settings.checkAI")
                 connectionStatus
             }
-            Text("默认模型：\(OllamaDefaults.model)")
-                .font(.caption).foregroundStyle(.secondary)
+            if settings.provider == .ollama {
+                Text("默认模型：\(OllamaDefaults.model)")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .padding()

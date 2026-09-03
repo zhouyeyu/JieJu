@@ -2,13 +2,28 @@
 
 ## 本次交接
 
-- 日期：2026-09-02
+- 日期：2026-09-03
 - Agent：Codex
 - 阶段：PDF/EPUB 阅读闭环集成（EPUB-102 已完成）
 - 分支：`main`
 - 基线提交：`fbdf02f chore: create macOS project foundation`
 - 模块集成提交：`3529d0f feat: build parallel reader language and storage modules`
 - 语言修复提交：`a427e01 fix: bind target language into Ollama JSON schema`
+
+### 2026-09-03 最新检查点
+
+- Ollama 仍是默认解释服务；设置页新增“云端 API（OpenAI 兼容）”，当前实现面向
+  `/v1/chat/completions`、`response_format=json_object` 和 SSE `data:` 流，API 地址应填写到
+  API 版本根路径（例如 `https://api.openai.com/v1`）。
+- 云端 API Key 通过 `KeychainAPIKeyStore` 存在 macOS 钥匙串，设置与模型名仍用 UserDefaults；
+  测试验证密钥不会写入 `ai.cloudAPIKey`。不要把 API Key 加进配置文件、日志或测试 fixture。
+- 云端 Provider 复用 `QwenPrompt`、`ExplanationParser` 和领域校验，最终格式错误时修复一次；
+  流式中间值仅用于展示，保存仍等待最终校验结果。当前没有使用真实 Key 做外网端到端测试。
+- 阅读器自绘工具栏加入 AppKit 可拖动背景；侧边栏模式在文档打开期间始终存在，关闭解句只切换
+  到引导空状态。Computer Use 打开 `minimal.epub` 后确认 AX 树中阅读区与
+  `reader.explanationSidebar` 同时存在，分栏位置在解释前后不会新增或消失。
+- 验证结果：语言包 **55 项通过**、App 单元测试 **47 项通过**、macOS Debug App 构建成功。
+- `.workbuddy/` 仍是用户未跟踪目录，本轮没有修改或纳入提交。
 
 ### 2026-09-02 额度中断检查点（接手者先读）
 

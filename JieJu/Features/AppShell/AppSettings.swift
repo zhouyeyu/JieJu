@@ -12,9 +12,16 @@ enum AIConnectionState: Equatable {
 enum AIProviderChoice: String, CaseIterable, Identifiable {
     case mock
     case ollama
+    case cloud
 
     var id: String { rawValue }
-    var title: String { self == .mock ? "Mock（离线测试）" : "Ollama（本地模型）" }
+    var title: String {
+        switch self {
+        case .mock: "Mock（离线测试）"
+        case .ollama: "Ollama（本地模型）"
+        case .cloud: "云端 API（OpenAI 兼容）"
+        }
+    }
     static let defaultProvider: AIProviderChoice = .ollama
 }
 
@@ -59,6 +66,15 @@ final class AppSettings: ObservableObject {
     @Published var modelName: String {
         didSet { defaults.set(modelName, forKey: Keys.modelName) }
     }
+    @Published var cloudURL: String {
+        didSet { defaults.set(cloudURL, forKey: Keys.cloudURL) }
+    }
+    @Published var cloudModelName: String {
+        didSet { defaults.set(cloudModelName, forKey: Keys.cloudModelName) }
+    }
+    @Published var cloudAPIKey: String {
+        didSet { _ = apiKeyStore.save(cloudAPIKey) }
+    }
     @Published var explanationLanguage: String {
         didSet { defaults.set(explanationLanguage, forKey: Keys.explanationLanguage) }
     }
@@ -76,9 +92,11 @@ final class AppSettings: ObservableObject {
     }
 
     private let defaults: UserDefaults
+    private let apiKeyStore: any APIKeyStoring
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, apiKeyStore: any APIKeyStoring = KeychainAPIKeyStore()) {
         self.defaults = defaults
+        self.apiKeyStore = apiKeyStore
         let storedProvider = AIProviderChoice(rawValue: defaults.string(forKey: Keys.provider) ?? "")
         if defaults.bool(forKey: Keys.didMigrateToLocalModelDefault) {
             provider = storedProvider ?? .defaultProvider
@@ -91,6 +109,9 @@ final class AppSettings: ObservableObject {
         }
         ollamaURL = defaults.string(forKey: Keys.ollamaURL) ?? "http://127.0.0.1:11434"
         modelName = defaults.string(forKey: Keys.modelName) ?? OllamaDefaults.model
+        cloudURL = defaults.string(forKey: Keys.cloudURL) ?? "https://api.openai.com/v1"
+        cloudModelName = defaults.string(forKey: Keys.cloudModelName) ?? "gpt-4.1-mini"
+        cloudAPIKey = apiKeyStore.load()
         explanationLanguage = defaults.string(forKey: Keys.explanationLanguage) ?? "Chinese"
         explanationPresentationMode = ExplanationPresentationMode(
             rawValue: defaults.string(forKey: Keys.explanationPresentationMode) ?? ""
@@ -110,12 +131,35 @@ final class AppSettings: ObservableObject {
                 baseURL: URL(string: ollamaURL) ?? URL(string: "http://127.0.0.1:11434")!,
                 model: modelName
             )
+        case .cloud:
+            OpenAICompatibleReaderExplanationProvider(
+                baseURL: URL(string: cloudURL) ?? URL(string: "https://api.openai.com/v1")!,
+                apiKey: cloudAPIKey,
+                model: cloudModelName
+            )
         }
     }
 
+    var activeModelName: String {
+        switch provider {
+        case .mock: "mock"
+        case .ollama: modelName
+        case .cloud: cloudModelName
+        }
+    }
+
+    var providerConfigurationID: String {
+        let credentialMarker = provider == .cloud ? cloudAPIKey.hashValue : 0
+        return "\(provider.rawValue)-\(ollamaURL)-\(modelName)-\(cloudURL)-\(cloudModelName)-\(credentialMarker)-\(explanationLanguage)"
+    }
+
     func checkConnection() async {
-        guard provider == .ollama else {
+        guard provider != .mock else {
             connectionState = .ready("Mock 可用")
+            return
+        }
+        if provider == .cloud {
+            await checkCloudConnection()
             return
         }
         guard let url = URL(string: ollamaURL), let scheme = url.scheme,
@@ -140,10 +184,37 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    private func checkCloudConnection() async {
+        guard let url = URL(string: cloudURL), let scheme = url.scheme,
+              ["http", "https"].contains(scheme), url.host != nil else {
+            connectionState = .unavailable("云端 API 地址无效")
+            return
+        }
+        guard !cloudAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            connectionState = .unavailable("请先输入 API Key")
+            return
+        }
+        guard !cloudModelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            connectionState = .modelMissing("云端模型名称不能为空")
+            return
+        }
+        connectionState = .checking
+        do {
+            try await OpenAICompatibleReadingAI(
+                baseURL: url, apiKey: cloudAPIKey, model: cloudModelName, timeout: 10
+            ).checkAvailability()
+            connectionState = .ready("云端 API 已连接：\(cloudModelName)")
+        } catch {
+            connectionState = .unavailable(error.localizedDescription)
+        }
+    }
+
     private enum Keys {
         static let provider = "ai.provider"
         static let ollamaURL = "ai.ollamaURL"
         static let modelName = "ai.modelName"
+        static let cloudURL = "ai.cloudURL"
+        static let cloudModelName = "ai.cloudModelName"
         static let explanationLanguage = "ai.explanationLanguage"
         static let didMigrateToLocalModelDefault = "ai.didMigrateToLocalModelDefault"
         static let explanationPresentationMode = "reader.explanationPresentationMode"
