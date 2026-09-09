@@ -1,0 +1,7 @@
+{
+  "contractVersion": 4,
+  "schemas": [
+    "word-explanation-request.schema.json",
+    "word-explanation.schema.json"
+  ]
+}

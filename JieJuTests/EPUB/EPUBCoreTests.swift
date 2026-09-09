@@ -1,4 +1,6 @@
 import XCTest
+import AppKit
+import PDFKit
 @testable import JieJu
 
 final class EPUBCoreTests: XCTestCase {
@@ -116,7 +118,109 @@ final class EPUBCoreTests: XCTestCase {
         XCTAssertEqual(model.currentEPUBPageIndex, 4)
         XCTAssertEqual(model.restoredEPUBPageIndex, 4)
         model.updateEPUBPage(2, pageCount: 3)
-        XCTAssertEqual(store.epubPosition(for: url), EPUBReadingPosition(chapterIndex: 1, pageIndex: 2))
+        let persisted = try XCTUnwrap(store.epubPosition(for: url))
+        XCTAssertEqual(persisted.chapterIndex, 1)
+        XCTAssertEqual(persisted.pageIndex, 2)
+        XCTAssertEqual(persisted.chapterID, "ch2")
+        XCTAssertEqual(persisted.chapterHref, "OEBPS/chapter2.xhtml")
+        XCTAssertNil(persisted.textAnchor)
+    }
+
+    @MainActor
+    func testReaderModelRestoresEPUBByStableChapterAndPersistsTextAnchor() async throws {
+        let suite = "JieJuTests.EPUBStablePosition.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let url = try fixture("minimal")
+        let store = ReadingPositionStore(defaults: defaults)
+        let anchor = EPUBTextAnchor(textOffset: 17, textQuote: "paragraph", progression: 0.5)
+        store.saveEPUB(.init(
+            chapterIndex: 99,
+            pageIndex: 7,
+            chapterID: "outdated-id",
+            chapterHref: "OEBPS/chapter2.xhtml",
+            textAnchor: anchor
+        ), for: url)
+        let model = ReaderViewModel(positionStore: store)
+
+        model.open(url)
+        for _ in 0..<200 {
+            if case .loaded = model.documentState { break }
+            await Task.yield()
+        }
+
+        XCTAssertEqual(model.currentPageIndex, 1)
+        XCTAssertEqual(model.restoredEPUBTextAnchor, anchor)
+
+        let updated = EPUBTextAnchor(textOffset: 31, textQuote: "visible text", progression: 0.7)
+        model.updateEPUBPage(2, pageCount: 5, textAnchor: updated)
+        let persisted = try XCTUnwrap(store.epubPosition(for: url))
+        XCTAssertEqual(persisted.chapterID, "ch2")
+        XCTAssertEqual(persisted.chapterHref, "OEBPS/chapter2.xhtml")
+        XCTAssertEqual(persisted.pageIndex, 2)
+        XCTAssertEqual(persisted.textAnchor, updated)
+    }
+
+    @MainActor
+    func testReaderModelReturnsToSavedEPUBSourceInsteadOfCurrentReadingPosition() async throws {
+        let suite = "JieJuTests.EPUBSourceNavigation.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let url = try fixture("minimal")
+        let store = ReadingPositionStore(defaults: defaults)
+        store.saveEPUB(chapterIndex: 0, pageIndex: 0, for: url)
+        let anchor = EPUBTextAnchor(textOffset: 24, textQuote: "second chapter", progression: 0.6)
+        let locator = DocumentLocator.epub(
+            chapterHref: "OEBPS/chapter2.xhtml",
+            textAnchor: anchor,
+            displayPageIndex: 3
+        )
+        let model = ReaderViewModel(positionStore: store)
+
+        model.openSource(.init(
+            document: .init(id: url.path, fileName: url.lastPathComponent),
+            locator: locator,
+            legacyPageIndex: 0
+        ))
+        for _ in 0..<200 {
+            if case .loaded = model.documentState { break }
+            await Task.yield()
+        }
+
+        XCTAssertEqual(model.currentPageIndex, 1)
+        XCTAssertEqual(model.currentEPUBPageIndex, 3)
+        XCTAssertEqual(model.restoredEPUBTextAnchor, anchor)
+    }
+
+    @MainActor
+    func testReaderModelReturnsToSavedPDFPageInsteadOfCurrentReadingPosition() throws {
+        let suite = "JieJuTests.PDFSourceNavigation.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("jieju-source-\(UUID().uuidString).pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let document = PDFDocument()
+        for index in 0..<3 {
+            let image = NSImage(size: NSSize(width: 200, height: 300))
+            image.lockFocus()
+            NSString(string: "Page \(index + 1)").draw(at: NSPoint(x: 20, y: 20))
+            image.unlockFocus()
+            document.insert(try XCTUnwrap(PDFPage(image: image)), at: index)
+        }
+        XCTAssertTrue(document.write(to: url))
+        let store = ReadingPositionStore(defaults: defaults)
+        store.save(0, for: url)
+        let model = ReaderViewModel(positionStore: store)
+
+        model.openSource(.init(
+            document: .init(id: url.path, fileName: url.lastPathComponent),
+            locator: .pdf(pageIndex: 2),
+            legacyPageIndex: 0
+        ))
+
+        XCTAssertEqual(model.currentPageIndex, 2)
+        XCTAssertEqual(model.restoredPageIndex, 2)
     }
 
     @MainActor
@@ -130,11 +234,17 @@ final class EPUBCoreTests: XCTestCase {
             if case .loaded = model.documentState { break }
             await Task.yield()
         }
+        let locator = DocumentLocator.epub(
+            chapterHref: "OEBPS/chapter1.xhtml",
+            textAnchor: .init(textOffset: 4, textQuote: "first paragraph", progression: 0.2),
+            displayPageIndex: 1
+        )
         model.updateSelection(.init(
             targetText: "The first paragraph.",
             precedingContext: nil,
             followingContext: nil,
-            anchorRect: .zero
+            anchorRect: .zero,
+            locator: locator
         ))
         model.requestExplanation()
         for _ in 0..<200 {
@@ -151,6 +261,7 @@ final class EPUBCoreTests: XCTestCase {
         XCTAssertEqual(model.saveState, .saved)
         let savedPayload = await recorder.payload
         XCTAssertEqual(savedPayload?.selection.targetText, "The first paragraph.")
+        XCTAssertEqual(savedPayload?.locator, locator)
     }
 
     @MainActor
@@ -165,11 +276,17 @@ final class EPUBCoreTests: XCTestCase {
             if case .loaded = model.documentState { break }
             await Task.yield()
         }
+        let locator = DocumentLocator.epub(
+            chapterHref: "OEBPS/chapter1.xhtml",
+            textAnchor: .init(textOffset: 4, textQuote: "first paragraph", progression: 0.2),
+            displayPageIndex: 1
+        )
         model.updateSelection(.init(
             targetText: "The first paragraph has emphasis.",
             precedingContext: nil,
             followingContext: nil,
-            anchorRect: .zero
+            anchorRect: .zero,
+            locator: locator
         ))
         let candidate = ReaderVocabularyCandidate(
             surface: "emphasis",
@@ -186,6 +303,7 @@ final class EPUBCoreTests: XCTestCase {
         XCTAssertEqual(payload?.sentence, "The first paragraph has emphasis.")
         XCTAssertEqual(payload?.candidate, candidate)
         XCTAssertEqual(payload?.sourceLanguage, "English")
+        XCTAssertEqual(payload?.locator, locator)
     }
 }
 

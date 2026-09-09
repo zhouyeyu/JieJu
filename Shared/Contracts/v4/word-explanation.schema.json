@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieju.app/contracts/v4/word-explanation.schema.json",
+  "title": "WordExplanation",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "surface": { "type": "string", "minLength": 1 },
+    "lemma": { "type": "string", "minLength": 1 },
+    "reading": { "type": ["string", "null"] },
+    "partOfSpeech": { "type": "string", "minLength": 1 },
+    "contextualMeaning": { "type": "string", "minLength": 1 },
+    "briefMeaning": { "type": "string", "minLength": 1 },
+    "inflection": { "type": ["string", "null"] },
+    "collocations": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "meaning": { "type": "string", "minLength": 1 }
+        },
+        "required": ["text", "meaning"]
+      }
+    }
+  },
+  "required": ["surface", "lemma", "partOfSpeech", "contextualMeaning", "briefMeaning", "collocations"],
+  "examples": [{
+    "surface": "飛行機",
+    "lemma": "飛行機",
+    "reading": "ひこうき",
+    "partOfSpeech": "noun",
+    "contextualMeaning": "句中指正在穿过雨云降落的飞机。",
+    "briefMeaning": "飞机",
+    "inflection": null,
+    "collocations": [{"text": "飛行機に乗る", "meaning": "乘飞机"}]
+  }]
+}

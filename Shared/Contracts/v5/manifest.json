@@ -1,0 +1,4 @@
+{
+  "contractVersion": 5,
+  "schemas": ["learning-library.schema.json"]
+}

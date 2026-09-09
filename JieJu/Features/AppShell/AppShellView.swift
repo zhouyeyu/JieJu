@@ -33,13 +33,17 @@ struct AppShellView: View {
     @State private var selection: AppSection? = .reader
     @StateObject private var settings = AppSettings()
     @StateObject private var library = LearningLibraryModel()
+    @State private var sourceNavigation: ReaderSourceNavigation?
 
     var body: some View {
         NavigationSplitView {
             List(AppSection.allCases, selection: $selection) { section in
-                Label(section.title, systemImage: section.icon).tag(section)
+                Label(section.title, systemImage: section.icon)
+                    .tag(section)
+                    .accessibilityIdentifier("navigation.\(section.rawValue)")
             }
             .navigationTitle("JieJu")
+            .navigationSplitViewColumnWidth(min: 140, ideal: 160, max: 190)
         } detail: {
             ZStack {
                 // Reader 必须始终留在视图树中，否则切到设置时其 StateObject 会连同文档一起释放。
@@ -50,17 +54,19 @@ struct AppShellView: View {
                     .accessibilityHidden(activeSection != .reader)
 
                 if activeSection == .records {
-                    LearningRecordsView(model: library)
+                    LearningRecordsView(model: library, returnToSource: navigateToSource)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(.background)
                 } else if activeSection == .vocabulary {
-                    VocabularyBookView(model: library)
+                    VocabularyBookView(model: library, returnToSource: navigateToSource)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(.background)
                 } else if activeSection == .review {
-                    ReviewSessionView(model: library) {
-                        selection = .reader
-                    }
+                    ReviewSessionView(
+                        model: library,
+                        returnToReading: { selection = .reader },
+                        returnToSource: navigateToSource
+                    )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(.background)
                 } else if activeSection == .settings {
@@ -78,6 +84,7 @@ struct AppShellView: View {
     private var readerView: some View {
         ReaderView(
             explanationProvider: settings.providerSnapshot,
+            vocabularyProvider: settings.vocabularyProviderSnapshot,
             saveHandler: { payload in
                 try await library.save(payload, modelName: settings.activeModelName)
             },
@@ -92,14 +99,34 @@ struct AppShellView: View {
                 horizontalMargin: settings.epubHorizontalMargin,
                 showsFurigana: settings.furiganaDisplayMode == .kanji,
                 theme: settings.epubReaderTheme
-            )
+            ),
+            sourceNavigation: sourceNavigation
         )
+    }
+
+    private func navigateToSource(_ record: SavedExplanationRecord) {
+        sourceNavigation = .init(
+            document: record.document,
+            locator: record.locator,
+            legacyPageIndex: record.pageIndex
+        )
+        selection = .reader
+    }
+
+    private func navigateToSource(_ source: VocabularySource) {
+        sourceNavigation = .init(
+            document: source.document,
+            locator: source.locator,
+            legacyPageIndex: source.pageIndex
+        )
+        selection = .reader
     }
 }
 
 private struct ReviewSessionView: View {
     @ObservedObject var model: LearningLibraryModel
     let returnToReading: () -> Void
+    let returnToSource: (VocabularySource) -> Void
     @State private var showsAnswer = false
     @State private var isSubmittingRating = false
     @State private var sessionReviewedCount = 0
@@ -209,6 +236,10 @@ private struct ReviewSessionView: View {
                                 .font(.body).italic().textSelection(.enabled)
                             Text(source.document.fileName)
                                 .font(.caption).foregroundStyle(.secondary)
+                            Button("回到这处原文", systemImage: "arrow.turn.down.left") {
+                                returnToSource(source)
+                            }
+                            .accessibilityIdentifier("review.returnToSource")
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -263,6 +294,7 @@ private struct ReviewSessionView: View {
 
 private struct VocabularyBookView: View {
     @ObservedObject var model: LearningLibraryModel
+    let returnToSource: (VocabularySource) -> Void
     @State private var selectedEntryID: UUID?
 
     var body: some View {
@@ -295,12 +327,14 @@ private struct VocabularyBookView: View {
                         }
                         .tag(entry.id)
                     }
-                    .frame(minWidth: 260, idealWidth: 320, maxWidth: 420)
+                    .frame(minWidth: 240, idealWidth: 280, maxWidth: 340)
 
                     if let entry = selectedEntry {
-                        VocabularyEntryDetail(entry: entry) {
-                            Task { await model.deleteVocabulary(entry) }
-                        }
+                        VocabularyEntryDetail(
+                            entry: entry,
+                            returnToSource: returnToSource,
+                            delete: { Task { await model.deleteVocabulary(entry) } }
+                        )
                     } else {
                         ContentUnavailableView("选择一个生词", systemImage: "character.book.closed")
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -323,6 +357,7 @@ private struct VocabularyBookView: View {
 
 private struct VocabularyEntryDetail: View {
     let entry: VocabularyEntry
+    let returnToSource: (VocabularySource) -> Void
     let delete: () -> Void
     @State private var confirmsDeletion = false
 
@@ -354,6 +389,11 @@ private struct VocabularyEntryDetail: View {
                         Text(source.sentence).textSelection(.enabled)
                         Text("\(source.document.fileName)\(source.pageIndex.map { " · 位置 \($0 + 1)" } ?? "")")
                             .font(.caption).foregroundStyle(.secondary)
+                        Button("回到这处原文", systemImage: "arrow.turn.down.left") {
+                            returnToSource(source)
+                        }
+                        .buttonStyle(.link)
+                        .accessibilityIdentifier("vocabulary.returnToSource.\(source.id.uuidString)")
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -374,6 +414,7 @@ private struct VocabularyEntryDetail: View {
 
 private struct LearningRecordsView: View {
     @ObservedObject var model: LearningLibraryModel
+    let returnToSource: (SavedExplanationRecord) -> Void
     @State private var selectedRecordID: UUID?
 
     var body: some View {
@@ -396,12 +437,14 @@ private struct LearningRecordsView: View {
                         .tag(record.id)
                         .contextMenu { Button("删除", role: .destructive) { Task { await model.delete(record) } } }
                     }
-                    .frame(minWidth: 280, idealWidth: 340, maxWidth: 440)
+                    .frame(minWidth: 250, idealWidth: 300, maxWidth: 360)
 
                     if let record = selectedRecord {
-                        LearningRecordDetail(record: record) {
-                            Task { await model.delete(record) }
-                        }
+                        LearningRecordDetail(
+                            record: record,
+                            returnToSource: { returnToSource(record) },
+                            delete: { Task { await model.delete(record) } }
+                        )
                     } else {
                         ContentUnavailableView("选择一条学习记录", systemImage: "text.book.closed")
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -424,6 +467,7 @@ private struct LearningRecordsView: View {
 
 private struct LearningRecordDetail: View {
     let record: SavedExplanationRecord
+    let returnToSource: () -> Void
     let delete: () -> Void
     @State private var confirmsDeletion = false
 
@@ -451,6 +495,10 @@ private struct LearningRecordDetail: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+                Button("回到原文", systemImage: "arrow.turn.down.left", action: returnToSource)
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("records.returnToSource")
 
                 Button("删除这条记录", systemImage: "trash", role: .destructive) {
                     confirmsDeletion = true

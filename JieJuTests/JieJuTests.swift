@@ -11,8 +11,8 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual("JieJu", "JieJu")
     }
 
-    func testPersistenceLibraryKeepsStableV3CodingKeys() throws {
-        XCTAssertEqual(PersistenceLibrary.currentSchemaVersion, 3)
+    func testPersistenceLibraryKeepsStableV5CodingKeys() throws {
+        XCTAssertEqual(PersistenceLibrary.currentSchemaVersion, 5)
         let encoded = try JSONEncoder().encode(PersistenceLibrary())
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
         XCTAssertEqual(Set(object.keys), Set([
@@ -41,12 +41,51 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual(lapse.card.repetitions, 0)
     }
 
-    func testLikelyWordSelectionDistinguishesWordsFromSentences() {
-        XCTAssertTrue(ReaderVocabularySelection.isLikelyWord("continued"))
-        XCTAssertTrue(ReaderVocabularySelection.isLikelyWord("読みます"))
-        XCTAssertTrue(ReaderVocabularySelection.isLikelyWord("look forward to"))
-        XCTAssertFalse(ReaderVocabularySelection.isLikelyWord("She continued."))
-        XCTAssertFalse(ReaderVocabularySelection.isLikelyWord(String(repeating: "a", count: 41)))
+    func testSelectionClassifierDistinguishesEnglishIntent() {
+        XCTAssertEqual(ReaderSelectionClassifier.classify("continued", sourceLanguage: "English"), .word)
+        XCTAssertEqual(ReaderSelectionClassifier.classify("look forward to", sourceLanguage: "English"), .expression)
+        XCTAssertEqual(ReaderSelectionClassifier.classify("She kept going", sourceLanguage: "English"), .sentence)
+        XCTAssertEqual(ReaderSelectionClassifier.classify("She continued.", sourceLanguage: "English"), .sentence)
+        XCTAssertEqual(
+            ReaderSelectionClassifier.classify("She stopped. Then she listened.", sourceLanguage: "English"),
+            .passage
+        )
+    }
+
+    func testSelectionClassifierUsesJapaneseMorphology() {
+        XCTAssertEqual(ReaderSelectionClassifier.classify("飛行機", sourceLanguage: "Japanese"), .word)
+        XCTAssertEqual(ReaderSelectionClassifier.classify("読みました", sourceLanguage: "Japanese"), .word)
+        XCTAssertEqual(ReaderSelectionClassifier.classify("本を読む", sourceLanguage: "Japanese"), .sentence)
+        XCTAssertEqual(ReaderSelectionClassifier.classify("僕は三十七歳で", sourceLanguage: "Japanese"), .ambiguous)
+        XCTAssertEqual(ReaderSelectionClassifier.classify("私は本を読みました。", sourceLanguage: "Japanese"), .sentence)
+    }
+
+    func testSelectionKindOnlyOffersDirectVocabularySaveForLexicalContent() {
+        XCTAssertTrue(ReaderSelectionKind.word.canSaveSelectionAsVocabulary)
+        XCTAssertTrue(ReaderSelectionKind.expression.canSaveSelectionAsVocabulary)
+        XCTAssertFalse(ReaderSelectionKind.sentence.canSaveSelectionAsVocabulary)
+        XCTAssertFalse(ReaderSelectionKind.ambiguous.canSaveSelectionAsVocabulary)
+    }
+
+    func testSelectionBoundarySuggestsCompleteJapaneseAndEnglishTokensConservatively() {
+        XCTAssertEqual(
+            ReaderSelectionBoundarySuggester.suggestion(
+                for: "行機", in: "その巨大な飛行機は雨雲を抜けた。", sourceLanguage: "Japanese"
+            ),
+            .init(originalText: "行機", suggestedText: "飛行機")
+        )
+        XCTAssertEqual(
+            ReaderSelectionBoundarySuggester.suggestion(
+                for: "ontinu", in: "She continued walking.", sourceLanguage: "English"
+            ),
+            .init(originalText: "ontinu", suggestedText: "continued")
+        )
+        XCTAssertNil(ReaderSelectionBoundarySuggester.suggestion(
+            for: "飛行機", in: "飛行機と飛行機", sourceLanguage: "Japanese"
+        ))
+        XCTAssertNil(ReaderSelectionBoundarySuggester.suggestion(
+            for: "飛行機は", in: "その飛行機は着陸した。", sourceLanguage: "Japanese"
+        ))
     }
 
     @MainActor
@@ -160,6 +199,9 @@ final class JieJuTests: XCTestCase {
         XCTAssertTrue(script.contains("data-jieju-reading"))
         XCTAssertTrue(script.contains("rt.textContent = ''"))
         XCTAssertTrue(script.contains("selection.removeAllRanges()"))
+        XCTAssertTrue(script.contains("anchorForRange"))
+        XCTAssertTrue(script.contains("range.intersectsNode"))
+        XCTAssertTrue(script.contains("textAnchor: this.anchorForRange(range)"))
     }
 
     func testEPUBScriptWaitsForStablePaginationAndPreservesTextAnchor() {
@@ -169,8 +211,18 @@ final class JieJuTests: XCTestCase {
         XCTAssertTrue(script.contains("textLength > 1200"))
         XCTAssertTrue(script.contains("captureAnchor"))
         XCTAssertTrue(script.contains("pageForAnchor"))
+        XCTAssertTrue(script.contains("readableTextNodes"))
+        XCTAssertTrue(script.contains("textOffset"))
+        XCTAssertTrue(script.contains("textQuote"))
+        XCTAssertTrue(script.contains("#jieju-location-"))
+        XCTAssertTrue(script.contains("normalizedTextOffset"))
+        XCTAssertTrue(script.contains("paginationResult(count, preservedAnchor)"))
+        XCTAssertTrue(script.contains("locationAnchor: null"))
+        XCTAssertTrue(script.contains("this.locationAnchor = anchor"))
+        XCTAssertTrue(script.contains("this.pendingAnchor || this.locationAnchor"))
         XCTAssertTrue(script.contains("forceLayout"))
-        XCTAssertTrue(script.contains("document.caretRangeFromPoint"))
+        XCTAssertTrue(script.contains("range.getClientRects()"))
+        XCTAssertTrue(script.contains("lastPage < this.page"))
         XCTAssertTrue(script.contains("requestAnimationFrame"))
     }
 
@@ -222,6 +274,7 @@ final class JieJuTests: XCTestCase {
 
         model.updateExplanationConfiguration(
             provider: RecordingExplanationProvider(recorder: recorder),
+            vocabularyProvider: MockReaderVocabularyProvider(),
             explanationLanguage: "Japanese"
         )
         model.requestExplanation()
@@ -307,6 +360,59 @@ final class JieJuTests: XCTestCase {
         XCTAssertEqual(final.grammarPoints, ["continued：一般过去时"])
     }
 
+    @MainActor
+    func testReaderUsesDedicatedVocabularyProviderWithContainingSentence() async throws {
+        let recorder = WordRequestRecorder()
+        let model = ReaderViewModel(vocabularyProvider: RecordingVocabularyProvider(recorder: recorder))
+        model.updateSelection(.init(
+            targetText: "continued",
+            containingSentence: "She continued walking despite the rain.",
+            precedingContext: "The path was difficult.",
+            followingContext: "Soon she arrived.",
+            anchorRect: .zero
+        ))
+
+        model.requestExplanation()
+        for _ in 0..<100 {
+            if case .loaded = model.wordExplanationState { break }
+            await Task.yield()
+        }
+
+        let request = await recorder.request
+        XCTAssertEqual(request?.selectedText, "continued")
+        XCTAssertEqual(request?.sentenceContext, "She continued walking despite the rain.")
+        XCTAssertEqual(model.explanationState, .idle)
+        guard case let .loaded(result) = model.wordExplanationState else {
+            return XCTFail("Expected dedicated word explanation")
+        }
+        XCTAssertEqual(result.lemma, "continue")
+        XCTAssertEqual(result.contextualMeaning, "继续走")
+    }
+
+    @MainActor
+    func testReaderCanAcceptBoundarySuggestionWithoutChangingOriginalSelection() async throws {
+        let recorder = WordRequestRecorder()
+        let model = ReaderViewModel(
+            vocabularyProvider: RecordingVocabularyProvider(recorder: recorder),
+            sourceLanguage: "Japanese"
+        )
+        let selection = ReaderSelection(
+            targetText: "行機",
+            containingSentence: "その巨大な飛行機は雨雲を抜けた。",
+            anchorRect: .zero
+        )
+        model.updateSelection(selection)
+
+        XCTAssertEqual(model.selectionBoundarySuggestion?.suggestedText, "飛行機")
+        model.requestExplanation(targetText: "飛行機")
+        for _ in 0..<100 where await recorder.request == nil { await Task.yield() }
+
+        let capturedRequest = await recorder.request
+        XCTAssertEqual(capturedRequest?.selectedText, "飛行機")
+        XCTAssertEqual(model.selection?.targetText, "行機")
+        XCTAssertEqual(model.effectiveSelectionText, "飛行機")
+    }
+
     func testEPUBFuriganaEntriesKeepOnlyUnambiguousLocalReadings() {
         let provider = StubJapaneseReadingProvider(segments: [
             .init(surface: "今日", reading: "きょう"),
@@ -320,6 +426,115 @@ final class JieJuTests: XCTestCase {
         let script = EPUBFuriganaInjection.script(for: xhtml, provider: provider)
         XCTAssertTrue(script.contains("closest('ruby, rt, script, style, head, textarea')"))
         XCTAssertTrue(script.contains("DOMContentLoaded"))
+    }
+
+    func testEPUBFuriganaPolicyHonorsExplicitDocumentAndChapterLanguages() {
+        let japanese = "<html><body><p>日本語を読みます。</p></body></html>"
+        let japaneseChapter = "<html xml:lang='ja-JP'><body><p>本文</p></body></html>"
+        let chineseChapter = "<html lang='zh-CN'><body><p>日本語を引用。</p></body></html>"
+
+        XCTAssertTrue(EPUBFuriganaPolicy.shouldAutomaticallyAnnotate(
+            documentLanguage: "ja",
+            xhtml: japanese
+        ))
+        XCTAssertFalse(EPUBFuriganaPolicy.shouldAutomaticallyAnnotate(
+            documentLanguage: "zh-CN",
+            xhtml: japanese
+        ))
+        XCTAssertTrue(EPUBFuriganaPolicy.shouldAutomaticallyAnnotate(
+            documentLanguage: "zh",
+            xhtml: japaneseChapter
+        ))
+        XCTAssertFalse(EPUBFuriganaPolicy.shouldAutomaticallyAnnotate(
+            documentLanguage: "ja",
+            xhtml: chineseChapter
+        ))
+    }
+
+    func testEPUBFuriganaPolicyUsesKanaOnlyWhenLanguageIsUnspecified() {
+        XCTAssertTrue(EPUBFuriganaPolicy.shouldAutomaticallyAnnotate(
+            documentLanguage: "und",
+            xhtml: "<html><body><p>静かな森を歩いている。</p></body></html>"
+        ))
+        XCTAssertFalse(EPUBFuriganaPolicy.shouldAutomaticallyAnnotate(
+            documentLanguage: nil,
+            xhtml: "<html><body><p>这是一段没有日文假名的中文正文。</p></body></html>"
+        ))
+        XCTAssertFalse(EPUBFuriganaPolicy.shouldAutomaticallyAnnotate(
+            documentLanguage: nil,
+            xhtml: "<html><body><p>中文正文中偶尔引用一个の字也不应改变整章语言。</p></body></html>"
+        ))
+    }
+
+    func testEPUBFuriganaPolicyOverridesIncorrectEnglishMetadataForJapaneseChapter() {
+        let mislabeledJapanese = """
+        <html lang='en'><body><p>
+        鮮やかな青みをたたえ、十月の風はすすきの穂をあちこちで揺らせ、
+        細長い雲が凍りつくような青い天頂にぴたりとはりついていた。
+        </p></body></html>
+        """
+        let mostlyChineseWithJapaneseQuote = """
+        <html lang='zh'><body><p>
+        这是中文章节的主要内容，用来介绍作品背景和人物关系。文中偶尔引用
+        「静かな森を歩いている」作为日语例句，但不应因此给整章汉字添加日语读音。
+        </p></body></html>
+        """
+
+        XCTAssertTrue(EPUBFuriganaPolicy.shouldAutomaticallyAnnotate(
+            documentLanguage: "en",
+            xhtml: mislabeledJapanese
+        ))
+        XCTAssertFalse(EPUBFuriganaPolicy.shouldAutomaticallyAnnotate(
+            documentLanguage: "zh",
+            xhtml: mostlyChineseWithJapaneseQuote
+        ))
+    }
+
+    func testEPUBHandlerDoesNotInjectAutomaticFuriganaIntoChineseDocument() {
+        let provider = StubJapaneseReadingProvider(segments: [
+            .init(surface: "中文", reading: "ちゅうぶん")
+        ])
+        let xhtml = Data("<html><head></head><body><p>中文内容</p></body></html>".utf8)
+        let chineseHandler = EPUBSchemeHandler(
+            resources: [:],
+            readingStyle: EPUBReadingStyle(showsFurigana: true),
+            documentLanguage: "zh",
+            japaneseReadingProvider: provider
+        )
+        let japaneseHandler = EPUBSchemeHandler(
+            resources: [:],
+            readingStyle: EPUBReadingStyle(showsFurigana: true),
+            documentLanguage: "ja",
+            japaneseReadingProvider: provider
+        )
+
+        let chineseHTML = String(data: chineseHandler.injectedXHTML(xhtml), encoding: .utf8)!
+        let japaneseHTML = String(data: japaneseHandler.injectedXHTML(xhtml), encoding: .utf8)!
+        XCTAssertFalse(chineseHTML.contains("const entries ="))
+        XCTAssertTrue(japaneseHTML.contains("const entries ="))
+        XCTAssertTrue(japaneseHTML.contains("ちゅうぶん"))
+    }
+
+    func testEPUBHandlerInjectsFuriganaWhenJapaneseBookIsMislabeledAsEnglish() {
+        let provider = StubJapaneseReadingProvider(segments: [
+            .init(surface: "青い", reading: "あおい")
+        ])
+        let xhtml = Data("""
+        <html lang="en"><head></head><body><p>
+        鮮やかな青みをたたえ、十月の風はすすきの穂をあちこちで揺らせ、
+        細長い雲が凍りつくような青い天頂にぴたりとはりついていた。
+        </p></body></html>
+        """.utf8)
+        let handler = EPUBSchemeHandler(
+            resources: [:],
+            readingStyle: EPUBReadingStyle(showsFurigana: true),
+            documentLanguage: "en",
+            japaneseReadingProvider: provider
+        )
+
+        let html = String(data: handler.injectedXHTML(xhtml), encoding: .utf8)!
+        XCTAssertTrue(html.contains("const entries ="))
+        XCTAssertTrue(html.contains("あおい"))
     }
 }
 
@@ -383,6 +598,29 @@ private struct ProgressiveExplanationProvider: ReaderExplanationProviding {
         .init(
             translation: "她继续了。", sentenceCore: "She continued.",
             grammarPoints: ["continued：一般过去时"], keyPhrases: []
+        )
+    }
+}
+
+private actor WordRequestRecorder {
+    private(set) var request: WordExplanationRequest?
+    func record(_ request: WordExplanationRequest) { self.request = request }
+}
+
+private struct RecordingVocabularyProvider: ReaderVocabularyProviding {
+    let recorder: WordRequestRecorder
+
+    func explainWord(_ request: WordExplanationRequest) async throws -> ReaderWordExplanation {
+        await recorder.record(request)
+        return .init(
+            surface: request.selectedText,
+            lemma: "continue",
+            reading: nil,
+            partOfSpeech: "verb",
+            contextualMeaning: "继续走",
+            briefMeaning: "继续",
+            inflection: "continue 的过去式",
+            collocations: []
         )
     }
 }

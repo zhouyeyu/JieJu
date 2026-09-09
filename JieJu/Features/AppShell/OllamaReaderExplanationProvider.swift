@@ -1,7 +1,7 @@
 import Foundation
 import JieJuLanguage
 
-struct OllamaReaderExplanationProvider: ReaderExplanationProviding {
+struct OllamaReaderExplanationProvider: ReaderExplanationProviding, ReaderVocabularyProviding {
     let baseURL: URL
     let model: String
 
@@ -52,12 +52,47 @@ struct OllamaReaderExplanationProvider: ReaderExplanationProviding {
         )
     }
 
+    func explainWord(_ request: WordExplanationRequest) async throws -> ReaderWordExplanation {
+        Self.readerWordExplanation(
+            try await OllamaVocabularyAI(baseURL: baseURL, model: model).explainWord(request)
+        )
+    }
+
+    func wordExplanationStream(
+        _ request: WordExplanationRequest
+    ) async throws -> AsyncThrowingStream<ReaderWordExplanation, Error> {
+        let stream = try await OllamaVocabularyAI(baseURL: baseURL, model: model).wordExplanationStream(request)
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    for try await result in stream { continuation.yield(Self.readerWordExplanation(result)) }
+                    continuation.finish()
+                } catch { continuation.finish(throwing: error) }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     private static func readerExplanation(_ result: Explanation) -> ReaderExplanation {
         ReaderExplanation(
             translation: result.translation,
             sentenceCore: result.sentenceCore,
             grammarPoints: result.grammarPoints.map { "\($0.text)：\($0.explanation)" },
             keyPhrases: result.keyPhrases.map { .init(text: $0.text, meaning: $0.meaning) }
+        )
+    }
+
+
+    private static func readerWordExplanation(_ result: WordExplanation) -> ReaderWordExplanation {
+        .init(
+            surface: result.surface,
+            lemma: result.lemma,
+            reading: result.reading,
+            partOfSpeech: result.partOfSpeech,
+            contextualMeaning: result.contextualMeaning,
+            briefMeaning: result.briefMeaning,
+            inflection: result.inflection,
+            collocations: result.collocations.map { .init(text: $0.text, meaning: $0.meaning) }
         )
     }
 }

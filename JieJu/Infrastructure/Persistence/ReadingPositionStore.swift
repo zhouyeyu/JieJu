@@ -1,8 +1,39 @@
 import Foundation
 
+/// EPUB 正文中的稳定位置。`textOffset` 使用 WebKit/JavaScript 的 UTF-16 文本偏移，
+/// `textQuote` 用于内容轻微变化后的校验和邻近重定位，`progression` 是最终回退。
+struct EPUBTextAnchor: Codable, Equatable, Sendable {
+    let textOffset: Int
+    let textQuote: String
+    let progression: Double?
+
+    init(textOffset: Int, textQuote: String, progression: Double? = nil) {
+        self.textOffset = max(0, textOffset)
+        self.textQuote = textQuote
+        self.progression = progression.map { min(1, max(0, $0)) }
+    }
+}
+
 struct EPUBReadingPosition: Codable, Equatable, Sendable {
     let chapterIndex: Int
     let pageIndex: Int
+    let chapterID: String?
+    let chapterHref: String?
+    let textAnchor: EPUBTextAnchor?
+
+    init(
+        chapterIndex: Int,
+        pageIndex: Int,
+        chapterID: String? = nil,
+        chapterHref: String? = nil,
+        textAnchor: EPUBTextAnchor? = nil
+    ) {
+        self.chapterIndex = chapterIndex
+        self.pageIndex = pageIndex
+        self.chapterID = chapterID
+        self.chapterHref = chapterHref
+        self.textAnchor = textAnchor
+    }
 }
 
 /// 保存每个文档的最近阅读页码（按文档路径存储），重启 App 后自动恢复。
@@ -35,10 +66,12 @@ final class ReadingPositionStore {
     }
 
     func saveEPUB(chapterIndex: Int, pageIndex: Int, for url: URL) {
-        guard chapterIndex >= 0, pageIndex >= 0,
-              let data = try? JSONEncoder().encode(EPUBReadingPosition(
-                chapterIndex: chapterIndex, pageIndex: pageIndex
-              )) else { return }
+        saveEPUB(.init(chapterIndex: chapterIndex, pageIndex: pageIndex), for: url)
+    }
+
+    func saveEPUB(_ position: EPUBReadingPosition, for url: URL) {
+        guard position.chapterIndex >= 0, position.pageIndex >= 0,
+              let data = try? JSONEncoder().encode(position) else { return }
         defaults.set(data, forKey: epubKey(for: url))
     }
 

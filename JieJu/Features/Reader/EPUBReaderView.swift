@@ -80,6 +80,7 @@ struct EPUBReaderView: NSViewRepresentable {
             let anchor = selectionRect(range, in: textView)
             parent.onSelectionChange(ReaderSelection(
                 targetText: selected,
+                containingSentence: context.current,
                 precedingContext: context.preceding,
                 followingContext: context.following,
                 anchorRect: anchor

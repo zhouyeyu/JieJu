@@ -82,6 +82,40 @@ test("v3 adds versioned review cards and append-only review logs", async () => {
   assert.equal(JSON.stringify(schema).toLowerCase().includes("apikey"), false);
 });
 
+test("v4 adds contextual word explanation without changing the v3 library", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../v4/manifest.json", import.meta.url), "utf8"));
+  const request = JSON.parse(await readFile(new URL("../v4/word-explanation-request.schema.json", import.meta.url), "utf8"));
+  const explanation = JSON.parse(await readFile(new URL("../v4/word-explanation.schema.json", import.meta.url), "utf8"));
+  assert.equal(manifest.contractVersion, 4);
+  assert.deepEqual([...manifest.schemas].sort(), [
+    "word-explanation-request.schema.json",
+    "word-explanation.schema.json"
+  ]);
+  assert.equal(request.properties.selectedText.maxLength, 120);
+  assert.ok(request.properties.sentenceContext);
+  assert.equal(request.required.includes("precedingContext"), false);
+  assert.equal(explanation.properties.collocations.maxItems, 4);
+  assert.ok(explanation.properties.contextualMeaning);
+  assert.equal(explanation.required.includes("reading"), false);
+  assert.equal(JSON.stringify([request, explanation]).toLowerCase().includes("apikey"), false);
+});
+
+test("v5 adds source locators without changing prior library contracts", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../v5/manifest.json", import.meta.url), "utf8"));
+  const schema = JSON.parse(await readFile(new URL("../v5/learning-library.schema.json", import.meta.url), "utf8"));
+  assert.equal(manifest.contractVersion, 5);
+  assert.deepEqual(manifest.schemas, ["learning-library.schema.json"]);
+  assert.equal(schema.properties.schemaVersion.const, 5);
+  assert.ok(schema.$defs.savedExplanation.properties.locator);
+  assert.ok(schema.$defs.vocabularySource.properties.locator);
+  assert.match(
+    schema.$defs.savedExplanation.properties.locator.oneOf[0].$ref,
+    /reader-bridge\.schema\.json#\/\$defs\/locator$/
+  );
+  assert.equal(JSON.stringify(schema).includes("fallbackPath"), false);
+  assert.equal(JSON.stringify(schema).toLowerCase().includes("bookmark"), false);
+});
+
 function referencesIn(value, result = []) {
   if (Array.isArray(value)) value.forEach(item => referencesIn(item, result));
   else if (value && typeof value === "object") {

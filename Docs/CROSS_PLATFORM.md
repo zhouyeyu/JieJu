@@ -14,7 +14,7 @@ Apps/macOS (SwiftUI)               Apps/Windows (WinUI 3)
         │           │                       │
         │     Shared/ReaderWeb              │
         │           │                       │
-        └──── Shared/Contracts/v1 ──────────┘
+        └── Shared/Contracts/v1…v5 ─────────┘
                     │
         Ollama / OpenAI Compatible / future llama.cpp
 ```
@@ -22,7 +22,7 @@ Apps/macOS (SwiftUI)               Apps/Windows (WinUI 3)
 ## 当前迁移原则
 
 1. 当前根目录下的 `JieJu/` 和 Xcode 工程就是 macOS App；Windows 原型稳定前不做目录搬迁。
-2. `Shared/Contracts/v1` 是跨语言规范，Swift 类型仍是 macOS 实现，不再是唯一事实来源。
+2. `Shared/Contracts/v1…v5` 是跨语言规范，Swift 类型仍是 macOS 实现，不再是唯一事实来源。
 3. `Shared/ReaderWeb` 是渐进迁移目标，不一次性替换已稳定的 EPUB 脚本。
 4. Windows 首版只实现 EPUB 垂直链路；PDF、同步和内嵌模型在其后。
 5. 平台密钥各自进入系统安全存储，禁止加入共享数据。
@@ -40,11 +40,13 @@ Apps/macOS (SwiftUI)               Apps/Windows (WinUI 3)
 ## Windows 最小闭环
 
 1. Windows 机器创建 WinUI 3 Solution，并配置 WebView2。
-2. C# DTO 对应 `Shared/Contracts/v1`，添加 JSON 往返测试。
+2. C# DTO 对应 `Shared/Contracts/v1…v5`，添加 JSON 往返和旧版本读取测试。
 3. WebView2 加载 `Shared/ReaderWeb`，完成 host bridge。
 4. 打开 EPUB，分页并产生 `selectionChanged`。
 5. 通过同一 AI 契约连接 Ollama。
-6. 保存并重新加载 `learning-library` v1。
+6. 读取旧版资料并以 `learning-library` v5 保存和重新加载。
+
+Windows 的环境准备、目录职责、里程碑和验收标准见 `Docs/WINDOWS_DEVELOPMENT.md`。
 
 ## 暂不决定
 

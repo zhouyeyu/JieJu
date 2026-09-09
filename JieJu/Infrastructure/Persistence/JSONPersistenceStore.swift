@@ -54,7 +54,7 @@ actor JSONPersistenceStore {
             let data = try Data(contentsOf: fileURL)
             var library = try Self.makeDecoder().decode(PersistenceLibrary.self, from: data)
             switch library.schemaVersion {
-            case 1, 2:
+            case 1, 2, 3:
                 library.schemaVersion = PersistenceLibrary.currentSchemaVersion
                 addMissingRecognitionCards(to: &library, dueAt: now())
                 try write(library)
@@ -122,6 +122,7 @@ actor JSONPersistenceStore {
                 id: library.savedExplanations[index].id,
                 document: record.document,
                 pageIndex: record.pageIndex,
+                locator: record.locator ?? library.savedExplanations[index].locator,
                 request: record.request,
                 explanation: record.explanation,
                 createdAt: library.savedExplanations[index].createdAt,
@@ -312,13 +313,23 @@ actor JSONPersistenceStore {
         }) {
             merged.senses.append(sense)
         }
-        for source in incoming.sources where !merged.sources.contains(where: {
-            $0.document.id == source.document.id
-                && $0.pageIndex == source.pageIndex
-                && normalized($0.sentence) == normalized(source.sentence)
-                && normalized($0.surface) == normalized(source.surface)
-        }) {
-            merged.sources.append(source)
+        for source in incoming.sources {
+            let matchingIndices = merged.sources.indices.filter { index in
+                let existing = merged.sources[index]
+                return existing.document.id == source.document.id
+                    && existing.pageIndex == source.pageIndex
+                    && normalized(existing.sentence) == normalized(source.sentence)
+                    && normalized(existing.surface) == normalized(source.surface)
+            }
+            if matchingIndices.contains(where: { merged.sources[$0].locator == source.locator }) {
+                continue
+            } else if source.locator == nil, !matchingIndices.isEmpty {
+                continue
+            } else if let legacy = matchingIndices.first(where: { merged.sources[$0].locator == nil }) {
+                merged.sources[legacy].locator = source.locator
+            } else {
+                merged.sources.append(source)
+            }
         }
         merged.updatedAt = max(existing.updatedAt, incoming.updatedAt)
         return merged

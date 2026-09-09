@@ -8,6 +8,112 @@
 
 ## 已完成
 
+- **2026-09-09 Windows 开发交接准备**：新增 `Docs/WINDOWS_DEVELOPMENT.md`，明确 WinUI 3 +
+  WebView2 的真机构建要求、Solution 依赖方向、v1～v5 契约职责、Reader Web 渐进迁移顺序、
+  Windows 平台存储/密钥边界、WIN-001/002 验收标准及可直接交给接手 Agent 的 Prompt。根 README
+  继续作为 macOS 产品的公开介绍，不承载内部 Windows 开发流程。
+- **2026-09-09 发布前检查**：公开仓库扫描未发现 API Key 或私钥；个人 EPUB 继续由 `*.epub`
+  排除，`.workbuddy/` 已加入忽略。统一脚本完整通过：共享契约/Reader Bridge 11 项、
+  JieJuLanguage 65 项、macOS App 77 项、UI 2 项；`git diff --check` 和全 Target build-for-testing
+  通过。GitHub SSH 远程 `git@github.com:zhouyeyu/JieJu.git` 已配置且当前为空仓库。
+- **2026-09-09 UI 测试稳定化**：UI Runner 已恢复。测试启动时显式忽略 macOS 窗口恢复状态并等待
+  主窗口，侧栏“随手温习”使用稳定的 `navigation.review` 可访问性标识，避免无窗口状态与视图角色
+  变化造成假失败；两条 UI 用例已在统一脚本中复跑通过。
+
+- **2026-09-06 修复日语 EPUB 注音失效**：完成 `JA-014`。真实《ノルウェイの森》正文为日语，
+  但 OPF 和章节根元素都错误标成 `en`，原语言门控因此跳过了 MeCab。现在非日语标签可被章节级
+  强日文脚本证据纠正；少量日语引用仍不会让中文/英文整章进入自动注音。
+- **2026-09-06 注音真实回归**：设置保持“开启”，重新构建并重启 App 后打开同一本 16 章 EPUB，
+  当前章恢复为 38 个动态页，正文汉字上方重新出现假名。新增错误英文元数据、中文夹日语短引用
+  和实际注入脚本回归；App 测试源码现共 77 项，所有 Target `build-for-testing` 通过。
+- **2026-09-06 自动测试收尾**：统一脚本的 Node 11 项与 JieJuLanguage 65 项通过；App 单元测试曾
+  实际执行 77 项，其中本轮两项注音回归通过，唯一失败是旧阅读位置测试未包含新增的稳定章节
+  ID/路径。该断言已按现有持久化行为更新并重新编译。当前系统 `Developer mode is currently
+  disabled`，后续重跑在用例启动前等待 runner materialize，故主动终止；仍需恢复系统测试宿主后
+  确认 App 77 项与 UI 套件全绿。
+
+- **2026-09-06 来源跳转收尾验证**：补充 PDF 来源页优先恢复和 locator 编码字段测试；App 测试源码
+  共 75 项，App、App Tests 与 UI Tests 再次 `build-for-testing` 成功。统一脚本的 Node 11 项及
+  JieJuLanguage 65 项通过；系统 Developer Mode 仍关闭，XCTest 在建立 daemon control session 前
+  超时，未进入 App/UI 用例。
+
+- **2026-09-05 学习来源“回到原文”**：完成 `NAV-002` 与 `EPUB-208`。解句记录、生词来源和温习
+  卡片均提供返回入口；Reader 保持常驻并通过最近文档书签重新获得访问权限。PDF 精确恢复来源页，
+  EPUB 恢复 manifest 章节路径、章内动态页和不含 Ruby 的正文字符锚点，且来源位置优先于后来保存
+  的阅读进度。旧记录继续使用原页码/章节索引回退。
+- **2026-09-05 来源契约与验证**：`learning-library` 升级为 v5，新增 locator 往返、v1/v2/v3 迁移、
+  EPUB 来源优先恢复及保存载荷测试。Node 契约/Bridge **11 项**、JieJuLanguage **65 项**通过，
+  App/UI 全 Target `build-for-testing` 通过；App 测试源码现共 **75 项**，仍需 Developer Mode 恢复后
+  实跑。`LIB-007` 内容指纹仍是文档移动后自动关联的后续任务。
+
+- **2026-09-05 EPUB 自动注音语言门控**：完成 `JA-013`。Web 渲染器把 EPUB 元数据语言传入资源
+  注入层；章节 `<html lang>` / `xml:lang` 优先于整书元数据，明确 `ja`/`ja-*`/`jpn` 才自动调用
+  MeCab。语言缺失或标为 `und`/`mul`/`zxx` 时，使用保守假名比例识别；纯汉字中文或只偶尔引用
+  一个假名不会触发整章注音。原书自带 Ruby 仍由用户注音开关控制，不受自动注入门控影响。
+- **2026-09-05 注音门控验证**：新增 3 组 App 测试，覆盖整书语言、章节语言覆盖、未知语言启发式，
+  以及中文文档即使 Provider 返回读音也不注入脚本。`git diff --check` 和 App/UI 全 Target
+  `build-for-testing` 通过；统一测试中共享契约/Reader Bridge 10 项、语言包 65 项通过。当前 App
+  测试源码共 70 项，但 Developer Mode 关闭导致 XCTest 在 `Testing started` 后等待 runner，43.5 秒
+  后终止为 `TEST INTERRUPTED`，因此新增用例只能确认编译，未创建提交。
+
+- **2026-09-05 EPUB 稳定正文锚点**：完成 `EPUB-206B`、`EPUB-207` 与 `EPUB-207B`。阅读位置现在
+  保存章节 ID、manifest 资源路径、UTF-16 正文偏移、80 字符引用片段和章内比例；恢复时优先按资源
+  路径定位章节，并用引用片段修复轻微文本偏移，动态页码只作为旧数据与失败时回退。Ruby 注音、
+  脚本和样式文本不进入正文锚点，旧版仅含章节/页码的 JSON 仍可解码。
+- **2026-09-05 锚点真实回归**：Computer Use 在临时长章节 EPUB 上从本章 `3 / 5` 页建立偏移
+  `279`，将字号 20 调至 24 后重排为 `1 / 6` 页，视野仍包含同一引用片段且持久化偏移保持 `279`；
+  完全退出后从“最近阅读”重开，章节、引用片段和偏移仍一致。实测先后发现并修复 WebKit 横向分栏
+  下点坐标命中首栏、以及导航完成后的二次布局覆盖原锚点两处问题。
+- **2026-09-05 锚点验证结果**：`git diff --check` 与 macOS Debug 构建通过；统一测试的共享契约 /
+  Reader Bridge **10 项**、语言包 **65 项**通过，App 与 UI 测试 Target 均完成构建和签名。系统
+  `Developer mode is currently disabled`，XCTest 在 `Testing started` 后 117.6 秒仍等待 runner
+  materialize，故主动终止并得到 `TEST INTERRUPTED`；本轮新增 App 测试尚不能标记为已执行，未提交。
+
+- **2026-09-05 最近阅读与继续阅读**：阅读空状态新增本地书架入口，最多保留 12 本 PDF / EPUB，
+  显示文件类型、最后打开时间及 PDF 页码或 EPUB 章节/章内页。使用 macOS security-scoped bookmark
+  支持应用重启后重新打开；文件移动或权限失效时提供重新定位，也可单独移除记录而不删除原文件。
+  阅读位置会随翻页实时更新，关闭文档不会丢失最近条目。新增 4 组 Store/Reader 离线测试并更新
+  首屏 UI 用例。真实 App 已验证：打开最小 EPUB → 关闭 → 从最近阅读重开 → 退出并重启 → 保留
+  `第 1 / 2 章 · 本章 1 / 1 页`；验证后已移除临时最近记录，未改动用户书籍。
+- **2026-09-05 本轮验证**：`git diff --check` 与 macOS Debug 构建通过；统一测试中的共享契约 /
+  Reader Bridge **10 项**和语言包 **65 项**通过。App 单元测试及 UI Target 均编译成功，但当前机器
+  `Developer mode is currently disabled`，XCTest 在 `Testing started` 后无法建立宿主连接；即使
+  显式排除 UI Target 也会停在同一阶段。新增 4 组 App 测试因此只能标记为已编译、待执行，未创建
+  Git commit。
+
+- **2026-09-05 开源就绪度文档（不含 CI）**：项目采用 Apache License 2.0，新增 NOTICE、贡献指南、
+  社区行为准则、安全政策、隐私说明、更新日志与手工发布清单。README 已按当前 0.1 Alpha 能力
+  重写，明确本地优先数据流、环境要求、模型局限和未完成能力；新增缺陷、功能、模型讲解、EPUB
+  兼容性 Issue 模板和 PR 模板。公开演示素材只允许自编、公有领域或可再分发内容，当前个人测试
+  EPUB 不进入截图、fixture 或 Release。CI 明确不在本轮范围内。Markdown diff 检查与 5 个 GitHub
+  YAML 表单解析通过；统一测试中契约 10 项、语言包 65 项、App 单元测试 60 项通过，UI Runner
+  在 387 秒后因开发者模式关闭而未能建立连接。
+
+- **2026-09-05 保守的词语选区补全**：完成 `PDF-119`。新增句内词法边界建议器；日语使用现有
+  MeCab/IPADic，其他语言使用 NaturalLanguage。只有唯一出现、完全位于单个 token 内的残缺选区
+  才给出建议，重复片段、跨词和带助词表达保持原样。主按钮明确显示建议词，菜单允许保留原选区；
+  接受建议只改变本次请求目标，不改写原始 `ReaderSelection`。真实《挪威的森林》EPUB 中局部
+  选择“飛行”时已验证显示“查『飛行機』”及“保留原选区『飛行』”。
+
+- **2026-09-05 验证**：`./scripts/test-all.sh` 中共享契约/Reader Bridge **10 项**、语言包
+  **65 项**、App 单元测试 **60 项**全部通过；新增补全逻辑与 ViewModel 用例包含在 App 测试中。
+  UI Runner 仍因系统 Developer mode disabled，在启用 automation mode 时超时，未执行 UI 用例。
+
+- **2026-09-04 独立上下文词语解释**：完成 `WORD-001` 至 `WORD-005`。新增与句子 `ReadingAI`
+  分离的 `VocabularyAI`，Ollama 与 OpenAI-compatible 均支持严格 JSON、一次修复、流式预览和取消；
+  请求把目标词、所在句及前后句分别传递，结果包含词形、原形、读音、词性、语境义、简明义、
+  活用和搭配。日语身份字段由缓存的本地 MeCab/IPADic 覆盖模型猜测。阅读器的词/表达选区现在
+  显示轻量词卡，完整结果后才允许加入生词本。新增跨平台 v4 AI 交换契约；真实《挪威的森林》
+  EPUB 中选择“飛行機”已验证得到“ひこうき”、noun、原形与中文语境义。局部选成“行機”会暴露
+  错误词法结果，已登记 `PDF-119` 作为下一项选区边界修复。
+
+- **2026-09-04 阅读选区与空间体验整理**：通过真实《挪威的森林》EPUB 走查发现，常驻解释栏
+  占用接近一半窗口，且旧逻辑会把“僕は三十七歳で”这类无标点短句误判为单词并流入生词本和
+  温习。现已将解释栏上限收窄至 360pt，并同步收紧导航和资料列表；新增基于 NaturalLanguage 与
+  MeCab 的本地选区分类，区分词、表达、句子、段落和不确定内容。自动分类只提供建议，选区旁菜单
+  可随时改用“词语或表达”或“句子或选段”解释；只有明确的词或表达允许直接收藏。真实界面复验
+  中解释栏由约 466pt 降至 360pt，“僕は三十七歳で”显示为“解释所选内容”而非“解释单词”。
+
 - **2026-09-03 温习页理念文案**：在“随手温习”页面底部加入始终可见、弱化呈现的产品理念：
   “语言不是一条需要赶完的路。读一点，记一点，忘了也没关系；在漫长的相遇里，它终会成为你的
   一部分。”空状态、温习过程和轮次暂停时均可看到。
@@ -187,6 +293,31 @@
 3. `AI-403`：扩展到 100 条正式评测句（在模型定档后做，避免返工）。
 
 ## 最近验证
+
+- 日期：2026-09-05（开源就绪度文档）
+- `git diff --check`、公开文档占位词扫描和 5 个 GitHub YAML 表单解析通过。
+- `./scripts/test-all.sh`：契约/Bridge **10 项**、JieJuLanguage **65 项**、App 单元测试 **60 项**通过；
+  UI Runner 未进入任何用例，387 秒后报告 `The test runner hung before establishing connection.`。
+  `DevToolsSecurity -status` 明确为 disabled，因此完整脚本退出 65，本轮不创建提交。
+
+- 日期：2026-09-05
+- Node 10 项、JieJuLanguage 65 项、App 单元测试 60 项通过；真实日语 EPUB 补全建议和保留原选区
+  菜单通过 Computer Use 验收。统一测试只在 UI Runner 初始化失败，错误仍为
+  `Timed out while enabling automation mode`。
+
+- 日期：2026-09-04（上下文词语解释）
+- `./scripts/test-all.sh` 前两段通过：共享契约/Reader Bridge **10 项**、语言包 **65 项**（其中新增
+  `VocabularyAITests` 8 项）；`xcodebuild build` 与 `build-for-testing` 通过。Computer Use 在真实日语
+  EPUB 验证“飛行機”独立词卡、流式更新和最终读音/词性/语境义，未写入用户生词本。
+- App/UI 测试已编译，但当前机器的 XCTest target runner 在 `waiting for workers to materialize`
+  阶段约 298 秒仍未启动测试；`DevToolsSecurity -status` 为 disabled。统一测试已中止，不能记为
+  App 测试通过。
+
+- 日期：2026-09-04
+- 跨平台契约 **9 项**、语言包 **57 项**、App 单元测试 **57 项**通过；Computer Use 实际打开
+  16 章、当前章 38 页的 EPUB，确认常驻解释栏宽度、日语选区分类及手动解释方式菜单生效。
+- `./scripts/test-all.sh` 和随后单独重试 UI Target 均停在系统自动化初始化：
+  `Timed out while enabling automation mode`；不是 UI 用例断言失败，真实界面手动回归已完成。
 
 - 日期：2026-09-02
 - EPUB 四种主题、默认值、持久化及书内文字颜色覆盖测试通过；App 单元测试 **43 项全部通过**。

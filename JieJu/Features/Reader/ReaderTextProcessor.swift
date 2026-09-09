@@ -15,23 +15,24 @@ enum ReaderTextProcessor {
     static func context(
         for selectedText: String,
         in surroundingText: String
-    ) -> (preceding: String?, following: String?) {
+    ) -> (current: String?, preceding: String?, following: String?) {
         let target = clean(selectedText)
         let source = clean(surroundingText)
         guard !target.isEmpty, let range = source.range(of: target) else {
-            return (nil, nil)
+            return (nil, nil, nil)
         }
 
         let sentences = sentenceRanges(in: source)
         guard let selectedIndex = sentences.firstIndex(where: { sentenceRange in
             sentenceRange.overlaps(range) || sentenceRange.contains(range.lowerBound)
-        }) else { return (nil, nil) }
+        }) else { return (nil, nil, nil) }
 
+        let current = clean(String(source[sentences[selectedIndex]]))
         let preceding = selectedIndex > 0 ? clean(String(source[sentences[selectedIndex - 1]])) : nil
         let following = selectedIndex + 1 < sentences.count
             ? clean(String(source[sentences[selectedIndex + 1]]))
             : nil
-        return (preceding?.nilIfEmpty, following?.nilIfEmpty)
+        return (current.nilIfEmpty, preceding?.nilIfEmpty, following?.nilIfEmpty)
     }
 
     /// Removes an accidental trailing sentence fragment while preserving deliberate

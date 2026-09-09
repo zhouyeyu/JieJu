@@ -4,33 +4,45 @@ import JieJuLanguage
 
 struct ReaderView: View {
     @StateObject private var model: ReaderViewModel
+    @StateObject private var recentDocuments: RecentDocumentStore
     private let explanationProvider: any ReaderExplanationProviding
+    private let vocabularyProvider: any ReaderVocabularyProviding
     private let explanationLanguage: String
     private let configurationID: String
     private let explanationPresentationMode: ExplanationPresentationMode
     private let furiganaDisplayMode: FuriganaDisplayMode
     private let epubReadingStyle: EPUBReadingStyle
+    private let sourceNavigation: ReaderSourceNavigation?
 
     init(
         explanationProvider: any ReaderExplanationProviding = MockReaderExplanationProvider(),
+        vocabularyProvider: any ReaderVocabularyProviding = MockReaderVocabularyProvider(),
         saveHandler: @escaping @MainActor (ReaderSavePayload) async throws -> Void = { _ in },
         vocabularySaveHandler: @escaping @MainActor (ReaderVocabularySavePayload) async throws -> Void = { _ in },
+        recentDocumentStore: RecentDocumentStore? = nil,
         explanationLanguage: String = "Chinese",
         configurationID: String = "default",
         explanationPresentationMode: ExplanationPresentationMode = .sidebar,
         furiganaDisplayMode: FuriganaDisplayMode = .hidden,
-        epubReadingStyle: EPUBReadingStyle = EPUBReadingStyle()
+        epubReadingStyle: EPUBReadingStyle = EPUBReadingStyle(),
+        sourceNavigation: ReaderSourceNavigation? = nil
     ) {
         self.explanationProvider = explanationProvider
+        self.vocabularyProvider = vocabularyProvider
         self.explanationLanguage = explanationLanguage
         self.configurationID = configurationID
         self.explanationPresentationMode = explanationPresentationMode
         self.furiganaDisplayMode = furiganaDisplayMode
         self.epubReadingStyle = epubReadingStyle
+        self.sourceNavigation = sourceNavigation
+        let recentDocumentStore = recentDocumentStore ?? RecentDocumentStore()
+        _recentDocuments = StateObject(wrappedValue: recentDocumentStore)
         _model = StateObject(wrappedValue: ReaderViewModel(
             explanationProvider: explanationProvider,
+            vocabularyProvider: vocabularyProvider,
             saveHandler: saveHandler,
             vocabularySaveHandler: vocabularySaveHandler,
+            recentDocumentStore: recentDocumentStore,
             explanationLanguage: explanationLanguage
         ))
     }
@@ -46,8 +58,13 @@ struct ReaderView: View {
         .onChange(of: configurationID, initial: true) {
             model.updateExplanationConfiguration(
                 provider: explanationProvider,
+                vocabularyProvider: vocabularyProvider,
                 explanationLanguage: explanationLanguage
             )
+        }
+        .onChange(of: sourceNavigation?.id) {
+            guard let sourceNavigation else { return }
+            model.openSource(sourceNavigation)
         }
     }
 
@@ -55,7 +72,14 @@ struct ReaderView: View {
     private var content: some View {
         switch model.documentState {
         case .empty:
-            ReaderEmptyView(openAction: model.chooseDocument)
+            ReaderEmptyView(
+                recentDocuments: recentDocuments.documents,
+                errorMessage: model.recentDocumentErrorMessage,
+                openAction: model.chooseDocument,
+                openRecent: model.openRecentDocument,
+                relocateRecent: model.relocateRecentDocument,
+                removeRecent: model.removeRecentDocument
+            )
         case .loading:
             ProgressView("正在打开文档…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -87,6 +111,7 @@ struct ReaderView: View {
                                 document: epub,
                                 chapterIndex: model.currentPageIndex,
                                 initialPageIndex: model.restoredEPUBPageIndex,
+                                initialTextAnchor: model.restoredEPUBTextAnchor,
                                 initialPageAtEnd: model.epubOpenAtEnd,
                                 readingStyle: epubReadingStyle,
                                 onPreviousChapter: model.showPreviousChapter,
@@ -103,14 +128,16 @@ struct ReaderView: View {
 
                 if explanationPresentationMode == .sidebar {
                     Group {
-                        if model.isExplanationPresented, let selection = model.selection {
+                        if model.isExplanationPresented, model.selection != nil {
                             ReaderExplanationPanel(
-                                selectedText: selection.targetText,
+                                selectedText: model.effectiveSelectionText,
+                                selectionKind: model.selectionKind,
                                 state: model.explanationState,
+                                wordState: model.wordExplanationState,
                                 deepAnalysisState: model.deepAnalysisState,
                                 save: model.saveExplanation,
                                 saveState: model.saveState,
-                                retry: model.requestExplanation,
+                                retry: { model.requestExplanation() },
                                 analyzeDeep: model.requestDeepAnalysis,
                                 saveVocabulary: model.saveVocabulary,
                                 furiganaDisplayMode: furiganaDisplayMode,
@@ -121,7 +148,7 @@ struct ReaderView: View {
                             ReaderExplanationSidebarPlaceholder()
                         }
                     }
-                    .frame(minWidth: 340, idealWidth: 400, maxWidth: 480, maxHeight: .infinity)
+                    .frame(minWidth: 280, idealWidth: 320, maxWidth: 360, maxHeight: .infinity)
                 }
             }
         }
@@ -174,27 +201,56 @@ struct ReaderView: View {
 
     @ViewBuilder
     private func explanationTrigger(for selection: ReaderSelection) -> some View {
-        let button = Button(
-            ReaderVocabularySelection.isLikelyWord(selection.targetText) ? "解释单词" : "解释",
-            systemImage: "text.bubble",
-            action: model.requestExplanation
+        let boundarySuggestion = model.selectionBoundarySuggestion
+        let controls = HStack(spacing: 4) {
+            Button(
+                boundarySuggestion.map { "查“\($0.suggestedText)”" } ?? model.selectionKind.actionTitle,
+                systemImage: boundarySuggestion == nil ? "text.bubble" : "selection.pin.in.out"
+            ) {
+                model.requestExplanation(targetText: boundarySuggestion?.suggestedText)
+            }
+            .buttonStyle(.borderedProminent)
+            .help(boundarySuggestion.map {
+                "原选区“\($0.originalText)”似乎是不完整词语；点击后按完整词“\($0.suggestedText)”解释"
+            } ?? model.selectionKind.actionTitle)
+
+            Menu {
+                if let boundarySuggestion {
+                    Button("保留原选区“\(boundarySuggestion.originalText)”", systemImage: "selection.pin.in.out") {
+                        model.requestExplanation(as: .expression)
+                    }
+                    Divider()
+                }
+                Button("按词语或表达解释", systemImage: "character.book.closed") {
+                    model.requestExplanation(as: .expression)
+                }
+                Button("按句子或选段解读", systemImage: "text.alignleft") {
+                    model.requestExplanation(as: .sentence)
+                }
+            } label: {
+                Image(systemName: "chevron.down")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .accessibilityLabel("选择解释方式")
+        }
+        .position(
+            x: max(76, selection.anchorRect.midX),
+            y: max(22, selection.anchorRect.minY - 18)
         )
-                .buttonStyle(.borderedProminent)
-                .position(
-                    x: max(52, selection.anchorRect.midX),
-                    y: max(22, selection.anchorRect.minY - 18)
-                )
 
         if explanationPresentationMode == .popover {
-            button
+            controls
                 .popover(isPresented: $model.isExplanationPresented, arrowEdge: .bottom) {
                     ReaderExplanationPanel(
-                        selectedText: selection.targetText,
+                        selectedText: model.effectiveSelectionText,
+                        selectionKind: model.selectionKind,
                         state: model.explanationState,
+                        wordState: model.wordExplanationState,
                         deepAnalysisState: model.deepAnalysisState,
                         save: model.saveExplanation,
                         saveState: model.saveState,
-                        retry: model.requestExplanation,
+                        retry: { model.requestExplanation() },
                         analyzeDeep: model.requestDeepAnalysis,
                         saveVocabulary: model.saveVocabulary,
                         furiganaDisplayMode: furiganaDisplayMode,
@@ -204,7 +260,7 @@ struct ReaderView: View {
                 }
                 .accessibilityIdentifier("reader.explain")
         } else {
-            button.accessibilityIdentifier("reader.explain")
+            controls.accessibilityIdentifier("reader.explain")
         }
     }
 }
@@ -213,16 +269,16 @@ private struct ReaderExplanationSidebarPlaceholder: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Label("解句", systemImage: "text.bubble").font(.headline)
+                Label("解释", systemImage: "text.bubble").font(.headline)
                 Spacer()
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
             Divider()
             ContentUnavailableView(
-                "选择一句话",
+                "选择词语或句子",
                 systemImage: "selection.pin.in.out",
-                description: Text("在正文中划选文本，然后点击“解释”。")
+                description: Text("划选后，JieJu 会建议合适的解释方式；你也可以自己切换。")
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -241,18 +297,117 @@ private struct WindowDragRegion: NSViewRepresentable {
 }
 
 private struct ReaderEmptyView: View {
+    let recentDocuments: [RecentDocument]
+    let errorMessage: String?
     let openAction: () -> Void
+    let openRecent: (RecentDocument) -> Void
+    let relocateRecent: (RecentDocument) -> Void
+    let removeRecent: (RecentDocument) -> Void
 
     var body: some View {
-        ContentUnavailableView {
-            Label("打开一本书开始阅读", systemImage: "books.vertical")
-        } description: {
-            Text("支持带文本层的 PDF，以及可重排阅读的 EPUB。")
-        } actions: {
-            Button("打开 PDF 或 EPUB", action: openAction)
-                .keyboardShortcut("o", modifiers: .command)
-                .accessibilityIdentifier("reader.openDocument")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("回到阅读", systemImage: "books.vertical")
+                        .font(.title.bold())
+                    Text("从上次停下的地方继续，或者打开一本新书。")
+                        .foregroundStyle(.secondary)
+                }
+
+                Button("打开 PDF 或 EPUB", systemImage: "plus", action: openAction)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut("o", modifiers: .command)
+                    .accessibilityIdentifier("reader.openDocument")
+
+                if let errorMessage {
+                    Label(errorMessage, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                        .accessibilityIdentifier("reader.recentDocumentError")
+                }
+
+                if recentDocuments.isEmpty {
+                    Text("支持带文本层的 PDF 和可重排 EPUB。选择单词、表达或句子后即可获得对应讲解。")
+                        .foregroundStyle(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("最近阅读")
+                            .font(.headline)
+                        ForEach(Array(recentDocuments.enumerated()), id: \.element.id) { index, document in
+                            recentDocumentRow(document, isContinueReading: index == 0)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: 720, alignment: .leading)
+            .padding(40)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func recentDocumentRow(_ document: RecentDocument, isContinueReading: Bool) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: document.kind.systemImage)
+                .font(.title2)
+                .foregroundStyle(.tint)
+                .frame(width: 36, height: 44)
+                .background(.tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+
+            Button {
+                openRecent(document)
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 7) {
+                        Text(document.displayName)
+                            .font(.headline)
+                            .lineLimit(1)
+                        if isContinueReading {
+                            Text("继续阅读")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.tint)
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        Text(document.kind.title)
+                        if let location = document.lastLocationLabel, !location.isEmpty {
+                            Text("·")
+                            Text(location)
+                        }
+                        Text("·")
+                        Text(document.lastOpenedAt, style: .relative)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("reader.recentDocument.\(document.id.uuidString)")
+
+            Menu {
+                Button("打开", systemImage: "book") { openRecent(document) }
+                Button("重新定位文件…", systemImage: "folder") {
+                    relocateRecent(document)
+                }
+                Divider()
+                Button("从最近阅读移除", systemImage: "trash", role: .destructive) {
+                    removeRecent(document)
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .accessibilityLabel("管理“\(document.displayName)”")
+        }
+        .padding(14)
+        .background(
+            isContinueReading ? Color.accentColor.opacity(0.08) : Color.secondary.opacity(0.06),
+            in: RoundedRectangle(cornerRadius: 12)
+        )
     }
 }
 
@@ -260,7 +415,9 @@ struct ReaderExplanationPanel: View {
     enum Presentation { case sidebar, popover }
 
     let selectedText: String
+    let selectionKind: ReaderSelectionKind
     let state: ReaderExplanationState
+    let wordState: ReaderWordExplanationState
     let deepAnalysisState: ReaderDeepAnalysisState
     let save: () -> Void
     let saveState: ReaderSaveState
@@ -277,7 +434,7 @@ struct ReaderExplanationPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Label("解句", systemImage: "text.bubble")
+                Label(selectionKind.panelTitle, systemImage: "text.bubble")
                     .font(.headline)
                 Spacer()
                 Button(action: close) { Image(systemName: "xmark") }
@@ -297,7 +454,11 @@ struct ReaderExplanationPanel: View {
                     }
                     .font(.subheadline.weight(.semibold))
 
-                    stateContent
+                    if selectionKind.canSaveSelectionAsVocabulary {
+                        wordStateContent
+                    } else {
+                        stateContent
+                    }
                 }
                 .padding(18)
             }
@@ -333,11 +494,81 @@ struct ReaderExplanationPanel: View {
     }
 
     @ViewBuilder
+    private var wordStateContent: some View {
+        switch wordState {
+        case .idle, .loading:
+            ProgressView("正在结合语境解释…")
+        case .streaming(let explanation):
+            wordContent(explanation, isStreaming: true)
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 10) {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Button("重试", action: retry)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        case .loaded(let explanation):
+            wordContent(explanation, isStreaming: false)
+        }
+    }
+
+    @ViewBuilder
+    private func wordContent(_ explanation: ReaderWordExplanation, isStreaming: Bool) -> some View {
+        LazyVStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                FuriganaText(text: explanation.surface, mode: furiganaDisplayMode)
+                    .font(.title3.weight(.semibold))
+                HStack(spacing: 6) {
+                    if let reading = explanation.reading, !reading.isEmpty { Text(reading) }
+                    Text(explanation.partOfSpeech)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            explanationCard(title: "当前语境", systemImage: "quote.bubble", value: explanation.contextualMeaning)
+            if explanation.briefMeaning != explanation.contextualMeaning {
+                explanationCard(title: "简明释义", systemImage: "character.book.closed", value: explanation.briefMeaning)
+            }
+
+            VStack(alignment: .leading, spacing: 7) {
+                wordDetail("原形", explanation.lemma)
+                if let inflection = explanation.inflection, !inflection.isEmpty {
+                    wordDetail("词形变化", inflection)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+
+            if !explanation.collocations.isEmpty { keyPhraseCard(explanation.collocations) }
+
+            if isStreaming {
+                HStack(spacing: 10) {
+                    ProgressView().controlSize(.small)
+                    Text("正在补充词形和常用搭配…")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                vocabularyButton(for: explanation.vocabularyCandidate, label: "加入生词本")
+            }
+        }
+    }
+
+    private func wordDetail(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(title).font(.caption).foregroundStyle(.secondary).frame(width: 52, alignment: .leading)
+            Text(value).textSelection(.enabled)
+        }
+    }
+
+    @ViewBuilder
     private func explanationContent(_ explanation: ReaderExplanation, isStreaming: Bool) -> some View {
         LazyVStack(alignment: .leading, spacing: 12) {
             if !explanation.translation.isEmpty {
                 explanationCard(title: "翻译", systemImage: "character.bubble", value: explanation.translation)
-                if ReaderVocabularySelection.isLikelyWord(selectedText) {
+                if selectionKind.canSaveSelectionAsVocabulary {
                     vocabularyButton(for: .init(
                         surface: selectedText.trimmingCharacters(in: .whitespacesAndNewlines),
                         lemma: selectedText.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -596,16 +827,6 @@ private enum VocabularySaveState: Equatable {
     case saving
     case saved
     case failed(String)
-}
-
-enum ReaderVocabularySelection {
-    static func isLikelyWord(_ text: String) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed.count <= 40 else { return false }
-        let terminators = CharacterSet(charactersIn: ".!?。！？；;\n")
-        guard trimmed.rangeOfCharacter(from: terminators) == nil else { return false }
-        return trimmed.split(whereSeparator: { $0.isWhitespace }).count <= 3
-    }
 }
 
 #Preview { ReaderView() }

@@ -36,6 +36,8 @@
 		AA0000000000000000000056 /* EPUBWebReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000057 /* EPUBWebReaderView.swift */; };
 		AC0000000000000000000001 /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000011 /* APIKeyStore.swift */; };
 		AC0000000000000000000002 /* OpenAICompatibleReaderExplanationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000012 /* OpenAICompatibleReaderExplanationProvider.swift */; };
+		AD0000000000000000000001 /* RecentDocumentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD0000000000000000000011 /* RecentDocumentStore.swift */; };
+		AD0000000000000000000002 /* RecentDocumentStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD0000000000000000000012 /* RecentDocumentStoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -87,6 +89,8 @@
 		AA0000000000000000000057 /* EPUBWebReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBWebReaderView.swift; sourceTree = "<group>"; };
 		AC0000000000000000000011 /* APIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStore.swift; sourceTree = "<group>"; };
 		AC0000000000000000000012 /* OpenAICompatibleReaderExplanationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAICompatibleReaderExplanationProvider.swift; sourceTree = "<group>"; };
+		AD0000000000000000000011 /* RecentDocumentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentDocumentStore.swift; sourceTree = "<group>"; };
+		AD0000000000000000000012 /* RecentDocumentStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentDocumentStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -194,13 +198,13 @@
 		};
 		AA000000000000000000006C /* Persistence */ = {
 			isa = PBXGroup;
-			children = (AA000000000000000000001E, AA000000000000000000001F, AA0000000000000000000032 /* ReadingPositionStore.swift */);
+			children = (AA000000000000000000001E, AA000000000000000000001F, AA0000000000000000000032 /* ReadingPositionStore.swift */, AD0000000000000000000011 /* RecentDocumentStore.swift */);
 			path = Persistence;
 			sourceTree = "<group>";
 		};
 		AA000000000000000000006D /* Persistence */ = {
 			isa = PBXGroup;
-			children = (AA0000000000000000000020, AA0000000000000000000034 /* ReadingPositionStoreTests.swift */);
+			children = (AA0000000000000000000020, AA0000000000000000000034 /* ReadingPositionStoreTests.swift */, AD0000000000000000000012 /* RecentDocumentStoreTests.swift */);
 			path = Persistence;
 			sourceTree = "<group>";
 		};
@@ -283,8 +287,8 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AA0000000000000000000071 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000001 /* JieJuApp.swift in Sources */, AA0000000000000000000002 /* WelcomeView.swift in Sources */, AA0000000000000000000005, AA0000000000000000000006, AA0000000000000000000007, AA0000000000000000000054, AA0000000000000000000056, AA0000000000000000000008, AA0000000000000000000009, AA000000000000000000000C, AA000000000000000000000D, AA000000000000000000000F, AA0000000000000000000010, AC0000000000000000000001, AC0000000000000000000002, AA0000000000000000000030, AB0000000000000000000001, AA0000000000000000000033, AA0000000000000000000037); runOnlyForDeploymentPostprocessing = 0; };
-		AA0000000000000000000072 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000003 /* JieJuTests.swift in Sources */, AA000000000000000000000A, AA000000000000000000000E, AA0000000000000000000035, AA0000000000000000000039); runOnlyForDeploymentPostprocessing = 0; };
+		AA0000000000000000000071 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000001 /* JieJuApp.swift in Sources */, AA0000000000000000000002 /* WelcomeView.swift in Sources */, AA0000000000000000000005, AA0000000000000000000006, AA0000000000000000000007, AA0000000000000000000054, AA0000000000000000000056, AA0000000000000000000008, AA0000000000000000000009, AA000000000000000000000C, AA000000000000000000000D, AA000000000000000000000F, AA0000000000000000000010, AC0000000000000000000001, AC0000000000000000000002, AA0000000000000000000030, AB0000000000000000000001, AA0000000000000000000033, AD0000000000000000000001 /* RecentDocumentStore.swift in Sources */, AA0000000000000000000037); runOnlyForDeploymentPostprocessing = 0; };
+		AA0000000000000000000072 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000003 /* JieJuTests.swift in Sources */, AA000000000000000000000A, AA000000000000000000000E, AA0000000000000000000035, AD0000000000000000000002 /* RecentDocumentStoreTests.swift in Sources */, AA0000000000000000000039); runOnlyForDeploymentPostprocessing = 0; };
 		AA0000000000000000000073 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000004 /* JieJuUITests.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 

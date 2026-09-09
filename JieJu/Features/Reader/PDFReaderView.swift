@@ -77,6 +77,7 @@ struct PDFReaderView: NSViewRepresentable {
         private func selectionDidChange() {
             guard
                 let view = pdfView,
+                let document = view.document,
                 let pdfSelection = view.currentSelection,
                 let rawText = pdfSelection.string
             else {
@@ -102,9 +103,11 @@ struct PDFReaderView: NSViewRepresentable {
             onSelectionChange(
                 ReaderSelection(
                     targetText: target,
+                    containingSentence: context.current,
                     precedingContext: context.preceding,
                     followingContext: context.following,
-                    anchorRect: anchor
+                    anchorRect: anchor,
+                    locator: .pdf(pageIndex: document.index(for: firstPage))
                 )
             )
         }

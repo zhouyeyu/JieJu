@@ -1,7 +1,7 @@
 import Foundation
 
 struct PersistenceLibrary: Codable, Equatable, Sendable {
-    static let currentSchemaVersion = 3
+    static let currentSchemaVersion = 5
 
     var schemaVersion: Int
     var readingProgress: [ReadingProgress]
@@ -53,6 +53,50 @@ struct DocumentIdentity: Codable, Equatable, Hashable, Sendable {
     }
 }
 
+struct DocumentLocator: Codable, Equatable, Sendable {
+    enum Kind: String, Codable, Sendable { case pdf, epub }
+
+    let kind: Kind
+    var pageIndex: Int? = nil
+    var textOffset: Int? = nil
+    var textHash: String? = nil
+    var chapterHref: String? = nil
+    var cfi: String? = nil
+    var textAnchor: String? = nil
+    var displayPageIndex: Int? = nil
+
+    static func pdf(pageIndex: Int, textOffset: Int? = nil, textHash: String? = nil) -> Self {
+        .init(
+            kind: .pdf,
+            pageIndex: max(0, pageIndex),
+            textOffset: textOffset.map { max(0, $0) },
+            textHash: textHash
+        )
+    }
+
+    static func epub(
+        chapterHref: String,
+        textAnchor: EPUBTextAnchor?,
+        displayPageIndex: Int?
+    ) -> Self {
+        let encodedAnchor = textAnchor.flatMap { anchor -> String? in
+            guard let data = try? JSONEncoder().encode(anchor) else { return nil }
+            return String(data: data, encoding: .utf8)
+        }
+        return .init(
+            kind: .epub,
+            chapterHref: chapterHref,
+            textAnchor: encodedAnchor,
+            displayPageIndex: displayPageIndex.map { max(0, $0) }
+        )
+    }
+
+    var epubTextAnchor: EPUBTextAnchor? {
+        guard kind == .epub, let textAnchor, let data = textAnchor.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(EPUBTextAnchor.self, from: data)
+    }
+}
+
 struct ReadingProgress: Codable, Equatable, Sendable {
     var document: DocumentIdentity
     var pageIndex: Int
@@ -96,6 +140,7 @@ struct SavedExplanationRecord: Codable, Equatable, Identifiable, Sendable {
     let id: UUID
     var document: DocumentIdentity
     var pageIndex: Int?
+    var locator: DocumentLocator?
     var request: PersistedExplanationRequest
     var explanation: PersistedExplanation
     let createdAt: Date
@@ -105,6 +150,7 @@ struct SavedExplanationRecord: Codable, Equatable, Identifiable, Sendable {
         id: UUID = UUID(),
         document: DocumentIdentity,
         pageIndex: Int? = nil,
+        locator: DocumentLocator? = nil,
         request: PersistedExplanationRequest,
         explanation: PersistedExplanation,
         createdAt: Date = Date(),
@@ -113,6 +159,7 @@ struct SavedExplanationRecord: Codable, Equatable, Identifiable, Sendable {
         self.id = id
         self.document = document
         self.pageIndex = pageIndex
+        self.locator = locator
         self.request = request
         self.explanation = explanation
         self.createdAt = createdAt
@@ -136,6 +183,7 @@ struct VocabularySource: Codable, Equatable, Identifiable, Sendable {
     let id: UUID
     var document: DocumentIdentity
     var pageIndex: Int?
+    var locator: DocumentLocator?
     var sentence: String
     var surface: String
     var createdAt: Date
@@ -144,6 +192,7 @@ struct VocabularySource: Codable, Equatable, Identifiable, Sendable {
         id: UUID = UUID(),
         document: DocumentIdentity,
         pageIndex: Int? = nil,
+        locator: DocumentLocator? = nil,
         sentence: String,
         surface: String,
         createdAt: Date = Date()
@@ -151,6 +200,7 @@ struct VocabularySource: Codable, Equatable, Identifiable, Sendable {
         self.id = id
         self.document = document
         self.pageIndex = pageIndex
+        self.locator = locator
         self.sentence = sentence
         self.surface = surface
         self.createdAt = createdAt

@@ -140,6 +140,23 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    var vocabularyProviderSnapshot: any ReaderVocabularyProviding {
+        switch provider {
+        case .mock: MockReaderVocabularyProvider()
+        case .ollama:
+            OllamaReaderExplanationProvider(
+                baseURL: URL(string: ollamaURL) ?? URL(string: "http://127.0.0.1:11434")!,
+                model: modelName
+            )
+        case .cloud:
+            OpenAICompatibleReaderExplanationProvider(
+                baseURL: URL(string: cloudURL) ?? URL(string: "https://api.openai.com/v1")!,
+                apiKey: cloudAPIKey,
+                model: cloudModelName
+            )
+        }
+    }
+
     var activeModelName: String {
         switch provider {
         case .mock: "mock"

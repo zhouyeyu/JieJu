@@ -68,6 +68,35 @@ final class ReadingPositionStoreTests: XCTestCase {
         XCTAssertEqual(store.epubPosition(for: url), EPUBReadingPosition(chapterIndex: 3, pageIndex: 12))
     }
 
+    func testSaveAndRestoreStableEPUBTextAnchor() {
+        let url = URL(fileURLWithPath: "/tmp/anchored.epub")
+        let anchor = EPUBTextAnchor(
+            textOffset: 428,
+            textQuote: "The sentence visible at the top of the page.",
+            progression: 0.42
+        )
+        let position = EPUBReadingPosition(
+            chapterIndex: 3,
+            pageIndex: 12,
+            chapterID: "chapter-four",
+            chapterHref: "OEBPS/chapter4.xhtml",
+            textAnchor: anchor
+        )
+
+        store.saveEPUB(position, for: url)
+
+        XCTAssertEqual(store.epubPosition(for: url), position)
+    }
+
+    func testDecodesLegacyEPUBPositionWithoutStableAnchor() throws {
+        let legacy = Data(#"{"chapterIndex":2,"pageIndex":8}"#.utf8)
+        let position = try JSONDecoder().decode(EPUBReadingPosition.self, from: legacy)
+
+        XCTAssertEqual(position, EPUBReadingPosition(chapterIndex: 2, pageIndex: 8))
+        XCTAssertNil(position.chapterHref)
+        XCTAssertNil(position.textAnchor)
+    }
+
     func testClearRemovesEPUBPosition() {
         let url = URL(fileURLWithPath: "/tmp/book.epub")
         store.saveEPUB(chapterIndex: 2, pageIndex: 8, for: url)

@@ -1,7 +1,7 @@
 import Foundation
 import JieJuLanguage
 
-struct OpenAICompatibleReaderExplanationProvider: ReaderExplanationProviding {
+struct OpenAICompatibleReaderExplanationProvider: ReaderExplanationProviding, ReaderVocabularyProviding {
     let baseURL: URL
     let apiKey: String
     let model: String
@@ -45,7 +45,30 @@ struct OpenAICompatibleReaderExplanationProvider: ReaderExplanationProviding {
         )
     }
 
+    func explainWord(_ request: WordExplanationRequest) async throws -> ReaderWordExplanation {
+        Self.convert(try await vocabularyClient.explainWord(request))
+    }
+
+    func wordExplanationStream(
+        _ request: WordExplanationRequest
+    ) async throws -> AsyncThrowingStream<ReaderWordExplanation, Error> {
+        let stream = try await vocabularyClient.wordExplanationStream(request)
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    for try await result in stream { continuation.yield(Self.convert(result)) }
+                    continuation.finish()
+                } catch { continuation.finish(throwing: error) }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     private var client: OpenAICompatibleReadingAI<URLSessionHTTPClient> {
+        .init(baseURL: baseURL, apiKey: apiKey, model: model)
+    }
+
+    private var vocabularyClient: OpenAICompatibleVocabularyAI<URLSessionHTTPClient> {
         .init(baseURL: baseURL, apiKey: apiKey, model: model)
     }
 
@@ -55,6 +78,19 @@ struct OpenAICompatibleReaderExplanationProvider: ReaderExplanationProviding {
             sentenceCore: result.sentenceCore,
             grammarPoints: result.grammarPoints.map { "\($0.text)：\($0.explanation)" },
             keyPhrases: result.keyPhrases.map { .init(text: $0.text, meaning: $0.meaning) }
+        )
+    }
+
+    private static func convert(_ result: WordExplanation) -> ReaderWordExplanation {
+        .init(
+            surface: result.surface,
+            lemma: result.lemma,
+            reading: result.reading,
+            partOfSpeech: result.partOfSpeech,
+            contextualMeaning: result.contextualMeaning,
+            briefMeaning: result.briefMeaning,
+            inflection: result.inflection,
+            collocations: result.collocations.map { .init(text: $0.text, meaning: $0.meaning) }
         )
     }
 }

@@ -52,10 +52,10 @@ final class JSONPersistenceStoreTests: XCTestCase {
 
         let migrated = try await JSONPersistenceStore(fileURL: fileURL).load()
 
-        XCTAssertEqual(migrated.schemaVersion, 3)
+        XCTAssertEqual(migrated.schemaVersion, 5)
         XCTAssertTrue(migrated.vocabularyEntries.isEmpty)
         let disk = try JSONDecoder.iso8601.decode(PersistenceLibrary.self, from: Data(contentsOf: fileURL))
-        XCTAssertEqual(disk.schemaVersion, 3)
+        XCTAssertEqual(disk.schemaVersion, 5)
     }
 
     func testMigratesV2VocabularyAndCreatesDueRecognitionCard() async throws {
@@ -71,7 +71,7 @@ final class JSONPersistenceStoreTests: XCTestCase {
 
         let migrated = try await store.load()
 
-        XCTAssertEqual(migrated.schemaVersion, 3)
+        XCTAssertEqual(migrated.schemaVersion, 5)
         XCTAssertEqual(migrated.vocabularyEntries, [entry])
         XCTAssertEqual(migrated.reviewCards.count, 1)
         XCTAssertEqual(migrated.reviewCards.first?.vocabularyEntryID, entry.id)
@@ -126,6 +126,59 @@ final class JSONPersistenceStoreTests: XCTestCase {
         XCTAssertTrue(logsAfterDelete.isEmpty)
     }
 
+    func testMigratesV3LibraryWithoutInventingSourceLocators() async throws {
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let record = makeRecord(locator: nil)
+        let entry = makeVocabularyEntry(surface: "continue", meaning: "继续", sentence: "They continue.", locator: nil)
+        let oldLibrary = PersistenceLibrary(schemaVersion: 3, savedExplanations: [record], vocabularyEntries: [entry])
+        try JSONEncoder.iso8601.encode(oldLibrary).write(to: fileURL)
+
+        let migrated = try await JSONPersistenceStore(fileURL: fileURL).load()
+
+        XCTAssertEqual(migrated.schemaVersion, 5)
+        XCTAssertNil(migrated.savedExplanations.first?.locator)
+        XCTAssertNil(migrated.vocabularyEntries.first?.sources.first?.locator)
+    }
+
+    func testSourceLocatorRoundTripsForExplanationAndVocabulary() async throws {
+        let anchor = EPUBTextAnchor(textOffset: 42, textQuote: "selected sentence", progression: 0.4)
+        let locator = DocumentLocator.epub(
+            chapterHref: "OEBPS/chapter-2.xhtml",
+            textAnchor: anchor,
+            displayPageIndex: 3
+        )
+        let record = makeRecord(locator: locator)
+        let entry = makeVocabularyEntry(surface: "continue", meaning: "继续", sentence: "They continue.", locator: locator)
+        let store = JSONPersistenceStore(fileURL: fileURL)
+
+        _ = try await store.saveExplanation(record)
+        _ = try await store.saveVocabularyEntry(entry)
+        let reloaded = try await JSONPersistenceStore(fileURL: fileURL).load()
+
+        XCTAssertEqual(reloaded.savedExplanations.first?.locator, locator)
+        XCTAssertEqual(reloaded.vocabularyEntries.first?.sources.first?.locator, locator)
+        XCTAssertEqual(reloaded.savedExplanations.first?.locator?.epubTextAnchor, anchor)
+    }
+
+    func testDocumentLocatorCodingMatchesReaderBridgeContract() throws {
+        let pdfData = try JSONEncoder().encode(DocumentLocator.pdf(pageIndex: 7))
+        let pdf = try XCTUnwrap(JSONSerialization.jsonObject(with: pdfData) as? [String: Any])
+        XCTAssertEqual(pdf["kind"] as? String, "pdf")
+        XCTAssertEqual(pdf["pageIndex"] as? Int, 7)
+        XCTAssertNil(pdf["chapterHref"])
+
+        let epubData = try JSONEncoder().encode(DocumentLocator.epub(
+            chapterHref: "Text/chapter.xhtml",
+            textAnchor: .init(textOffset: 9, textQuote: "a quote", progression: 0.25),
+            displayPageIndex: 2
+        ))
+        let epub = try XCTUnwrap(JSONSerialization.jsonObject(with: epubData) as? [String: Any])
+        XCTAssertEqual(epub["kind"] as? String, "epub")
+        XCTAssertEqual(epub["chapterHref"] as? String, "Text/chapter.xhtml")
+        XCTAssertNotNil(epub["textAnchor"] as? String)
+        XCTAssertNil(epub["pageIndex"])
+    }
+
     func testCorruptFileIsBackedUpAndRecovered() async throws {
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         let corruptData = Data("not-json".utf8)
@@ -172,11 +225,13 @@ final class JSONPersistenceStoreTests: XCTestCase {
         var duplicate = makeRecord(id: UUID())
         duplicate.request.targetText = "  THE   cat sleeps. "
         duplicate.explanation.translation = "猫正在睡觉。"
+        duplicate.locator = nil
         duplicate.updatedAt = timestamp.addingTimeInterval(60)
         let deduplicated = try await store.saveExplanation(duplicate)
 
         XCTAssertEqual(deduplicated.id, saved.id)
         XCTAssertEqual(deduplicated.createdAt, saved.createdAt)
+        XCTAssertEqual(deduplicated.locator, saved.locator)
         let afterDeduplication = try await store.savedExplanations()
         XCTAssertEqual(afterDeduplication.count, 1)
         let deduplicatedRecord = try await store.savedExplanation(id: saved.id)
@@ -211,11 +266,12 @@ final class JSONPersistenceStoreTests: XCTestCase {
     private let timestamp = Date(timeIntervalSince1970: 1_704_164_645)
     private let document = DocumentIdentity(id: "document-1", fileName: "Sample.pdf", fingerprint: "abc123")
 
-    private func makeRecord(id: UUID = UUID()) -> SavedExplanationRecord {
+    private func makeRecord(id: UUID = UUID(), locator: DocumentLocator? = .pdf(pageIndex: 3)) -> SavedExplanationRecord {
         SavedExplanationRecord(
             id: id,
             document: document,
             pageIndex: 3,
+            locator: locator,
             request: PersistedExplanationRequest(
                 targetText: "The cat sleeps.",
                 precedingContext: "It is quiet.",
@@ -235,13 +291,25 @@ final class JSONPersistenceStoreTests: XCTestCase {
         )
     }
 
-    private func makeVocabularyEntry(surface: String, meaning: String, sentence: String) -> VocabularyEntry {
+    private func makeVocabularyEntry(
+        surface: String,
+        meaning: String,
+        sentence: String,
+        locator: DocumentLocator? = .pdf(pageIndex: 3)
+    ) -> VocabularyEntry {
         VocabularyEntry(
             language: "English",
             lemma: "continue",
             surfaceForms: [surface],
             senses: [.init(meaning: meaning, explanationLanguage: "Chinese")],
-            sources: [.init(document: document, pageIndex: 3, sentence: sentence, surface: surface, createdAt: timestamp)],
+            sources: [.init(
+                document: document,
+                pageIndex: 3,
+                locator: locator,
+                sentence: sentence,
+                surface: surface,
+                createdAt: timestamp
+            )],
             createdAt: timestamp,
             updatedAt: timestamp
         )

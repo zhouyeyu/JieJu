@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import NaturalLanguage
 
 #if canImport(JieJuLanguage)
 import JieJuLanguage
@@ -94,9 +95,9 @@ enum ReaderDocumentError: LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .fileUnavailable:
-            return "找不到所选 PDF。"
+            return "找不到所选文档。"
         case .unreadableFile:
-            return "没有权限读取所选 PDF。"
+            return "没有权限读取所选文档。"
         case .invalidPDF:
             return "无法打开这个文件。请确认它是有效的 PDF。"
         case .invalidEPUB(let message):
@@ -109,22 +110,230 @@ enum ReaderDocumentError: LocalizedError, Equatable, Sendable {
 
 struct ReaderSelection: Equatable, Sendable {
     let targetText: String
+    let containingSentence: String?
     let precedingContext: String?
     let followingContext: String?
     /// Selection bounds in the PDF view's coordinate space.
     let anchorRect: CGRect
+    let locator: DocumentLocator?
+
+    init(
+        targetText: String,
+        containingSentence: String? = nil,
+        precedingContext: String? = nil,
+        followingContext: String? = nil,
+        anchorRect: CGRect,
+        locator: DocumentLocator? = nil
+    ) {
+        self.targetText = targetText
+        self.containingSentence = containingSentence
+        self.precedingContext = precedingContext
+        self.followingContext = followingContext
+        self.anchorRect = anchorRect
+        self.locator = locator
+    }
 
     func explanationRequest(
+        targetText override: String? = nil,
         sourceLanguage: String = "English",
         explanationLanguage: String = "Chinese"
     ) -> ReaderExplanationRequest {
         ReaderExplanationRequest(
-            targetText: targetText,
+            targetText: override ?? targetText,
             precedingContext: precedingContext,
             followingContext: followingContext,
             sourceLanguage: sourceLanguage,
             explanationLanguage: explanationLanguage
         )
+    }
+}
+
+enum ReaderSelectionKind: String, Equatable, Sendable {
+    case word
+    case expression
+    case sentence
+    case passage
+    case ambiguous
+
+    var actionTitle: String {
+        switch self {
+        case .word: "查这个词"
+        case .expression: "解释这个表达"
+        case .sentence: "解读这句话"
+        case .passage: "理解这段文字"
+        case .ambiguous: "解释所选内容"
+        }
+    }
+
+    var panelTitle: String {
+        switch self {
+        case .word: "词语解释"
+        case .expression: "表达解释"
+        case .sentence: "解句"
+        case .passage: "选段理解"
+        case .ambiguous: "内容解释"
+        }
+    }
+
+    var canSaveSelectionAsVocabulary: Bool {
+        self == .word || self == .expression
+    }
+}
+
+enum ReaderSelectionClassifier {
+    static let japaneseMorphology: (any JapaneseMorphologyProviding)? =
+        try? MeCabJapaneseReadingProvider()
+
+    static func classify(_ text: String, sourceLanguage: String) -> ReaderSelectionKind {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .ambiguous }
+
+        let terminatorCount = trimmed.filter { ".!?。！？".contains($0) }.count
+        if terminatorCount >= 2 { return .passage }
+        if terminatorCount == 1 { return .sentence }
+
+        if sourceLanguage.localizedCaseInsensitiveContains("Japanese") {
+            return classifyJapanese(trimmed)
+        }
+        return classifyWithNaturalLanguage(trimmed, sourceLanguage: sourceLanguage)
+    }
+
+    private static func classifyJapanese(_ text: String) -> ReaderSelectionKind {
+        guard let provider = japaneseMorphology else {
+            return text.count <= 6 ? .ambiguous : .sentence
+        }
+        let tokens = provider.tokens(for: text).filter { $0.partOfSpeech != "symbol" }
+        guard !tokens.isEmpty else { return .ambiguous }
+
+        let nouns = tokens.filter { $0.partOfSpeech == "noun" }.count
+        let predicates = tokens.filter {
+            $0.partOfSpeech == "verb" || $0.partOfSpeech == "adjective"
+        }.count
+        let lexical = tokens.filter {
+            ["noun", "verb", "adjective", "adverb"].contains($0.partOfSpeech)
+        }.count
+        let hasParticle = tokens.contains { $0.partOfSpeech == "particle" }
+
+        if tokens.count == 1, lexical == 1 { return .word }
+        if lexical == 1 {
+            // 活用尾缀不会被当作独立词；助词则说明用户选中了一个表达片段。
+            return hasParticle ? .expression : .word
+        }
+        if predicates > 0, nouns > 0 { return .sentence }
+        if lexical >= 3 { return .ambiguous }
+        if hasParticle || lexical == 2 { return .expression }
+        return .ambiguous
+    }
+
+    private static func classifyWithNaturalLanguage(
+        _ text: String,
+        sourceLanguage: String
+    ) -> ReaderSelectionKind {
+        let tokenizer = NLTokenizer(unit: .word)
+        tokenizer.string = text
+        if let language = naturalLanguage(for: sourceLanguage) { tokenizer.setLanguage(language) }
+        let ranges = tokenizer.tokens(for: text.startIndex..<text.endIndex)
+        guard !ranges.isEmpty else { return .ambiguous }
+        if ranges.count == 1 { return .word }
+
+        let tagger = NLTagger(tagSchemes: [.lexicalClass])
+        tagger.string = text
+        if let language = naturalLanguage(for: sourceLanguage) {
+            tagger.setLanguage(language, range: text.startIndex..<text.endIndex)
+        }
+        var tags: [NLTag] = []
+        tagger.enumerateTags(
+            in: text.startIndex..<text.endIndex,
+            unit: .word,
+            scheme: .lexicalClass,
+            options: [.omitWhitespace, .omitPunctuation, .joinNames]
+        ) { tag, _ in
+            if let tag { tags.append(tag) }
+            return true
+        }
+
+        let hasSubjectLike = tags.contains {
+            [.noun, .pronoun, .personalName, .placeName, .organizationName].contains($0)
+        }
+        let hasPredicate = tags.contains { $0 == .verb }
+        if hasSubjectLike, hasPredicate { return .sentence }
+        if ranges.count <= 5 { return .expression }
+        if ranges.count >= 8 { return .sentence }
+        return .ambiguous
+    }
+
+    private static func naturalLanguage(for name: String) -> NLLanguage? {
+        if name.localizedCaseInsensitiveContains("Chinese") { return .simplifiedChinese }
+        if name.localizedCaseInsensitiveContains("Japanese") { return .japanese }
+        if name.localizedCaseInsensitiveContains("Korean") { return .korean }
+        if name.localizedCaseInsensitiveContains("French") { return .french }
+        if name.localizedCaseInsensitiveContains("German") { return .german }
+        return .english
+    }
+}
+
+struct ReaderSelectionBoundarySuggestion: Equatable, Sendable {
+    let originalText: String
+    let suggestedText: String
+}
+
+enum ReaderSelectionBoundarySuggester {
+    static func suggestion(
+        for selectedText: String,
+        in sentence: String?,
+        sourceLanguage: String
+    ) -> ReaderSelectionBoundarySuggestion? {
+        let selected = selectedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !selected.isEmpty, let sentence, sentence != selected,
+              let selectedRange = uniqueRange(of: selected, in: sentence) else { return nil }
+
+        let tokenRanges: [(text: String, range: Range<String.Index>)]
+        if sourceLanguage.localizedCaseInsensitiveContains("Japanese") {
+            guard let provider = ReaderSelectionClassifier.japaneseMorphology else { return nil }
+            tokenRanges = ranges(for: provider.tokens(for: sentence).map(\.surface), in: sentence)
+        } else {
+            let tokenizer = NLTokenizer(unit: .word)
+            tokenizer.string = sentence
+            tokenRanges = tokenizer.tokens(for: sentence.startIndex..<sentence.endIndex).map {
+                (String(sentence[$0]), $0)
+            }
+        }
+
+        guard let token = tokenRanges.first(where: {
+            $0.range.lowerBound <= selectedRange.lowerBound &&
+            $0.range.upperBound >= selectedRange.upperBound &&
+            $0.range != selectedRange
+        }) else { return nil }
+        let suggested = token.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard suggested.count > selected.count else { return nil }
+        return .init(originalText: selected, suggestedText: suggested)
+    }
+
+    private static func uniqueRange(of needle: String, in text: String) -> Range<String.Index>? {
+        var result: Range<String.Index>?
+        var cursor = text.startIndex
+        while cursor < text.endIndex,
+              let range = text.range(of: needle, range: cursor..<text.endIndex) {
+            if result != nil { return nil }
+            result = range
+            cursor = range.upperBound
+        }
+        return result
+    }
+
+    private static func ranges(
+        for tokenSurfaces: [String],
+        in text: String
+    ) -> [(text: String, range: Range<String.Index>)] {
+        var cursor = text.startIndex
+        var result: [(text: String, range: Range<String.Index>)] = []
+        for surface in tokenSurfaces where !surface.isEmpty {
+            guard cursor < text.endIndex,
+                  let range = text.range(of: surface, range: cursor..<text.endIndex) else { continue }
+            result.append((surface, range))
+            cursor = range.upperBound
+        }
+        return result
     }
 }
 
@@ -175,6 +384,7 @@ struct ReaderJapaneseWord: Equatable, Sendable {
 struct ReaderSavePayload: Sendable {
     let documentURL: URL
     let pageIndex: Int
+    let locator: DocumentLocator?
     let selection: ReaderSelection
     let explanation: ReaderExplanation
     let sourceLanguage: String
@@ -193,13 +403,62 @@ struct ReaderVocabularyCandidate: Equatable, Sendable {
     }
 }
 
+struct ReaderWordExplanation: Equatable, Sendable {
+    let surface: String
+    let lemma: String
+    let reading: String?
+    let partOfSpeech: String
+    let contextualMeaning: String
+    let briefMeaning: String
+    let inflection: String?
+    let collocations: [ReaderKeyPhrase]
+
+    var vocabularyCandidate: ReaderVocabularyCandidate {
+        .init(
+            surface: surface,
+            lemma: lemma,
+            reading: reading,
+            partOfSpeech: partOfSpeech,
+            meaning: contextualMeaning
+        )
+    }
+}
+
+enum ReaderWordExplanationState: Equatable, Sendable {
+    case idle
+    case loading
+    case streaming(ReaderWordExplanation)
+    case loaded(ReaderWordExplanation)
+    case failed(String)
+}
+
 struct ReaderVocabularySavePayload: Sendable {
     let documentURL: URL
     let pageIndex: Int
+    let locator: DocumentLocator?
     let sentence: String
     let sourceLanguage: String
     let explanationLanguage: String
     let candidate: ReaderVocabularyCandidate
+}
+
+struct ReaderSourceNavigation: Equatable, Sendable {
+    let id: UUID
+    let document: DocumentIdentity
+    let locator: DocumentLocator?
+    let legacyPageIndex: Int?
+
+    init(
+        id: UUID = UUID(),
+        document: DocumentIdentity,
+        locator: DocumentLocator?,
+        legacyPageIndex: Int?
+    ) {
+        self.id = id
+        self.document = document
+        self.locator = locator
+        self.legacyPageIndex = legacyPageIndex
+    }
 }
 
 enum ReaderExplanationState: Equatable, Sendable {
@@ -221,6 +480,25 @@ protocol ReaderExplanationProviding: Sendable {
     func explain(_ request: ReaderExplanationRequest) async throws -> ReaderExplanation
     func explanationStream(_ request: ReaderExplanationRequest) async throws -> AsyncThrowingStream<ReaderExplanation, Error>
     func analyzeDeep(_ request: ReaderExplanationRequest) async throws -> ReaderDeepAnalysis
+}
+
+protocol ReaderVocabularyProviding: Sendable {
+    func explainWord(_ request: WordExplanationRequest) async throws -> ReaderWordExplanation
+    func wordExplanationStream(
+        _ request: WordExplanationRequest
+    ) async throws -> AsyncThrowingStream<ReaderWordExplanation, Error>
+}
+
+extension ReaderVocabularyProviding {
+    func wordExplanationStream(
+        _ request: WordExplanationRequest
+    ) async throws -> AsyncThrowingStream<ReaderWordExplanation, Error> {
+        let result = try await explainWord(request)
+        return AsyncThrowingStream { continuation in
+            continuation.yield(result)
+            continuation.finish()
+        }
+    }
 }
 
 extension ReaderExplanationProviding {
@@ -254,6 +532,22 @@ struct MockReaderExplanationProvider: ReaderExplanationProviding {
             components: [.init(text: request.targetText, role: "完整句", explanation: "Mock 成分说明", modifies: nil)],
             clauses: [], grammarPoints: ["Mock 深度语法说明"], interpretation: "Mock 整句理解",
             japaneseWords: []
+        )
+    }
+}
+
+struct MockReaderVocabularyProvider: ReaderVocabularyProviding {
+    func explainWord(_ request: WordExplanationRequest) async throws -> ReaderWordExplanation {
+        let result = try await MockVocabularyAI().explainWord(request)
+        return .init(
+            surface: result.surface,
+            lemma: result.lemma,
+            reading: result.reading,
+            partOfSpeech: result.partOfSpeech,
+            contextualMeaning: result.contextualMeaning,
+            briefMeaning: result.briefMeaning,
+            inflection: result.inflection,
+            collocations: result.collocations.map { .init(text: $0.text, meaning: $0.meaning) }
         )
     }
 }

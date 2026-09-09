@@ -34,6 +34,7 @@ final class LearningLibraryModel: ObservableObject {
         let record = SavedExplanationRecord(
             document: DocumentIdentity(id: payload.documentURL.standardizedFileURL.path, fileName: payload.documentURL.lastPathComponent),
             pageIndex: payload.pageIndex,
+            locator: payload.locator,
             request: PersistedExplanationRequest(
                 targetText: payload.selection.targetText,
                 precedingContext: payload.selection.precedingContext,
@@ -73,6 +74,7 @@ final class LearningLibraryModel: ObservableObject {
                     fileName: payload.documentURL.lastPathComponent
                 ),
                 pageIndex: payload.pageIndex,
+                locator: payload.locator,
                 sentence: payload.sentence,
                 surface: payload.candidate.surface,
                 createdAt: timestamp
