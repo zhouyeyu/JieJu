@@ -8,6 +8,9 @@
 
 ## 已完成
 
+- **2026-09-09 双平台分支协作**：macOS 当前转到 `chore/macos-collaboration`；两端按独立里程碑
+  使用任务分支并向 main 提 PR，共享契约变更单独审查，合并需明确授权。此次仅修改协作文档；
+  `git diff --check` 与 `./scripts/test-all.sh` 通过（Node 11、语言 65、App 77、UI 2）。
 - **2026-09-09 Windows 开发交接准备**：新增 `Docs/WINDOWS_DEVELOPMENT.md`，明确 WinUI 3 +
   WebView2 的真机构建要求、Solution 依赖方向、v1～v5 契约职责、Reader Web 渐进迁移顺序、
   Windows 平台存储/密钥边界、WIN-001/002 验收标准及可直接交给接手 Agent 的 Prompt。根 README

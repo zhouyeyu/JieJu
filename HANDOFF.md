@@ -4,7 +4,7 @@
 
 - 日期：2026-09-09
 - Agent：Codex
-- 阶段：macOS 学习闭环基线完成，正在发布 GitHub；下一阶段转到 Windows 真机执行 `WIN-001`
+- 阶段：基线 `6ba8245` 已推送 GitHub；Windows Agent 已开始开发，macOS 侧转为独立任务分支协作。
 - 最新产品原则：复习是可选的“随手温习”，不是每日任务。界面不显示积压数、完成率或精确间隔，
   不做提醒/红点/连续打卡；每轮 10 张后温和暂停，并始终提供“回到阅读”。四档反馈的持久化 raw
   value 未变，仅用户文案改为熟悉程度，因此无需数据迁移。
@@ -12,12 +12,13 @@
   也没关系；在漫长的相遇里，它终会成为你的一部分。”
 - 当前统一测试全绿：共享契约/Reader Bridge 11 项、语言包 65 项、macOS App 77 项、UI 2 项。
   UI 测试已通过忽略窗口恢复状态、显式等待主窗口和稳定侧栏标识消除启动假失败。
-- 分支：`main`
+- 当前 macOS 分支：`chore/macos-collaboration`（协作规则 PR）；后续功能使用新的任务分支。
 - 远程：`git@github.com:zhouyeyu/JieJu.git`
 - Windows 接手入口：`Docs/WINDOWS_DEVELOPMENT.md`；先创建并真机验证 WinUI 3 + WebView2 Solution，
   不要试图编译 SwiftUI/PDFKit，也不要绕过 `Shared/Contracts/v1…v5` 建立另一套 DTO。
-- 工作树：本交接准备把当前完整功能基线整理为 GitHub 提交；`.workbuddy/`、个人 EPUB、评测结果
-  和构建产物必须保持忽略。
+- 协作：两端均通过任务分支向 `main` 创建 PR；先完成独立里程碑并测试，再交审查，不直接推送 main。
+  Windows 分支名由对端决定，本机尚未发现远程 Windows 分支；不要据此判断对端未开工。
+- `.workbuddy/`、个人 EPUB、评测结果和构建产物继续保持忽略。
 - 基线提交：`fbdf02f chore: create macOS project foundation`
 - 模块集成提交：`3529d0f feat: build parallel reader language and storage modules`
 - 语言修复提交：`a427e01 fix: bind target language into Ollama JSON schema`

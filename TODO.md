@@ -199,6 +199,7 @@ EPUB 注入跳过已有 `<ruby>`、脚本和样式；同一章节出现多个读
 
 ## Track I：跨平台基础
 
+- [x] `XPLAT-007` macOS/Windows 独立任务分支、共享目录协调与里程碑 PR 协作规则
 - [x] `XPLAT-001` 建立 `Shared/Contracts/v1`，覆盖 AI 请求/结果、深度分析、学习记录和 Reader Bridge
 - [x] `XPLAT-002` 增加契约清单、安全字段检查、本地引用解析和 Swift 编码字段一致性测试
 - [x] `XPLAT-003` 建立无依赖 `Shared/ReaderWeb` Bridge，统一 WKWebView/WebView2 消息封装
