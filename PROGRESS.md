@@ -14,7 +14,7 @@
   Ollama NDJSON 流和固定温度测试，C# 测试增至 49 项；EPUB 冒烟覆盖选区桥和解句栏打开。
 - **2026-09-10 Windows Ollama 真机验收（WIN-202）**：Ollama `0.34.0` 安装到
   `E:\JieJu\Ollama\App`，`qwen2.5:1.5b-instruct` 存于 `E:\JieJu\Ollama\Models`。模型下载绕过
-  系统代理，安装包因 GitHub 直连不可达，仅解析重定向和最初约 8MB 使用代理，1.57GB 主体改走
+  系统代理，安装包因 GitHub 直连不可达，重定向解析和最初约 139MiB 使用代理，其余主体改走
   release-assets 直连。RTX 5060 Ti 显示 100% GPU；短翻译请求约 0.26 秒、133.5 tokens/s。
 - **2026-09-10 Windows 真实解句闭环**：新增 Ollama 第一次结构结果失败后的单次修复重试；统一脚本
   `-Smoke -OllamaSmoke` 从测试 EPUB 自动划词并经应用客户端返回“她正在读书。”。C# 50 项、共享
