@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using JieJu.Domain;
 
@@ -72,7 +73,7 @@ public sealed class OllamaReadingAI(HttpClient client, string address, string mo
             new { role = "system", content = SystemPrompt },
             new { role = "user", content = repair
                 ? $"Start over. targetText is exactly: {request.TargetText}\nSet sentenceCore exactly to targetText. Write translation in {request.ExplanationLanguage}. Use empty arrays when unsure. Return JSON only."
-                : JsonSerializer.Serialize(request, ContractJson.Options) }
+                : JsonSerializer.Serialize(request, PromptJson) }
         },
         stream = true, format = Schema, options = new { temperature = 0, num_predict = 350 }
     };
@@ -87,5 +88,11 @@ public sealed class OllamaReadingAI(HttpClient client, string address, string mo
             keyPhrases = new { type = "array", maxItems = 4, items = new { type = "object", additionalProperties = false, properties = new { text = new { type = "string" }, meaning = new { type = "string" } }, required = new[] { "text", "meaning" } } }
         },
         required = new[] { "translation", "sentenceCore", "grammarPoints", "keyPhrases" }
+    };
+
+    private static readonly JsonSerializerOptions PromptJson = new(ContractJson.Options)
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        WriteIndented = false
     };
 }

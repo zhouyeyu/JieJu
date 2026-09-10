@@ -19,11 +19,19 @@ public sealed class ExplanationTests
     }
 
     [Fact]
-    public void ParsesFencedResultAndRejectsContextLeak()
+    public void ParsesFencedResultAndDropsContextLeakWithoutLosingTheExplanation()
     {
         const string valid = "```json\n{\"translation\":\"她打开了书。\",\"sentenceCore\":\"She opened the book.\",\"grammarPoints\":[{\"text\":\"opened\",\"explanation\":\"过去式\"}],\"keyPhrases\":[]}\n```";
         Assert.Equal("她打开了书。", ExplanationValidation.Parse(valid, ExplanationValidation.Normalize(Request)).Translation);
-        Assert.Throws<JsonException>(() => ExplanationValidation.Parse(valid.Replace("opened\",", "Before\","), ExplanationValidation.Normalize(Request)));
+        var cleaned = ExplanationValidation.Parse(valid.Replace("opened\",", "Before\","), ExplanationValidation.Normalize(Request));
+        Assert.Empty(cleaned.GrammarPoints);
+    }
+
+    [Fact]
+    public void RejectsEnglishTranslationWhenChineseWasRequested()
+    {
+        const string invalid = "{\"translation\":\"She opened the book.\",\"sentenceCore\":\"She opened the book.\",\"grammarPoints\":[],\"keyPhrases\":[]}";
+        Assert.Throws<JsonException>(() => ExplanationValidation.Parse(invalid, ExplanationValidation.Normalize(Request)));
     }
 
     [Fact]
@@ -41,14 +49,15 @@ public sealed class ExplanationTests
     }
 
     [Fact]
-    public async Task OllamaClientRetriesOneInvalidStructuredResult()
+    public async Task OllamaClientReplacesAnInvalidCoreWithTheSelectedText()
     {
         var invalid = "{\"message\":{\"content\":\"{\\\"translation\\\":\\\"译文\\\",\\\"sentenceCore\\\":\\\"Before.\\\",\\\"grammarPoints\\\":[],\\\"keyPhrases\\\":[]}\"},\"done\":true}\n";
         var repaired = "{\"message\":{\"content\":\"{\\\"translation\\\":\\\"她打开了书。\\\",\\\"sentenceCore\\\":\\\"She opened the book.\\\",\\\"grammarPoints\\\":[],\\\"keyPhrases\\\":[]}\"},\"done\":true}\n";
         var handler = new StubHandler(invalid, repaired); using var http = new HttpClient(handler);
         var result = await new OllamaReadingAI(http, "http://127.0.0.1:11434", "test-model").ExplainAsync(Request);
-        Assert.Equal("她打开了书。", result.Translation);
-        Assert.Equal(2, handler.RequestCount);
+        Assert.Equal("译文", result.Translation);
+        Assert.Equal("She opened the book.", result.SentenceCore);
+        Assert.Equal(1, handler.RequestCount);
     }
 
     private sealed class StubHandler(params string[] responses) : HttpMessageHandler
