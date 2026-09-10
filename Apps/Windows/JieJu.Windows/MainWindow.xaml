@@ -1,0 +1,21 @@
+<Window x:Class="JieJu.Windows.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="解句 · JieJu">
+  <Grid Padding="32" RowSpacing="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <StackPanel Spacing="6">
+      <TextBlock Text="解句" FontSize="28" FontWeight="SemiBold" />
+      <TextBlock Text="在阅读中，慢慢理解一门语言。" Opacity="0.65" />
+    </StackPanel>
+    <Border Grid.Row="1" CornerRadius="12" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+      <WebView2 x:Name="Reader" Loaded="Reader_Loaded" AutomationProperties.Name="阅读区域" />
+    </Border>
+    <TextBlock x:Name="Status" Grid.Row="2" Text="正在准备阅读区域…" TextWrapping="Wrap" Opacity="0.65"
+               AutomationProperties.AutomationId="ReaderHostStatus" AutomationProperties.LiveSetting="Polite" />
+  </Grid>
+</Window>

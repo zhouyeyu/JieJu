@@ -2,6 +2,25 @@
 
 ## 本次交接
 
+- 日期：2026-09-10
+- Agent：Codex
+- 阶段：Windows `WIN-001` 完成，下一步执行 `WIN-002` 的 EPUB 解析与安全资源加载
+- 分支：`codex/windows-development`
+- 基线：`6ba8245 feat: publish cross-platform learning reader baseline`
+- Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
+  WinUI、WebView2 或平台存储实现
+- 验证：Solution 0 警告构建通过；C# 31 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+  `152.0.4191.66` 真机启动、共享 Bridge ready 回传和可见窗口检查通过
+- 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
+  WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
+- 测试入口：`./scripts/test-windows.ps1`；加 `-Smoke` 会启动应用并验证 WebView2 ready 回传
+- 根目录 `scripts/test-all.sh` 已尝试执行，但这台 Windows 主机没有 zsh、Swift 和 Xcode，无法运行
+  macOS 套件；本任务以 Windows 入口覆盖 Node 共享测试、Solution build、C# test 和真机冒烟
+- 下一步：只做 `WIN-002` 的第一小步，使用 .NET ZIP/XML 解析 EPUB container/OPF/manifest/spine，
+  限制包内资源路径并补公开最小 fixture；不要把绝对路径或 Windows 文件令牌写入共享资料
+
+### 2026-09-09 macOS 基线交接
+
 - 日期：2026-09-09
 - Agent：Codex
 - 阶段：macOS 学习闭环基线完成，正在发布 GitHub；下一阶段转到 Windows 真机执行 `WIN-001`

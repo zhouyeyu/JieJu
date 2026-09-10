@@ -1,5 +1,15 @@
 # JieJu Decisions
 
+## 2026-09-10：Windows 骨架采用无打包、自包含 WinUI 外壳与受限虚拟 Reader Host
+
+Windows 首个可运行骨架采用 WinUI 3 的无 MSIX、自包含部署模式，固定 Windows App SDK 1.8 与
+.NET 10 SDK，使命令行构建和真机启动不依赖开发机预装 Windows App Runtime。当前只引用 WinUI
+组件包，避免为 EPUB 首条链路引入未使用的 AI、ML 和 Widgets 组件。
+
+WebView2 不直接加载用户路径或远程 URL；原生 Host 将随应用发布的 Reader 目录映射到固定 HTTPS
+虚拟域名，并拒绝其他资源、外部导航、新窗口、下载和权限请求。共享 `bridge.mjs` 仍是消息通道的
+事实来源。EPUB 章节资源将在 `WIN-002` 中接入同一受限 Host，并继续验证包内路径和网络边界。
+
 ## 2026-09-06：EPUB 语言标签是提示，强日文正文证据可以纠正错误元数据
 
 真实《ノルウェイの森》EPUB 的整书元数据和每章根元素均错误标记为 `en`，若把明确非日语标签

@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-Windows 客户端尚未生成工程。当前可运行产品位于根目录的 macOS SwiftUI/Xcode 工程；Windows
-版本采用独立的 WinUI 3 外壳，共享 JSON 契约和 EPUB Web 层，而不是移植 SwiftUI、AppKit 或
-PDFKit。
+Windows 客户端已完成 `WIN-001`：`Apps/Windows` 包含可构建的 WinUI 3 外壳、空 WebView2 Reader
+Host、平台无关 Domain 和契约测试。当前可运行完整产品仍位于根目录的 macOS SwiftUI/Xcode 工程；
+Windows 下一阶段执行 `WIN-002`，共享 JSON 契约和 EPUB Web 层，不移植 SwiftUI、AppKit 或 PDFKit。
 
 Windows 第一阶段的目标是验证这条最小闭环：
 
@@ -45,6 +45,11 @@ PDF、OCR、同步、内嵌模型和完整 macOS 功能对齐均不阻塞第一�
 
 创建工程时，把实际使用的 Visual Studio、Windows App SDK、Windows SDK 和 .NET 版本写入本文件，
 不要在 macOS 上猜测并提交未经 Windows 构建验证的工程文件。
+
+`WIN-001` 的实际验证环境（2026-09-10）：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401`、
+MSBuild `18.9.11`、Windows App SDK WinUI `1.8.260803003`、Windows SDK Build Tools
+`10.0.26100.9169`、WebView2 Runtime `152.0.4191.66`。本轮未安装或使用 Visual Studio，工程由
+`dotnet` CLI 真机构建；后续使用 Visual Studio 时需在这里补记其版本。
 
 首次拉取后先运行平台无关测试：
 
@@ -143,12 +148,12 @@ Web 层不能直接访问 Ollama、任意外网或用户文件系统。
 
 ### WIN-001：可构建骨架
 
-- 创建 WinUI 3 Solution 和三个项目；
-- 显示最小窗口并承载空 WebView2；
-- 建立 `IReadingAI`、`IVocabularyAI`、`ILearningLibraryStore` 接口；
-- 为 v1～v5 建立必要 C# DTO 和 JSON 往返测试；
-- 增加一个 Windows 测试脚本或明确的 `dotnet test` 命令；
-- 在 Windows 真机完成 build 与 test，再提交工程文件。
+- [x] 创建 WinUI 3 Solution 和三个项目；
+- [x] 显示最小窗口并承载空 WebView2；
+- [x] 建立 `IReadingAI`、`IVocabularyAI`、`ILearningLibraryStore` 接口；
+- [x] 为已发布的 v1/v2/v3/v5 学习资料及 v4 单词解释建立必要 C# DTO 和 JSON 往返测试；
+- [x] 增加 `scripts/test-windows.ps1`，支持 build/test 和可选 WebView2 冒烟；
+- [x] 在 Windows 真机完成 build、test、WebView2 启动和可见界面验证。
 
 ### XPLAT-101～105：共享 Reader
 

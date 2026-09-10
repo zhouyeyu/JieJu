@@ -8,6 +8,15 @@
 
 ## 已完成
 
+- **2026-09-10 Windows 可构建骨架（WIN-001）**：在 `codex/windows-development` 建立
+  `JieJu.Windows`、`JieJu.Domain`、`JieJu.Windows.Tests` 和 Solution。WinUI 空阅读窗口通过受限
+  虚拟 Host 加载共享 `bridge.mjs`，默认拒绝外部导航、下载、权限请求和非 Reader 资源；WebView2
+  已真机回传 `ready` 消息。Domain 建立 Reading/Vocabulary AI 与资料存储接口，并按共享 Schema
+  实现 v1/v2/v3/v5 学习资料迁移、v4 单词解释及 PDF/EPUB locator。
+- **2026-09-10 Windows 验证**：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401`、Windows App
+  SDK WinUI `1.8.260803003`、SDK Build Tools `10.0.26100.9169` 下，Solution 0 警告构建通过；
+  C# 31 项和 Node 契约/Bridge 11 项测试通过；WebView2 `152.0.4191.66` 启动冒烟及可见窗口/
+  无障碍树检查通过。新增 `scripts/test-windows.ps1` 作为统一 Windows 入口。
 - **2026-09-09 Windows 开发交接准备**：新增 `Docs/WINDOWS_DEVELOPMENT.md`，明确 WinUI 3 +
   WebView2 的真机构建要求、Solution 依赖方向、v1～v5 契约职责、Reader Web 渐进迁移顺序、
   Windows 平台存储/密钥边界、WIN-001/002 验收标准及可直接交给接手 Agent 的 Prompt。根 README
