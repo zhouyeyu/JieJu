@@ -13,6 +13,7 @@ public sealed partial class MainWindow : Window
     private bool initialized, closed, changingChapter, chapterNavigationPending;
     private readonly string? smokeResult;
     private readonly bool smokeSelection;
+    private readonly bool smokeInference;
     private readonly DeviceStateStore deviceStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
     private DeviceState device = new(new(), []);
@@ -33,6 +34,7 @@ public sealed partial class MainWindow : Window
         var index = Array.IndexOf(arguments, "--smoke-result");
         if (index >= 0 && index + 1 < arguments.Length) smokeResult = arguments[index + 1];
         smokeSelection = arguments.Contains("--smoke-selection");
+        smokeInference = arguments.Contains("--smoke-inference");
         deviceStore = new DeviceStateStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         try { device = deviceStore.Load(); }
         catch (Exception e) { Status.Text = "无法读取设置：" + e.Message; }

@@ -4,7 +4,7 @@
 
 - 日期：2026-09-10
 - Agent：Codex
-- 阶段：Windows `WIN-201` 完成，`WIN-202` 代码完成但待真实 Ollama 验收
+- 阶段：Windows `WIN-201`、`WIN-202` 完成；下一步执行 `WIN-203` 保存解释与回到原文
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -13,8 +13,8 @@
   白纸、夜间、羊皮纸和护眼绿主题；字号、行距、边距、注音开关；最近阅读和章内位置恢复
 - 划词能力：选区移除 Ruby 注音并提取句子语境，常驻解句栏仅在用户点击后调用 `IStreamingReadingAI`；
   Ollama `/api/chat` NDJSON 流、`temperature=0`、JSON Schema 和选区引用校验均已实现
-- 验证：Solution 构建通过；C# 49 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
-  `152.0.4191.66` 欢迎页以及 EPUB 选区桥/解句栏均完成冒烟
+- 验证：Solution 0 警告；C# 50 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+  `152.0.4191.66` 完成 EPUB 选区与真实 Ollama 解句冒烟
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
 - 测试入口：`./scripts/test-windows.ps1`；加 `-Smoke` 会依次验证欢迎页和生成的最小 EPUB
@@ -22,10 +22,10 @@
   macOS 套件；本任务以 Windows 入口覆盖 Node 共享测试、Solution build、C# test 和真机冒烟
 - 视觉检查限制：本轮 Codex 远程截图对 WinUI 合成表面返回纯白，无法作为颜色和间距验收证据；
   启动、布局树、WebView2 消息和 EPUB 路径已由程序化检查覆盖，仍需在本机窗口人工查看一次
-- GPU/流量：RTX 5060 Ti 为 8GB；Windows 尚无 Ollama CLI，localhost API 不可达。本轮没有访问
-  外网或下载模型。安装 Ollama 与拉取模型会产生流量，执行前应先向用户说明下载量
-- 下一步：安装本地 Ollama 后用 1.5B 做 `WIN-202` 真机流式推理和 GPU 利用率验收；通过后再做
-  `WIN-203` 保存解释、记录详情和回到原文
+- 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
+  `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
+  133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
+- 下一步：只做 `WIN-203` 保存解释、学习记录详情、删除和从 EPUB locator 回到原文
 
 ### 2026-09-09 macOS 基线交接
 

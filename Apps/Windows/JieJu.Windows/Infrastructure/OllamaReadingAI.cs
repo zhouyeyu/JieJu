@@ -26,14 +26,28 @@ public sealed class OllamaReadingAI(HttpClient client, string address, string mo
         var valid = ExplanationValidation.Normalize(request);
         if (!Uri.TryCreate(address.TrimEnd('/') + "/api/chat", UriKind.Absolute, out var endpoint) || endpoint.Scheme is not ("http" or "https"))
             throw new ArgumentException("Ollama 服务地址无效。");
-        var payload = new
+        var generated = "";
+        await foreach (var text in GenerateAsync(endpoint, Payload(valid, repair: false), cancellationToken))
         {
-            model,
-            messages = new[] { new { role = "system", content = SystemPrompt }, new { role = "user", content = JsonSerializer.Serialize(valid, ContractJson.Options) } },
-            stream = true,
-            format = Schema,
-            options = new { temperature = 0, num_predict = 350 }
-        };
+            generated = text; yield return new ExplanationProgress(generated);
+        }
+        Explanation? result = null;
+        try { result = ExplanationValidation.Parse(generated, valid); }
+        catch (JsonException) { }
+        if (result is null)
+        {
+            generated = "";
+            await foreach (var text in GenerateAsync(endpoint, Payload(valid, repair: true), cancellationToken))
+            {
+                generated = text; yield return new ExplanationProgress(generated);
+            }
+            result = ExplanationValidation.Parse(generated, valid);
+        }
+        yield return new ExplanationProgress(generated, result);
+    }
+
+    private async IAsyncEnumerable<string> GenerateAsync(Uri endpoint, object payload, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
         using var message = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = JsonContent.Create(payload) };
         using var response = await client.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (!response.IsSuccessStatusCode) throw new HttpRequestException($"Ollama 返回 HTTP {(int)response.StatusCode}。");
@@ -46,10 +60,22 @@ public sealed class OllamaReadingAI(HttpClient client, string address, string mo
             using var envelope = JsonDocument.Parse(line);
             if (envelope.RootElement.TryGetProperty("error", out var error)) throw new InvalidDataException(error.GetString());
             if (envelope.RootElement.TryGetProperty("message", out var item) && item.TryGetProperty("content", out var content)) generated.Append(content.GetString());
-            yield return new ExplanationProgress(generated.ToString());
+            yield return generated.ToString();
         }
-        yield return new ExplanationProgress(generated.ToString(), ExplanationValidation.Parse(generated.ToString(), valid));
     }
+
+    private object Payload(ExplanationRequest request, bool repair) => new
+    {
+        model,
+        messages = new[]
+        {
+            new { role = "system", content = SystemPrompt },
+            new { role = "user", content = repair
+                ? $"Start over. targetText is exactly: {request.TargetText}\nSet sentenceCore exactly to targetText. Write translation in {request.ExplanationLanguage}. Use empty arrays when unsure. Return JSON only."
+                : JsonSerializer.Serialize(request, ContractJson.Options) }
+        },
+        stream = true, format = Schema, options = new { temperature = 0, num_predict = 350 }
+    };
 
     private static readonly object Schema = new
     {

@@ -213,7 +213,7 @@ EPUB 注入跳过已有 `<ruby>`、脚本和样式；同一章节出现多个读
 - [x] `WIN-001` 在 Windows 开发机创建并验证 WinUI 3 + WebView2 Solution
 - [x] `WIN-101`～`WIN-105` 完成 Windows 原生导航、受限 EPUB 阅读、排版设置和最近位置恢复
 - [x] `WIN-201` 完成 EPUB 划词、上下文提取、常驻解句栏、取消和错误状态
-- [ ] `WIN-202` 已实现 Ollama NDJSON 流与结果校验；待安装本机 Ollama 后完成 5060 Ti 真机推理验收
+- [x] `WIN-202` 完成 Ollama NDJSON 流、结构校验、一次修复重试及 5060 Ti 真机推理验收
 - [ ] `WIN-002` 完成“打开 EPUB → 分页 → 选择 → Ollama → 保存”的 Windows 垂直闭环
 
 ## Track J：开源项目就绪度（不含 CI）

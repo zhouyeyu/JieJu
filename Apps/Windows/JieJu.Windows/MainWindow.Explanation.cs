@@ -26,7 +26,8 @@ public sealed partial class MainWindow
         ExplanationContent.Children.Clear(); ExplanationStatus.Text = "准备好后，点击“解释这段”。";
         ExplanationColumn.Width = new GridLength(360); ExplanationPane.Visibility = Visibility.Visible;
         ExplainButton.IsEnabled = true;
-        if (smokeSelection) FinishSmoke(true, "EPUB selection bridge and explanation pane");
+        if (smokeInference) ExplainSelection_Click(this, new RoutedEventArgs());
+        else if (smokeSelection) FinishSmoke(true, "EPUB selection bridge and explanation pane");
     }
 
     private async void ExplainSelection_Click(object sender, RoutedEventArgs args)
@@ -44,7 +45,7 @@ public sealed partial class MainWindow
             }
         }
         catch (OperationCanceledException) { ExplanationStatus.Text = "已停止。"; }
-        catch (Exception error) { ExplanationStatus.Text = "解释失败：" + error.Message; }
+        catch (Exception error) { ExplanationStatus.Text = "解释失败：" + error.Message; if (smokeInference) FinishSmoke(false, error.Message); }
         finally { ExplanationProgressRing.IsActive = false; CancelExplanationButton.Visibility = Visibility.Collapsed; ExplainButton.IsEnabled = selectionRequest is not null; }
     }
 
@@ -53,6 +54,7 @@ public sealed partial class MainWindow
         AddSection("翻译", result.Translation); AddSection("句子主干", result.SentenceCore);
         foreach (var point in result.GrammarPoints) AddSection(point.Text, point.Explanation);
         foreach (var phrase in result.KeyPhrases) AddSection(phrase.Text, phrase.Meaning);
+        if (smokeInference) FinishSmoke(true, "Local Ollama: " + result.Translation);
     }
 
     private void AddSection(string title, string body)
