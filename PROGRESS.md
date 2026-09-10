@@ -8,6 +8,14 @@
 
 ## 已完成
 
+- **2026-09-10 Windows EPUB 阅读界面（WIN-101～WIN-105）**：WinUI 主窗口加入阅读、学习记录、
+  生词本、随手温习与设置导航，页面切换保留 WebView2 阅读会话。实现受大小与路径约束的 EPUB
+  ZIP/XML、container/OPF/manifest/spine 解析，清理脚本与活动内容后加载章节、原书样式、图片、
+  字体和 Ruby；支持目录、前后章节、四种主题、字号、行距、边距与注音显示。设备状态使用原子
+  JSON 保存最近 12 本书、章节、章内进度和排版设置。
+- **2026-09-10 Windows EPUB 验证**：Solution 0 警告构建通过；C# 测试增至 46 项，共享 Node
+  契约/Bridge 11 项通过。`scripts/test-windows.ps1 -Smoke` 现在分别验证欢迎页和测试 EPUB 的
+  解析、WebView2 章节导航及 Reader Bridge ready 回传，运行时版本为 `152.0.4191.66`。
 - **2026-09-10 Windows 可构建骨架（WIN-001）**：在 `codex/windows-development` 建立
   `JieJu.Windows`、`JieJu.Domain`、`JieJu.Windows.Tests` 和 Solution。WinUI 空阅读窗口通过受限
   虚拟 Host 加载共享 `bridge.mjs`，默认拒绝外部导航、下载、权限请求和非 Reader 资源；WebView2

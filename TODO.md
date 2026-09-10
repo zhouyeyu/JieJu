@@ -211,6 +211,7 @@ EPUB 注入跳过已有 `<ruby>`、脚本和样式；同一章节出现多个读
 - [ ] `XPLAT-104` 将选区、上下文清理和 Ruby 排除迁入共享 Web 层
 - [ ] `XPLAT-105` macOS 已使用文本锚点保存稳定位置；仍需迁入共享 Reader Web，并评估 EPUB CFI 互操作
 - [x] `WIN-001` 在 Windows 开发机创建并验证 WinUI 3 + WebView2 Solution
+- [x] `WIN-101`～`WIN-105` 完成 Windows 原生导航、受限 EPUB 阅读、排版设置和最近位置恢复
 - [ ] `WIN-002` 完成“打开 EPUB → 分页 → 选择 → Ollama → 保存”的 Windows 垂直闭环
 
 ## Track J：开源项目就绪度（不含 CI）

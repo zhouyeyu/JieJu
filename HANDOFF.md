@@ -4,20 +4,24 @@
 
 - 日期：2026-09-10
 - Agent：Codex
-- 阶段：Windows `WIN-001` 完成，下一步执行 `WIN-002` 的 EPUB 解析与安全资源加载
+- 阶段：Windows `WIN-101`～`WIN-105` 完成；下一步执行 `WIN-201` 选区与解句侧栏
 - 分支：`codex/windows-development`
-- 基线：`6ba8245 feat: publish cross-platform learning reader baseline`
+- 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
   WinUI、WebView2 或平台存储实现
-- 验证：Solution 0 警告构建通过；C# 31 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
-  `152.0.4191.66` 真机启动、共享 Bridge ready 回传和可见窗口检查通过
+- 当前能力：原生侧栏与设置页；受限 EPUB 解析和资源加载；章节目录与前后章；原书 Ruby；
+  白纸、夜间、羊皮纸和护眼绿主题；字号、行距、边距、注音开关；最近阅读和章内位置恢复
+- 验证：Solution 0 警告构建通过；C# 46 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+  `152.0.4191.66` 欢迎页及 EPUB 阅读链路均完成 ready 回传
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
-- 测试入口：`./scripts/test-windows.ps1`；加 `-Smoke` 会启动应用并验证 WebView2 ready 回传
+- 测试入口：`./scripts/test-windows.ps1`；加 `-Smoke` 会依次验证欢迎页和生成的最小 EPUB
 - 根目录 `scripts/test-all.sh` 已尝试执行，但这台 Windows 主机没有 zsh、Swift 和 Xcode，无法运行
   macOS 套件；本任务以 Windows 入口覆盖 Node 共享测试、Solution build、C# test 和真机冒烟
-- 下一步：只做 `WIN-002` 的第一小步，使用 .NET ZIP/XML 解析 EPUB container/OPF/manifest/spine，
-  限制包内资源路径并补公开最小 fixture；不要把绝对路径或 Windows 文件令牌写入共享资料
+- 视觉检查限制：本轮 Codex 远程截图对 WinUI 合成表面返回纯白，无法作为颜色和间距验收证据；
+  启动、布局树、WebView2 消息和 EPUB 路径已由程序化检查覆盖，仍需在本机窗口人工查看一次
+- 下一步：只做 `WIN-201`，从 WebView2 选区消息、选区清洗、前后语境和常驻解句栏开始；继续通过
+  `ReadingAI` 协议接 AI，不在 View 中直接调用 Ollama
 
 ### 2026-09-09 macOS 基线交接
 

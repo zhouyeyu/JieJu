@@ -1,6 +1,6 @@
 # JieJu Windows
 
-Windows 版本已完成 `WIN-001` 可构建骨架。本目录是 Windows 原生外壳的唯一入口；继续开发前请完整阅读
+Windows 版本已完成 `WIN-001` 及 `WIN-101`～`WIN-105` 阅读界面。本目录是 Windows 原生外壳的唯一入口；继续开发前请完整阅读
 [`Docs/WINDOWS_DEVELOPMENT.md`](../../Docs/WINDOWS_DEVELOPMENT.md) 和
 [`Docs/CROSS_PLATFORM.md`](../../Docs/CROSS_PLATFORM.md)。
 
@@ -13,8 +13,8 @@ Windows 版本已完成 `WIN-001` 可构建骨架。本目录是 Windows 原生�
 - Microsoft Edge WebView2 Runtime `152.0.4191.66`
 - Visual Studio 未参与本次构建；工程通过 `dotnet` CLI 在 Windows 真机完成构建、测试和启动验证
 
-安装对应 .NET SDK 后，在仓库根目录运行 `./scripts/test-windows.ps1`。追加 `-Smoke` 会启动应用，
-验证 WebView2 与共享 Reader Bridge。
+安装对应 .NET SDK 后，在仓库根目录运行 `./scripts/test-windows.ps1`。追加 `-Smoke` 会分别启动
+欢迎页和最小测试 EPUB，验证 WebView2、章节导航与共享 Reader Bridge。
 
 ## 计划技术栈
 
@@ -42,8 +42,8 @@ Apps/Windows/
 ```
 
 `WIN-001` 已建立三个项目、严格依赖方向、v1/v2/v3/v5 学习资料迁移、v4 单词解释 DTO 和共享
-Bridge 的空阅读宿主。窗口与 WebView2 已在上述 Windows 环境真机运行。下一项任务是 `WIN-002`，
-从 EPUB 解析和安全资源加载开始完成第一条垂直链路。不得为了方便修改 macOS Reader 的公开接口。
+Bridge。`WIN-101`～`WIN-105` 已加入原生导航、受限 EPUB 加载、章节阅读、排版设置和最近位置。
+下一项任务是 `WIN-201`，实现 WebView2 选区与常驻解句栏。不得为了方便修改 macOS Reader 的公开接口。
 
 首个 Pull Request 只应包含可构建的 Windows 工程骨架、依赖方向和自动测试入口；EPUB 垂直闭环
 作为后续独立任务实现。

@@ -10,6 +10,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" PrivateAssets="all" />
     <ProjectReference Include="../JieJu.Domain/JieJu.Domain.csproj" />
     <Compile Include="../JieJu.Windows/ReaderHostPolicy.cs" Link="ReaderHostPolicy.cs" />
+    <Compile Include="../JieJu.Windows/Infrastructure/*.cs" Link="Infrastructure/%(Filename)%(Extension)" />
     <None Include="../../../Shared/Contracts/**/*.json" Link="Contracts/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

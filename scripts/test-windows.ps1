@@ -7,6 +7,43 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $windowsRoot = Join-Path $projectRoot 'Apps/Windows'
+
+function New-SmokeEpub([string]$Path) {
+    $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::CreateNew)
+    try {
+        $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create, $true)
+        try {
+            $files = [ordered]@{
+                'META-INF/container.xml' = '<container><rootfiles><rootfile full-path="OPS/package.opf"/></rootfiles></container>'
+                'OPS/package.opf' = '<package><metadata><title>Windows EPUB Smoke</title><language>zh-CN</language></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="one"/></spine></package>'
+                'OPS/one.xhtml' = '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章</title></head><body><h1>第一章</h1><p>她正在<ruby>读书<rt>どくしょ</rt></ruby>。</p></body></html>'
+            }
+            foreach ($pair in $files.GetEnumerator()) {
+                $writer = [System.IO.StreamWriter]::new($archive.CreateEntry($pair.Key).Open(), [System.Text.UTF8Encoding]::new($false))
+                try { $writer.Write($pair.Value) } finally { $writer.Dispose() }
+            }
+        }
+        finally { $archive.Dispose() }
+    }
+    finally { $stream.Dispose() }
+}
+
+function Invoke-AppSmoke([string]$Exe, [string]$Result, [string[]]$ExtraArguments, [string]$Label) {
+    $arguments = @($ExtraArguments) + @('--smoke-result', ('"{0}"' -f $Result))
+    $process = Start-Process -FilePath $Exe -ArgumentList $arguments -PassThru -WindowStyle Hidden
+    try {
+        if (-not $process.WaitForExit(45000)) { throw "$Label timed out after 45 seconds." }
+        if ($process.ExitCode -ne 0) { throw "$Label exited with code $($process.ExitCode)." }
+        if (-not (Test-Path $Result)) { throw "$Label did not report WebView2 readiness." }
+        $status = Get-Content -Raw $Result | ConvertFrom-Json
+        if (-not $status.ready) { throw "$Label failed: $($status.detail)" }
+        Write-Host "$Label ready. WebView2 $($status.detail)"
+    }
+    finally {
+        if (-not $process.HasExited) { Stop-Process -Id $process.Id }
+        if (Test-Path $Result) { Remove-Item -LiteralPath $Result }
+    }
+}
 if (-not (Get-Command $DotNetPath -ErrorAction SilentlyContinue)) {
     $localSdk = Join-Path $env:LOCALAPPDATA 'JieJuBuild/dotnet/dotnet.exe'
     if ($DotNetPath -eq 'dotnet' -and (Test-Path $localSdk)) { $DotNetPath = $localSdk }
@@ -27,19 +64,14 @@ try {
     if ($Smoke) {
         $exe = Join-Path $windowsRoot "JieJu.Windows/bin/x64/$Configuration/net10.0-windows10.0.19041.0/win-x64/JieJu.Windows.exe"
         $result = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-smoke-{0}.json" -f [guid]::NewGuid())
-        $process = Start-Process -FilePath $exe -ArgumentList @('--smoke-result', ('"{0}"' -f $result)) -PassThru -WindowStyle Hidden
+        Invoke-AppSmoke $exe $result @() 'WinUI + shared Reader Bridge'
+        $epub = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.epub" -f [guid]::NewGuid())
         try {
-            if (-not $process.WaitForExit(45000)) { throw 'WebView2 smoke test timed out after 45 seconds.' }
-            if ($process.ExitCode -ne 0) { throw "App exited with code $($process.ExitCode)." }
-            if (-not (Test-Path $result)) { throw 'App did not report WebView2 readiness.' }
-            $status = Get-Content -Raw $result | ConvertFrom-Json
-            if (-not $status.ready) { throw "WebView2 startup failed: $($status.detail)" }
-            Write-Host "WinUI + shared Reader Bridge ready. WebView2 $($status.detail)"
+            New-SmokeEpub $epub
+            $epubResult = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.json" -f [guid]::NewGuid())
+            Invoke-AppSmoke $exe $epubResult @('--open', ('"{0}"' -f $epub)) 'EPUB reading flow'
         }
-        finally {
-            if (-not $process.HasExited) { Stop-Process -Id $process.Id }
-            if (Test-Path $result) { Remove-Item -LiteralPath $result }
-        }
+        finally { if (Test-Path $epub) { Remove-Item -LiteralPath $epub } }
     }
 }
 finally { Pop-Location }
