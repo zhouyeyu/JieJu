@@ -11,10 +11,15 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         var japanese = new MeCabJapaneseMorphology();
+        var credentials = new WindowsCredentialStore();
         window = new MainWindow(
-            settings => new LocalJapaneseReadingAI(new OllamaReadingAI(http, settings.OllamaUrl, settings.Model), japanese),
-            settings => new LocalJapaneseVocabularyAI(new OllamaVocabularyAI(http, settings.OllamaUrl, settings.Model), japanese),
-            japanese);
+            settings => new LocalJapaneseReadingAI(settings.Provider == "cloud"
+                ? new OpenAICompatibleReadingAI(http, settings.CloudUrl, credentials.Load(), settings.CloudModel)
+                : new OllamaReadingAI(http, settings.OllamaUrl, settings.Model), japanese),
+            settings => new LocalJapaneseVocabularyAI(settings.Provider == "cloud"
+                ? new OpenAICompatibleVocabularyAI(http, settings.CloudUrl, credentials.Load(), settings.CloudModel)
+                : new OllamaVocabularyAI(http, settings.OllamaUrl, settings.Model), japanese),
+            japanese, credentials);
         window.Activate();
     }
 }

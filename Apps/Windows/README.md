@@ -49,7 +49,6 @@ EPUB locator 回到原文。`WIN-204` 已加入独立词语解释、生词收藏
 `-Smoke -OllamaSmoke`、`-Smoke -VocabularySmoke`、`-Smoke -FuriganaSmoke` 与
 `-Smoke -JapaneseDeepSmoke` 可复跑本地推理、词语、自动注音和确定性日语深入解析链路。Windows
 现已具备 MeCab/IPADic 分词、日语选区边界、EPUB 自动注音、解释面板注音和日语本地句法层。
-下一项解释对齐任务是 OpenAI-compatible 云端 Provider；温习流程仍为 `WIN-205`。
-
-首个 Pull Request 只应包含可构建的 Windows 工程骨架、依赖方向和自动测试入口；EPUB 垂直闭环
-作为后续独立任务实现。
+OpenAI-compatible 云端 Provider 现已提供 SSE 解句、词语/深入解析和连接检查；API Key 仅保存在
+Windows 凭据管理器，默认 Ollama 模式不会调用外网。解释与日语注音清单已经全部对齐，下一项为
+`WIN-205` 随手温习。

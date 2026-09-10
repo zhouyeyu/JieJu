@@ -8,7 +8,8 @@ param(
     [switch]$DeepSmoke,
     [switch]$PopupSmoke,
     [switch]$FuriganaSmoke,
-    [switch]$JapaneseDeepSmoke
+    [switch]$JapaneseDeepSmoke,
+    [switch]$CloudSettingsSmoke
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -70,7 +71,8 @@ try {
     if ($Smoke) {
         $exe = Join-Path $windowsRoot "JieJu.Windows/bin/x64/$Configuration/net10.0-windows10.0.19041.0/win-x64/JieJu.Windows.exe"
         $result = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-smoke-{0}.json" -f [guid]::NewGuid())
-        Invoke-AppSmoke $exe $result @() 'WinUI + shared Reader Bridge'
+        $welcomeArguments = $CloudSettingsSmoke ? @('--smoke-cloud-settings') : @()
+        Invoke-AppSmoke $exe $result $welcomeArguments ($CloudSettingsSmoke ? 'Cloud provider settings' : 'WinUI + shared Reader Bridge')
         $epub = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.epub" -f [guid]::NewGuid())
         try {
             New-SmokeEpub $epub ($FuriganaSmoke -or $JapaneseDeepSmoke)

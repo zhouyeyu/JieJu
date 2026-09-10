@@ -1,5 +1,13 @@
 # JieJu Decisions
 
+## 2026-09-11：Windows 云端解释显式选择并使用系统凭据
+
+Windows 默认继续使用 `127.0.0.1` 的 Ollama。用户只有在设置页显式选择 OpenAI-compatible 云端
+服务后，选区、所在句和有限前后文才会发送到配置的 API；界面同时提示云端与 VPN 流量影响。
+API Key 通过 Windows Credential Manager 的 Generic Credential 保存，设备 JSON 和共享学习资料
+只记录服务地址、模型与 Provider。云端沿用 macOS 的 Chat Completions、SSE、`json_object`、
+`temperature=0`、严格本地校验和一次修复策略。
+
 ## 2026-09-10：Windows 日语真值层采用 MeCab.DotNet 与 IPADic
 
 Windows 使用 MeCab.DotNet 1.2.0 随包携带的 IPADic 提供分词、读音、原形、词性和活用信息，保持

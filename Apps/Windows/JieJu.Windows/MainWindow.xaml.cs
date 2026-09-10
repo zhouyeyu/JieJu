@@ -18,11 +18,13 @@ public sealed partial class MainWindow : Window
     private readonly bool smokeDeep;
     private readonly bool smokePopup;
     private readonly bool smokeFurigana;
+    private readonly bool smokeCloudSettings;
     private readonly DeviceStateStore deviceStore;
     private readonly ILearningLibraryStore libraryStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
     private readonly Func<ReadingSettings, IVocabularyAI> vocabularyAIFactory;
     private readonly IJapaneseMorphology japaneseMorphology;
+    private readonly IAPIKeyStore apiKeyStore;
     private DeviceState device = new(new(), []);
     private LearningLibrary library = LearningLibrary.Empty;
     private EpubBook? book;
@@ -33,11 +35,12 @@ public sealed partial class MainWindow : Window
     private const string BookPrefix = "https://reader.jieju.invalid/book/";
     private const string HtmlDataPrefix = "data:text/html;charset=utf-8;base64,";
 
-    public MainWindow(Func<ReadingSettings, IStreamingReadingAI> readingAIFactory, Func<ReadingSettings, IVocabularyAI> vocabularyAIFactory, IJapaneseMorphology japaneseMorphology)
+    public MainWindow(Func<ReadingSettings, IStreamingReadingAI> readingAIFactory, Func<ReadingSettings, IVocabularyAI> vocabularyAIFactory, IJapaneseMorphology japaneseMorphology, IAPIKeyStore apiKeyStore)
     {
         this.readingAIFactory = readingAIFactory;
         this.vocabularyAIFactory = vocabularyAIFactory;
         this.japaneseMorphology = japaneseMorphology;
+        this.apiKeyStore = apiKeyStore;
         InitializeComponent();
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(1280, 860));
         var arguments = Environment.GetCommandLineArgs();
@@ -49,12 +52,14 @@ public sealed partial class MainWindow : Window
         smokeDeep = arguments.Contains("--smoke-deep");
         smokePopup = arguments.Contains("--smoke-popup");
         smokeFurigana = arguments.Contains("--smoke-furigana");
+        smokeCloudSettings = arguments.Contains("--smoke-cloud-settings");
         deviceStore = new DeviceStateStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         libraryStore = new JsonLearningLibraryStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         try { device = deviceStore.Load(); }
         catch (Exception e) { Status.Text = "无法读取设置：" + e.Message; }
         if (smokePopup) device = device with { Settings = device.Settings with { ExplanationPresentation = "popup" } };
         LoadSettingsControls(); RefreshRecentBooks();
+        if (smokeCloudSettings) AIProviderPicker.SelectedIndex = 1;
         Navigation.SelectedItem = Navigation.MenuItems[0];
         Closed += (_, _) => { closed = true; Reader.Close(); };
     }
@@ -128,6 +133,7 @@ public sealed partial class MainWindow : Window
                             }
                             else if (smokeSelection && book is not null)
                                 await core.ExecuteScriptAsync($"const p=document.querySelector('{(smokeWord ? "p ruby" : "p")}');const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event('selectionchange'));");
+                            else if (smokeCloudSettings) FinishSmoke(CloudSettings.Visibility == Visibility.Visible && OllamaSettings.Visibility == Visibility.Collapsed, "Cloud provider settings visible");
                             else FinishSmoke(true, environment.BrowserVersionString);
                             break;
                         case "locationChanged":

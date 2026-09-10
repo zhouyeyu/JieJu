@@ -248,22 +248,46 @@ public sealed partial class MainWindow
         ThemePicker.SelectedIndex = Array.IndexOf(new[] { "paper", "night", "sepia", "sage" }, s.Theme);
         FontSlider.Value = s.FontSize; LineSlider.Value = s.LineHeight; MarginSlider.Value = s.HorizontalMargin;
         RubyToggle.IsOn = s.ShowsFurigana; OllamaAddress.Text = s.OllamaUrl; ModelName.Text = s.Model; TargetLanguage.Text = s.ExplanationLanguage;
+        AIProviderPicker.SelectedIndex = s.Provider == "cloud" ? 1 : 0; CloudAddress.Text = s.CloudUrl; CloudModelName.Text = s.CloudModel; CloudApiKey.Password = apiKeyStore.Load(); UpdateProviderSettings();
         ExplanationPresentationPicker.SelectedIndex = s.ExplanationPresentation == "popup" ? 1 : 0;
     }
     private void SaveSettings_Click(object sender, RoutedEventArgs args)
     {
-        if (!Uri.TryCreate(OllamaAddress.Text.Trim(), UriKind.Absolute, out var address) || address.Scheme is not ("http" or "https") || string.IsNullOrWhiteSpace(ModelName.Text) || string.IsNullOrWhiteSpace(TargetLanguage.Text))
-        { SettingsStatus.Text = "请输入有效的 HTTP 服务地址、模型名和解释语言。"; return; }
+        var provider = ((ComboBoxItem)AIProviderPicker.SelectedItem).Tag.ToString()!;
+        var serviceAddress = provider == "cloud" ? CloudAddress.Text.Trim() : OllamaAddress.Text.Trim();
+        var serviceModel = provider == "cloud" ? CloudModelName.Text.Trim() : ModelName.Text.Trim();
+        if (!Uri.TryCreate(serviceAddress, UriKind.Absolute, out var address) || address.Scheme is not ("http" or "https") || string.IsNullOrWhiteSpace(serviceModel) || string.IsNullOrWhiteSpace(TargetLanguage.Text) || provider == "cloud" && string.IsNullOrWhiteSpace(CloudApiKey.Password))
+        { SettingsStatus.Text = provider == "cloud" ? "请输入有效的 API 地址、API Key、模型名和解释语言。" : "请输入有效的 Ollama 地址、模型名和解释语言。"; return; }
         var settings = DeviceStateStore.Normalize(new ReadingSettings(FontSlider.Value, LineSlider.Value, MarginSlider.Value,
-            ((ComboBoxItem)ThemePicker.SelectedItem).Tag.ToString()!, RubyToggle.IsOn, address.ToString().TrimEnd('/'), ModelName.Text.Trim(), TargetLanguage.Text.Trim(),
-            ((ComboBoxItem)ExplanationPresentationPicker.SelectedItem).Tag.ToString()!));
-        try { var next = device with { Settings = settings }; deviceStore.Save(next); device = next; ApplyReadingSettings(); UpdateSelectedFurigana(); if (ExplanationPane.Visibility == Visibility.Visible) PresentExplanationPane(); SettingsStatus.Text = "设置已保存，当前阅读会话继续保留。"; }
+            ((ComboBoxItem)ThemePicker.SelectedItem).Tag.ToString()!, RubyToggle.IsOn, OllamaAddress.Text.Trim().TrimEnd('/'), ModelName.Text.Trim(), TargetLanguage.Text.Trim(),
+            ((ComboBoxItem)ExplanationPresentationPicker.SelectedItem).Tag.ToString()!, provider, CloudAddress.Text.Trim(), CloudModelName.Text.Trim()));
+        try { if (provider == "cloud") apiKeyStore.Save(CloudApiKey.Password); var next = device with { Settings = settings }; deviceStore.Save(next); device = next; ApplyReadingSettings(); UpdateSelectedFurigana(); if (ExplanationPane.Visibility == Visibility.Visible) PresentExplanationPane(); SettingsStatus.Text = "设置已保存，当前阅读会话继续保留。"; }
         catch (Exception e) { SettingsStatus.Text = "设置保存失败：" + e.Message; }
     }
     private async void CheckConnection_Click(object sender, RoutedEventArgs args)
     {
         SettingsStatus.Text = "正在检查模型…";
-        try { SettingsStatus.Text = await OllamaConnection.CheckAsync(OllamaAddress.Text, ModelName.Text); }
+        try
+        {
+            if (((ComboBoxItem)AIProviderPicker.SelectedItem).Tag.ToString() == "cloud")
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                var provider = new OpenAICompatibleReadingAI(client, CloudAddress.Text, CloudApiKey.Password, CloudModelName.Text);
+                await provider.CheckAvailabilityAsync(); SettingsStatus.Text = $"云端 API 已连接：{CloudModelName.Text.Trim()}";
+            }
+            else SettingsStatus.Text = await OllamaConnection.CheckAsync(OllamaAddress.Text, ModelName.Text);
+        }
         catch (Exception e) { SettingsStatus.Text = "无法连接模型：" + e.Message; }
     }
+
+    private void AIProviderPicker_SelectionChanged(object sender, SelectionChangedEventArgs args) => UpdateProviderSettings();
+    private void UpdateProviderSettings()
+    {
+        if (AIProviderPicker?.SelectedItem is not ComboBoxItem item || OllamaSettings is null || CloudSettings is null) return;
+        var cloud = item.Tag?.ToString() == "cloud";
+        OllamaSettings.Visibility = cloud ? Visibility.Collapsed : Visibility.Visible;
+        CloudSettings.Visibility = cloud ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private string ActiveModelName() => device.Settings.Provider == "cloud" ? device.Settings.CloudModel : device.Settings.Model;
 }

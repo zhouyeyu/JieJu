@@ -299,7 +299,7 @@ public sealed partial class MainWindow
                     completedExplanation.SentenceCore,
                     completedExplanation.GrammarPoints.Select(point => new PersistedGrammarPoint(point.Text, point.Explanation)).ToArray(),
                     completedExplanation.KeyPhrases.Select(phrase => new PersistedKeyPhrase(phrase.Text, phrase.Meaning)).ToArray(),
-                    device.Settings.Model),
+                    ActiveModelName()),
                 now, now, Locator: selectionLocator);
             library = LearningLibraryOperations.UpsertExplanation(library, record);
             await libraryStore.SaveAsync(library);

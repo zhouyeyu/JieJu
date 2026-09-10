@@ -47,4 +47,32 @@ public class DeviceStateTests
         Assert.Equal("popup", DeviceStateStore.Normalize(new(ExplanationPresentation: "popup")).ExplanationPresentation);
         Assert.Equal("sidebar", DeviceStateStore.Normalize(new(ExplanationPresentation: "floating-window")).ExplanationPresentation);
     }
+
+    [Fact]
+    public void CloudSettingsPersistWithoutAnApiKeyField()
+    {
+        var settings = DeviceStateStore.Normalize(new(Provider: "cloud", CloudUrl: "https://example.test/v1", CloudModel: "model"));
+        var json = System.Text.Json.JsonSerializer.Serialize(settings);
+        Assert.Equal("cloud", settings.Provider);
+        Assert.DoesNotContain("apikey", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("secret", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void OlderSettingsDefaultToLocalOllama()
+    {
+        var settings = System.Text.Json.JsonSerializer.Deserialize<ReadingSettings>("{\"FontSize\":20,\"OllamaUrl\":\"http://127.0.0.1:11434\",\"Model\":\"local\"}")!;
+        Assert.Equal("ollama", settings.Provider);
+        Assert.Equal("https://api.openai.com/v1", settings.CloudUrl);
+    }
+
+    [Fact]
+    public void ApiKeyRoundTripsThroughWindowsCredentialManager()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var store = new WindowsCredentialStore("JieJu/Tests/" + Guid.NewGuid());
+        try { store.Save("temporary-secret"); Assert.Equal("temporary-secret", store.Load()); }
+        finally { store.Save(""); }
+        Assert.Equal("", store.Load());
+    }
 }

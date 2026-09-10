@@ -13,13 +13,13 @@
 - [x] `WJA-101` Windows 本地日语形态分析：分词、读音、原形、词性、活用和选区边界
 - [x] `WJA-102` 对无原书 Ruby 的日语 EPUB 自动注音；跳过已有 Ruby/脚本/样式并防止多音误注
 - [x] `WJA-103` 解释面板中的日语选区、词语和深入解析使用本地词典 Ruby；模型读音只作参考
+- [x] `WEXP-104` OpenAI-compatible 云端 Provider、SSE、连接检查、隐私提示和 Credential Manager
 
 ## 待对齐
 
 - [x] `WEXP-101` 翻译、主干、语法和重点表达在 Ollama 生成时分区渐进显示
 - [x] `WEXP-102` 深入解析：句子类型、句型、成分、修饰关系、从句、深度语法和整句理解
 - [x] `WEXP-103` 侧边栏/弹窗两种解释方式及持久化，切换时不丢阅读位置和选区
-- [ ] `WEXP-104` OpenAI-compatible 云端 Provider、SSE、连接检查、隐私提示和 Credential Manager
 
 ## 实施顺序
 

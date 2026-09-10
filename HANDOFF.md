@@ -2,9 +2,9 @@
 
 ## 本次交接
 
-- 日期：2026-09-10
+- 日期：2026-09-11
 - Agent：Codex
-- 阶段：Windows `WJA-101`～`WJA-103` 完成；下一步执行 `WEXP-104` 云端 Provider
+- 阶段：Windows 解释与注音清单已全部对齐；下一步可执行 `WIN-205` 随手温习
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -26,7 +26,9 @@
   错误英文元数据可由强日文证据纠正，中文短引用不会触发整章注音
 - 日语解释：选区、词语与深入解析显示本地词典读音；深入解析直接生成助词、句型、谓语、原形和
   活用，日语身份字段不依赖模型，并支持从词形卡片加入生词本
-- 验证：Solution 0 警告；C# 81 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+- 云端解释：支持 OpenAI-compatible Chat Completions SSE、词语/深入解析、连接检查和隐私提示；
+  API Key 仅保存在 Windows 凭据管理器，未使用真实云端凭据或产生推理流量
+- 验证：Solution 0 警告；C# 88 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
   `152.0.4191.66` 完成真实解句和词语解释冒烟
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
@@ -38,7 +40,7 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：只做 `WEXP-104` OpenAI-compatible 云端 Provider、SSE、连接检查、隐私提示和凭据存储
+- 下一步：解释与注音无剩余项；按产品任务继续 `WIN-205` 识别卡、四档熟悉程度和温和暂停
 
 ### 2026-09-09 macOS 基线交接
 

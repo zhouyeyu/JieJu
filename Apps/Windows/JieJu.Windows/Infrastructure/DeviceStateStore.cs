@@ -4,7 +4,8 @@ namespace JieJu.Windows.Infrastructure;
 
 public sealed record ReadingSettings(double FontSize = 18, double LineHeight = 1.75, double HorizontalMargin = 54,
     string Theme = "paper", bool ShowsFurigana = false, string OllamaUrl = "http://127.0.0.1:11434",
-    string Model = "qwen2.5:1.5b-instruct", string ExplanationLanguage = "Chinese", string ExplanationPresentation = "sidebar");
+    string Model = "qwen2.5:1.5b-instruct", string ExplanationLanguage = "Chinese", string ExplanationPresentation = "sidebar",
+    string Provider = "ollama", string CloudUrl = "https://api.openai.com/v1", string CloudModel = "gpt-4.1-mini");
 public sealed record RecentBook(string Id, string Path, string Title, int Chapter, double Progress, DateTimeOffset OpenedAt);
 public sealed record DeviceState(ReadingSettings Settings, RecentBook[] RecentBooks);
 
@@ -24,7 +25,10 @@ public sealed class DeviceStateStore(string directory)
         LineHeight = double.IsFinite(settings.LineHeight) ? Math.Clamp(settings.LineHeight, 1.2, 2.5) : 1.75,
         HorizontalMargin = double.IsFinite(settings.HorizontalMargin) ? Math.Clamp(settings.HorizontalMargin, 20, 120) : 54,
         Theme = settings.Theme is "paper" or "night" or "sepia" or "sage" ? settings.Theme : "paper",
-        ExplanationPresentation = settings.ExplanationPresentation is "sidebar" or "popup" ? settings.ExplanationPresentation : "sidebar"
+        ExplanationPresentation = settings.ExplanationPresentation is "sidebar" or "popup" ? settings.ExplanationPresentation : "sidebar",
+        Provider = settings.Provider is "ollama" or "cloud" ? settings.Provider : "ollama",
+        CloudUrl = string.IsNullOrWhiteSpace(settings.CloudUrl) ? "https://api.openai.com/v1" : settings.CloudUrl.Trim(),
+        CloudModel = string.IsNullOrWhiteSpace(settings.CloudModel) ? "gpt-4.1-mini" : settings.CloudModel.Trim()
     };
     public void Save(DeviceState state)
     {
