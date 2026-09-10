@@ -1,5 +1,12 @@
 # JieJu Decisions
 
+## 2026-09-10：Windows 日语真值层采用 MeCab.DotNet 与 IPADic
+
+Windows 使用 MeCab.DotNet 1.2.0 随包携带的 IPADic 提供分词、读音、原形、词性和活用信息，保持
+与 macOS 的 MeCab/IPADic 数据来源一致。词典结果覆盖模型返回的日语身份字段；模型只负责语境义和
+教学说明。Tagger 由平台服务持有并加锁复用，不把第三方依赖引入 `JieJu.Domain`。该包约 14.6 MB，
+按 LGPL-2.1-only 或 GPL-2.0-only 双许可发布，版权与许可信息记录在根 `NOTICE`。
+
 ## 2026-09-10：Windows 骨架采用无打包、自包含 WinUI 外壳与受限虚拟 Reader Host
 
 Windows 首个可运行骨架采用 WinUI 3 的无 MSIX、自包含部署模式，固定 Windows App SDK 1.8 与

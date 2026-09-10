@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
+      "MeCab.DotNet": {
+        "type": "Direct",
+        "requested": "[1.2.0, )",
+        "resolved": "1.2.0",
+        "contentHash": "krOACK3qOP5mcd224PwHU9aPTICPySrb6c0bGV4+++EwCUUHPIg7vyj1yUtKGZa9TD+bGI29V5Mnuv2iHYTAgQ=="
+      },
       "Microsoft.NET.Test.Sdk": {
         "type": "Direct",
         "requested": "[18.10.0, )",

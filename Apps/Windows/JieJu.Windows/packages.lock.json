@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     "net10.0-windows10.0.19041": {
+      "MeCab.DotNet": {
+        "type": "Direct",
+        "requested": "[1.2.0, )",
+        "resolved": "1.2.0",
+        "contentHash": "krOACK3qOP5mcd224PwHU9aPTICPySrb6c0bGV4+++EwCUUHPIg7vyj1yUtKGZa9TD+bGI29V5Mnuv2iHYTAgQ=="
+      },
       "Microsoft.Windows.SDK.BuildTools": {
         "type": "Direct",
         "requested": "[10.0.26100.9169, )",

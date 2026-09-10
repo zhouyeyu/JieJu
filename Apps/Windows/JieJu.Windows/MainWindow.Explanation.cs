@@ -33,7 +33,7 @@ public sealed partial class MainWindow
         SelectedText.Text = selectionRequest.TargetText;
         selectionSentence = Read("containingSentence") is { Length: > 0 } sentence ? ExplanationValidation.Clean(sentence) : target;
         selectionKind = SelectionClassifier.Classify(target, selectionRequest.SourceLanguage);
-        boundarySuggestion = SelectionClassifier.SuggestBoundary(target, selectionSentence, selectionRequest.SourceLanguage);
+        boundarySuggestion = SelectionClassifier.SuggestBoundary(target, selectionSentence, selectionRequest.SourceLanguage, japaneseMorphology);
         SelectionContext.Text = selectionSentence != target ? "所在句：" + selectionSentence : "";
         ExplainButton.Content = boundarySuggestion is null ? SelectionClassifier.ActionTitle(selectionKind) : $"查“{boundarySuggestion.SuggestedText}”";
         ExplainWordButton.Content = SelectionClassifier.IsLexical(selectionKind) ? "按句子解释" : "按词语解释";

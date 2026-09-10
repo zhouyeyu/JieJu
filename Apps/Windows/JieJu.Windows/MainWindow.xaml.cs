@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window
     private readonly ILearningLibraryStore libraryStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
     private readonly Func<ReadingSettings, IVocabularyAI> vocabularyAIFactory;
+    private readonly IJapaneseMorphology japaneseMorphology;
     private DeviceState device = new(new(), []);
     private LearningLibrary library = LearningLibrary.Empty;
     private EpubBook? book;
@@ -31,10 +32,11 @@ public sealed partial class MainWindow : Window
     private const string BookPrefix = "https://reader.jieju.invalid/book/";
     private const string HtmlDataPrefix = "data:text/html;charset=utf-8;base64,";
 
-    public MainWindow(Func<ReadingSettings, IStreamingReadingAI> readingAIFactory, Func<ReadingSettings, IVocabularyAI> vocabularyAIFactory)
+    public MainWindow(Func<ReadingSettings, IStreamingReadingAI> readingAIFactory, Func<ReadingSettings, IVocabularyAI> vocabularyAIFactory, IJapaneseMorphology japaneseMorphology)
     {
         this.readingAIFactory = readingAIFactory;
         this.vocabularyAIFactory = vocabularyAIFactory;
+        this.japaneseMorphology = japaneseMorphology;
         InitializeComponent();
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(1280, 860));
         var arguments = Environment.GetCommandLineArgs();

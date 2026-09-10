@@ -28,10 +28,18 @@ public static partial class SelectionClassifier
         return SelectionKind.Ambiguous;
     }
 
-    public static SelectionBoundarySuggestion? SuggestBoundary(string selectedText, string? sentence, string sourceLanguage)
+    public static SelectionBoundarySuggestion? SuggestBoundary(string selectedText, string? sentence, string sourceLanguage, IJapaneseMorphology? morphology = null)
     {
         var selected = ExplanationValidation.Clean(selectedText);
-        if (selected.Length == 0 || string.IsNullOrWhiteSpace(sentence) || UsesUnspacedText(sourceLanguage, sentence)) return null;
+        if (selected.Length == 0 || string.IsNullOrWhiteSpace(sentence)) return null;
+        if (JapaneseLanguage.IsJapanese(sourceLanguage, sentence) && morphology is not null)
+        {
+            var containing = morphology.Tokenize(sentence)
+                .Where(token => token.Surface.Contains(selected, StringComparison.Ordinal) && token.Surface != selected)
+                .Select(token => token.Surface).Distinct().ToArray();
+            return containing.Length == 1 ? new SelectionBoundarySuggestion(selected, containing[0]) : null;
+        }
+        if (UsesUnspacedText(sourceLanguage, sentence)) return null;
         var matches = Word().Matches(sentence).Where(match => match.Value.Contains(selected, StringComparison.OrdinalIgnoreCase)).ToArray();
         if (matches.Length != 1 || matches[0].Value.Equals(selected, StringComparison.OrdinalIgnoreCase)) return null;
         return new SelectionBoundarySuggestion(selected, matches[0].Value);
