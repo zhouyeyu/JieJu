@@ -11,6 +11,8 @@ public sealed partial class MainWindow
     private Explanation? completedExplanation;
     private WordExplanation? completedWordExplanation;
     private string selectionSentence = "";
+    private SelectionKind selectionKind = SelectionKind.Ambiguous;
+    private SelectionBoundarySuggestion? boundarySuggestion;
     private EpubLocator? selectionLocator;
     private CancellationTokenSource? explanationCancellation;
 
@@ -30,7 +32,13 @@ public sealed partial class MainWindow
         selectionLocator = ReadLocator(payload);
         SelectedText.Text = selectionRequest.TargetText;
         selectionSentence = Read("containingSentence") is { Length: > 0 } sentence ? ExplanationValidation.Clean(sentence) : target;
+        selectionKind = SelectionClassifier.Classify(target, selectionRequest.SourceLanguage);
+        boundarySuggestion = SelectionClassifier.SuggestBoundary(target, selectionSentence, selectionRequest.SourceLanguage);
         SelectionContext.Text = selectionSentence != target ? "所在句：" + selectionSentence : "";
+        ExplainButton.Content = boundarySuggestion is null ? SelectionClassifier.ActionTitle(selectionKind) : $"查“{boundarySuggestion.SuggestedText}”";
+        ExplainWordButton.Content = SelectionClassifier.IsLexical(selectionKind) ? "按句子解释" : "按词语解释";
+        BoundarySuggestionPanel.Visibility = boundarySuggestion is null ? Visibility.Collapsed : Visibility.Visible;
+        BoundarySuggestionText.Text = boundarySuggestion is null ? "" : $"选区可能不完整，建议按“{boundarySuggestion.SuggestedText}”解释。";
         ExplanationContent.Children.Clear(); ExplanationStatus.Text = "准备好后，点击“解释这段”。";
         SaveExplanationButton.Visibility = Visibility.Collapsed; SaveExplanationButton.IsEnabled = false;
         SaveVocabularyButton.Visibility = Visibility.Collapsed; SaveVocabularyButton.IsEnabled = false;
@@ -39,6 +47,31 @@ public sealed partial class MainWindow
         if (smokeWord) ExplainWord_Click(this, new RoutedEventArgs());
         else if (smokeInference) ExplainSelection_Click(this, new RoutedEventArgs());
         else if (smokeSelection) FinishSmoke(true, "EPUB selection bridge and explanation pane");
+    }
+
+    private void ExplainPrimary_Click(object sender, RoutedEventArgs args)
+    {
+        if (boundarySuggestion is not null) UseBoundarySuggestion();
+        if (SelectionClassifier.IsLexical(selectionKind)) ExplainWord_Click(sender, args);
+        else ExplainSelection_Click(sender, args);
+    }
+
+    private void ExplainAlternative_Click(object sender, RoutedEventArgs args)
+    {
+        if (SelectionClassifier.IsLexical(selectionKind)) ExplainSelection_Click(sender, args);
+        else ExplainWord_Click(sender, args);
+    }
+
+    private void UseBoundarySuggestion_Click(object sender, RoutedEventArgs args) => UseBoundarySuggestion();
+    private void UseBoundarySuggestion()
+    {
+        if (selectionRequest is null || boundarySuggestion is null) return;
+        selectionRequest = selectionRequest with { TargetText = boundarySuggestion.SuggestedText };
+        SelectedText.Text = selectionRequest.TargetText;
+        selectionKind = SelectionClassifier.Classify(selectionRequest.TargetText, selectionRequest.SourceLanguage);
+        boundarySuggestion = null; BoundarySuggestionPanel.Visibility = Visibility.Collapsed;
+        ExplainButton.Content = SelectionClassifier.ActionTitle(selectionKind);
+        ExplainWordButton.Content = SelectionClassifier.IsLexical(selectionKind) ? "按句子解释" : "按词语解释";
     }
 
     private async void ExplainSelection_Click(object sender, RoutedEventArgs args)
@@ -178,7 +211,8 @@ public sealed partial class MainWindow
     private void CancelExplanation_Click(object sender, RoutedEventArgs args) => explanationCancellation?.Cancel();
     private void CloseExplanation_Click(object sender, RoutedEventArgs args)
     {
-        explanationCancellation?.Cancel(); selectionRequest = null; completedExplanation = null; completedWordExplanation = null; selectionLocator = null; selectionSentence = "";
+        explanationCancellation?.Cancel(); selectionRequest = null; completedExplanation = null; completedWordExplanation = null; selectionLocator = null; selectionSentence = ""; boundarySuggestion = null;
+        BoundarySuggestionPanel.Visibility = Visibility.Collapsed;
         SaveExplanationButton.Visibility = Visibility.Collapsed; SaveExplanationButton.IsEnabled = false;
         SaveVocabularyButton.Visibility = Visibility.Collapsed; SaveVocabularyButton.IsEnabled = false;
         ExplanationPane.Visibility = Visibility.Collapsed; ExplanationColumn.Width = new GridLength(0); Send("clearSelection", new { });

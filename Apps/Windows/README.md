@@ -47,7 +47,8 @@ Bridge。`WIN-101`～`WIN-105` 已加入原生导航、受限 EPUB 加载、章�
 5060 Ti 上完成真实 GPU 验收。`WIN-203` 已加入 v5 学习资料保存、记录列表/详情/确认删除及从
 EPUB locator 回到原文。`WIN-204` 已加入独立词语解释、生词收藏合并、详情和来源跳转。
 `-Smoke -OllamaSmoke` 与 `-Smoke -VocabularySmoke` 可复跑两条本地推理链路。下一项任务是
-`WIN-205` 温习流程。不得为了方便修改 macOS Reader 的公开接口。
+`WIN-303` 深入句法分析和解释显示方式；温习流程仍为 `WIN-205`。不得为了方便修改 macOS Reader
+的公开接口。
 
 首个 Pull Request 只应包含可构建的 Windows 工程骨架、依赖方向和自动测试入口；EPUB 垂直闭环
 作为后续独立任务实现。

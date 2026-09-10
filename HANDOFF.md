@@ -4,7 +4,7 @@
 
 - 日期：2026-09-10
 - Agent：Codex
-- 阶段：Windows `WIN-204` 完成，解句保存与生词收藏闭环可用；下一步执行 `WIN-205`
+- 阶段：Windows `WIN-206` 完成，解释系统仍缺深入解析与侧栏/弹窗切换；下一步执行 `WIN-303`
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -17,7 +17,9 @@
   删除和从记录返回 EPUB 章节/章内位置均已实现，平台绝对路径未进入共享资料
 - 生词本：独立 v4 词语解释、Unicode Prompt、中文输出校验与一次修复、收藏合并、列表/详情、确认
   删除和返回最近来源已实现；解句越界条目改为安全清洗，不再整体失败
-- 验证：Solution 0 警告；C# 60 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+- 选区路由：自动区分词语/表达/句子/段落，保留人工切换；英文残缺词可建议完整边界，日语边界
+  等待 `WIN-305` 本地形态分析后启用
+- 验证：Solution 0 警告；C# 67 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
   `152.0.4191.66` 完成真实解句和词语解释冒烟
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
@@ -29,7 +31,7 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：只做 `WIN-205` 识别卡、四档熟悉程度、十张温和暂停和只追加复习日志
+- 下一步：只做 `WIN-303` 深入句法分析，再独立补侧栏/弹窗解释方式
 
 ### 2026-09-09 macOS 基线交接
 
