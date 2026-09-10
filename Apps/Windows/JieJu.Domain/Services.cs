@@ -5,7 +5,8 @@ public interface IReadingAI
     Task<Explanation> ExplainAsync(ExplanationRequest request, CancellationToken cancellationToken = default);
 }
 
-public sealed record ExplanationProgress(string GeneratedText, Explanation? Result = null);
+public sealed record ExplanationPreview(string? Translation, string? SentenceCore, GrammarPoint[] GrammarPoints, KeyPhrase[] KeyPhrases);
+public sealed record ExplanationProgress(string GeneratedText, Explanation? Result = null, ExplanationPreview? Preview = null);
 
 public interface IStreamingReadingAI : IReadingAI
 {

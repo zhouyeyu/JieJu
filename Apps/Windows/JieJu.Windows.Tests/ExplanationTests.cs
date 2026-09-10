@@ -35,6 +35,17 @@ public sealed class ExplanationTests
     }
 
     [Fact]
+    public void PartialParserPublishesCompletedSectionsAndDropsOutsideReferences()
+    {
+        const string partial = "{\"translation\":\"她打开了书。\",\"sentenceCore\":\"She opened the book.\",\"grammarPoints\":[{\"text\":\"opened\",\"explanation\":\"过去式\"},{\"text\":\"Before\",\"explanation\":\"越界\"}],\"keyPhrases\":[";
+        var preview = PartialExplanationParser.Parse(partial, ExplanationValidation.Normalize(Request));
+        Assert.Equal("她打开了书。", preview?.Translation);
+        Assert.Equal("She opened the book.", preview?.SentenceCore);
+        Assert.Equal("opened", Assert.Single(preview!.GrammarPoints).Text);
+        Assert.Empty(preview.KeyPhrases);
+    }
+
+    [Fact]
     public async Task OllamaClientStreamsNdjsonAndReturnsValidatedResult()
     {
         var lines = "{\"message\":{\"content\":\"{\\\"translation\\\":\\\"她打开了书。\\\",\\\"sentenceCore\\\":\\\"She opened the book.\\\",\"}}\n" +
@@ -44,6 +55,7 @@ public sealed class ExplanationTests
         var updates = new List<ExplanationProgress>();
         await foreach (var update in ai.ExplainStreamAsync(Request)) updates.Add(update);
         Assert.Equal("她打开了书。", updates.Last().Result!.Translation);
+        Assert.Contains(updates, update => update.Preview?.Translation == "她打开了书。");
         Assert.Contains("\"stream\":true", handler.Body);
         Assert.Contains("\"temperature\":0", handler.Body);
     }

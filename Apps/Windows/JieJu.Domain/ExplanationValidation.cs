@@ -53,3 +53,35 @@ public static partial class ExplanationValidation
     [GeneratedRegex(@"\s+")]
     private static partial Regex Whitespace();
 }
+
+public static partial class PartialExplanationParser
+{
+    public static ExplanationPreview? Parse(string raw, ExplanationRequest request)
+    {
+        var translation = Field(raw, "translation");
+        var core = Field(raw, "sentenceCore");
+        if (core is not null && !request.TargetText.Contains(core.Trim(), StringComparison.Ordinal)) core = request.TargetText;
+        var grammar = GrammarObject().Matches(raw).Select(match => new GrammarPoint(Decode(match.Groups[1].Value), Decode(match.Groups[2].Value)))
+            .Where(item => request.TargetText.Contains(item.Text.Trim(), StringComparison.Ordinal)).Take(3).ToArray();
+        var phrases = PhraseObject().Matches(raw).Select(match => new KeyPhrase(Decode(match.Groups[1].Value), Decode(match.Groups[2].Value)))
+            .Where(item => request.TargetText.Contains(item.Text.Trim(), StringComparison.Ordinal)).Take(4).ToArray();
+        return translation is null && core is null && grammar.Length == 0 && phrases.Length == 0 ? null : new(translation, core, grammar, phrases);
+    }
+
+    private static string? Field(string raw, string name)
+    {
+        var match = Regex.Match(raw, $"\\\"{name}\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"\\\\])*)\\\"");
+        return match.Success ? Decode(match.Groups[1].Value) : null;
+    }
+
+    private static string Decode(string escaped)
+    {
+        try { return JsonSerializer.Deserialize<string>($"\"{escaped}\"") ?? ""; }
+        catch (JsonException) { return ""; }
+    }
+
+    [GeneratedRegex("\\{\\s*\"text\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"\\s*,\\s*\"explanation\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"\\s*\\}")]
+    private static partial Regex GrammarObject();
+    [GeneratedRegex("\\{\\s*\"text\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"\\s*,\\s*\"meaning\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"\\s*\\}")]
+    private static partial Regex PhraseObject();
+}

@@ -85,7 +85,8 @@ public sealed partial class MainWindow
         {
             await foreach (var update in readingAIFactory(device.Settings).ExplainStreamAsync(selectionRequest, explanationCancellation.Token))
             {
-                ExplanationStatus.Text = update.Result is null ? $"正在生成… {update.GeneratedText.Length} 字符" : "解释完成";
+                ExplanationStatus.Text = update.Result is null ? "正在生成解释…" : "解释完成";
+                if (update.Preview is not null) ShowExplanationPreview(update.Preview);
                 if (update.Result is not null) ShowExplanation(update.Result);
             }
         }
@@ -136,11 +137,21 @@ public sealed partial class MainWindow
     private void ShowExplanation(Explanation result)
     {
         completedExplanation = result;
+        ExplanationContent.Children.Clear();
         AddSection("翻译", result.Translation); AddSection("句子主干", result.SentenceCore);
         foreach (var point in result.GrammarPoints) AddSection(point.Text, point.Explanation);
         foreach (var phrase in result.KeyPhrases) AddSection(phrase.Text, phrase.Meaning);
         SaveExplanationButton.Visibility = Visibility.Visible; SaveExplanationButton.IsEnabled = true;
         if (smokeInference) FinishSmoke(true, "Local Ollama: " + result.Translation);
+    }
+
+    private void ShowExplanationPreview(ExplanationPreview preview)
+    {
+        ExplanationContent.Children.Clear();
+        if (!string.IsNullOrWhiteSpace(preview.Translation)) AddSection("翻译", preview.Translation);
+        if (!string.IsNullOrWhiteSpace(preview.SentenceCore)) AddSection("句子主干", preview.SentenceCore);
+        foreach (var point in preview.GrammarPoints) AddSection(point.Text, point.Explanation);
+        foreach (var phrase in preview.KeyPhrases) AddSection(phrase.Text, phrase.Meaning);
     }
 
     private static EpubLocator? ReadLocator(JsonElement payload)

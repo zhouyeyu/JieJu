@@ -28,9 +28,13 @@ public sealed class OllamaReadingAI(HttpClient client, string address, string mo
         if (!Uri.TryCreate(address.TrimEnd('/') + "/api/chat", UriKind.Absolute, out var endpoint) || endpoint.Scheme is not ("http" or "https"))
             throw new ArgumentException("Ollama 服务地址无效。");
         var generated = "";
+        string? previousPreview = null;
         await foreach (var text in GenerateAsync(endpoint, Payload(valid, repair: false), cancellationToken))
         {
-            generated = text; yield return new ExplanationProgress(generated);
+            generated = text;
+            var preview = PartialExplanationParser.Parse(generated, valid);
+            var previewKey = preview is null ? null : JsonSerializer.Serialize(preview, PromptJson);
+            if (previewKey != previousPreview) { previousPreview = previewKey; yield return new ExplanationProgress(generated, Preview: preview); }
         }
         Explanation? result = null;
         try { result = ExplanationValidation.Parse(generated, valid); }
@@ -40,7 +44,10 @@ public sealed class OllamaReadingAI(HttpClient client, string address, string mo
             generated = "";
             await foreach (var text in GenerateAsync(endpoint, Payload(valid, repair: true), cancellationToken))
             {
-                generated = text; yield return new ExplanationProgress(generated);
+                generated = text;
+                var preview = PartialExplanationParser.Parse(generated, valid);
+                var previewKey = preview is null ? null : JsonSerializer.Serialize(preview, PromptJson);
+                if (previewKey != previousPreview) { previousPreview = previewKey; yield return new ExplanationProgress(generated, Preview: preview); }
             }
             result = ExplanationValidation.Parse(generated, valid);
         }
