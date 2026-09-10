@@ -5,6 +5,13 @@ public interface IReadingAI
     Task<Explanation> ExplainAsync(ExplanationRequest request, CancellationToken cancellationToken = default);
 }
 
+public sealed record ExplanationProgress(string GeneratedText, Explanation? Result = null);
+
+public interface IStreamingReadingAI : IReadingAI
+{
+    IAsyncEnumerable<ExplanationProgress> ExplainStreamAsync(ExplanationRequest request, CancellationToken cancellationToken = default);
+}
+
 public interface IVocabularyAI
 {
     Task<WordExplanation> ExplainWordAsync(WordExplanationRequest request, CancellationToken cancellationToken = default);

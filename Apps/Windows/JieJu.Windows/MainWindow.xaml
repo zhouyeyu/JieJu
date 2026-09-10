@@ -19,7 +19,17 @@
     </Grid>
     <Grid Grid.Row="1" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="ExplanationColumn" Width="0"/></Grid.ColumnDefinitions>
      <Border CornerRadius="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"><WebView2 x:Name="Reader" Loaded="Reader_Loaded" AutomationProperties.Name="阅读区域"/></Border>
-     <ScrollViewer x:Name="ExplanationPane" Grid.Column="1" Visibility="Collapsed"><StackPanel x:Name="ExplanationContent" Spacing="14" Padding="4,12"/></ScrollViewer>
+     <Border x:Name="ExplanationPane" Grid.Column="1" Visibility="Collapsed" CornerRadius="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="18">
+      <ScrollViewer><StackPanel Spacing="14">
+       <Grid><TextBlock Text="解读" FontSize="20" FontWeight="SemiBold"/><Button HorizontalAlignment="Right" Content="关闭" Click="CloseExplanation_Click"/></Grid>
+       <TextBlock x:Name="SelectedText" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+       <TextBlock x:Name="SelectionContext" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+       <StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="ExplainButton" Content="解释这段" Click="ExplainSelection_Click" Style="{StaticResource AccentButtonStyle}"/><Button x:Name="CancelExplanationButton" Content="停止" Click="CancelExplanation_Click" Visibility="Collapsed"/></StackPanel>
+       <ProgressRing x:Name="ExplanationProgressRing" IsActive="False" Width="22" Height="22" HorizontalAlignment="Left"/>
+       <TextBlock x:Name="ExplanationStatus" Text="选择后可开始解释。" Opacity="0.65" TextWrapping="Wrap"/>
+       <StackPanel x:Name="ExplanationContent" Spacing="14"/>
+      </StackPanel></ScrollViewer>
+     </Border>
      <ScrollViewer x:Name="WelcomePanel" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="36"><StackPanel MaxWidth="640" HorizontalAlignment="Center" Spacing="24" Margin="0,64,0,24">
        <TextBlock Text="让阅读，成为学习的起点。" FontSize="30" FontWeight="SemiBold" TextWrapping="Wrap"/>
        <TextBlock Text="打开一本 EPUB，在原文中停留、理解、积累。&#xA;不用赶进度，也不必记住每个词。" Opacity="0.65" FontSize="15" TextWrapping="Wrap"/>

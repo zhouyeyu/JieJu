@@ -69,7 +69,7 @@ try {
         try {
             New-SmokeEpub $epub
             $epubResult = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.json" -f [guid]::NewGuid())
-            Invoke-AppSmoke $exe $epubResult @('--open', ('"{0}"' -f $epub)) 'EPUB reading flow'
+            Invoke-AppSmoke $exe $epubResult @('--open', ('"{0}"' -f $epub), '--smoke-selection') 'EPUB selection and explanation panel'
         }
         finally { if (Test-Path $epub) { Remove-Item -LiteralPath $epub } }
     }

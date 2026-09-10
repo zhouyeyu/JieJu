@@ -12,7 +12,9 @@ public sealed partial class MainWindow : Window
 {
     private bool initialized, closed, changingChapter, chapterNavigationPending;
     private readonly string? smokeResult;
+    private readonly bool smokeSelection;
     private readonly DeviceStateStore deviceStore;
+    private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
     private DeviceState device = new(new(), []);
     private EpubBook? book;
     private string? bookPath;
@@ -22,13 +24,15 @@ public sealed partial class MainWindow : Window
     private const string BookPrefix = "https://reader.jieju.invalid/book/";
     private const string HtmlDataPrefix = "data:text/html;charset=utf-8;base64,";
 
-    public MainWindow()
+    public MainWindow(Func<ReadingSettings, IStreamingReadingAI> readingAIFactory)
     {
+        this.readingAIFactory = readingAIFactory;
         InitializeComponent();
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(1280, 860));
         var arguments = Environment.GetCommandLineArgs();
         var index = Array.IndexOf(arguments, "--smoke-result");
         if (index >= 0 && index + 1 < arguments.Length) smokeResult = arguments[index + 1];
+        smokeSelection = arguments.Contains("--smoke-selection");
         deviceStore = new DeviceStateStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         try { device = deviceStore.Load(); }
         catch (Exception e) { Status.Text = "无法读取设置：" + e.Message; }
@@ -84,7 +88,7 @@ public sealed partial class MainWindow : Window
                 }
                 else if (!ReaderHostPolicy.AllowsResource(e.Request.Uri)) e.Response = environment.CreateWebResourceResponse(null, 403, "Forbidden", "");
             };
-            core.WebMessageReceived += (_, e) =>
+            core.WebMessageReceived += async (_, e) =>
             {
                 if (!AllowsMessageSource(e.Source)) { FinishSmoke(false, "Rejected message source: " + e.Source); return; }
                 try
@@ -98,13 +102,17 @@ public sealed partial class MainWindow : Window
                             Status.Text = book is null ? "选择一本 EPUB，开始阅读。" : $"第 {chapterIndex + 1} / {book.Chapters.Count} 章";
                             ApplyReadingSettings();
                             if (book is not null) Send("restoreLocation", new { locator = new EpubLocator(book.Chapters[chapterIndex].Href, TextAnchor: JsonSerializer.Serialize(new { progress = pendingProgress })) });
-                            FinishSmoke(true, environment.BrowserVersionString); break;
+                            if (smokeSelection && book is not null)
+                                await core.ExecuteScriptAsync("const p=document.querySelector('p');const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event('selectionchange'));");
+                            else FinishSmoke(true, environment.BrowserVersionString);
+                            break;
                         case "locationChanged":
                             if (book is null) break;
                             var locator = root.GetProperty("payload").GetProperty("locator");
                             if (locator.GetProperty("chapterHref").GetString() != book.Chapters[chapterIndex].Href) break;
                             using (var anchor = JsonDocument.Parse(locator.GetProperty("textAnchor").GetString() ?? "{}")) Remember(anchor.RootElement.GetProperty("progress").GetDouble());
                             break;
+                        case "selectionChanged": HandleSelection(root.GetProperty("payload")); break;
                     }
                 }
                 catch (Exception error) when (error is JsonException or InvalidOperationException or KeyNotFoundException) { Status.Text = "阅读区域消息无法识别。"; }

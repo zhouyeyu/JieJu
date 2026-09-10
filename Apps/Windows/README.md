@@ -43,7 +43,8 @@ Apps/Windows/
 
 `WIN-001` 已建立三个项目、严格依赖方向、v1/v2/v3/v5 学习资料迁移、v4 单词解释 DTO 和共享
 Bridge。`WIN-101`～`WIN-105` 已加入原生导航、受限 EPUB 加载、章节阅读、排版设置和最近位置。
-下一项任务是 `WIN-201`，实现 WebView2 选区与常驻解句栏。不得为了方便修改 macOS Reader 的公开接口。
+`WIN-201` 已实现 WebView2 选区、上下文与常驻解句栏；Ollama 流客户端已由离线 Stub 验证。
+下一项任务是在本机安装 Ollama 后完成 `WIN-202` 真实 GPU 推理验收。不得为了方便修改 macOS Reader 的公开接口。
 
 首个 Pull Request 只应包含可构建的 Windows 工程骨架、依赖方向和自动测试入口；EPUB 垂直闭环
 作为后续独立任务实现。
