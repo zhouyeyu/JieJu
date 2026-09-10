@@ -8,6 +8,8 @@ namespace JieJu.Windows;
 public sealed partial class MainWindow
 {
     private ExplanationRequest? selectionRequest;
+    private Explanation? completedExplanation;
+    private EpubLocator? selectionLocator;
     private CancellationTokenSource? explanationCancellation;
 
     private void HandleSelection(JsonElement payload)
@@ -21,9 +23,12 @@ public sealed partial class MainWindow
             TargetText = target, PrecedingContext = Read("precedingContext"), FollowingContext = Read("followingContext"),
             SourceLanguage = book?.Language ?? "Auto", ExplanationLanguage = device.Settings.ExplanationLanguage
         });
+        completedExplanation = null;
+        selectionLocator = ReadLocator(payload);
         SelectedText.Text = selectionRequest.TargetText;
         SelectionContext.Text = Read("containingSentence") is { Length: > 0 } sentence && sentence != target ? "所在句：" + sentence : "";
         ExplanationContent.Children.Clear(); ExplanationStatus.Text = "准备好后，点击“解释这段”。";
+        SaveExplanationButton.Visibility = Visibility.Collapsed; SaveExplanationButton.IsEnabled = false;
         ExplanationColumn.Width = new GridLength(360); ExplanationPane.Visibility = Visibility.Visible;
         ExplainButton.IsEnabled = true;
         if (smokeInference) ExplainSelection_Click(this, new RoutedEventArgs());
@@ -51,10 +56,46 @@ public sealed partial class MainWindow
 
     private void ShowExplanation(Explanation result)
     {
+        completedExplanation = result;
         AddSection("翻译", result.Translation); AddSection("句子主干", result.SentenceCore);
         foreach (var point in result.GrammarPoints) AddSection(point.Text, point.Explanation);
         foreach (var phrase in result.KeyPhrases) AddSection(phrase.Text, phrase.Meaning);
+        SaveExplanationButton.Visibility = Visibility.Visible; SaveExplanationButton.IsEnabled = true;
         if (smokeInference) FinishSmoke(true, "Local Ollama: " + result.Translation);
+    }
+
+    private static EpubLocator? ReadLocator(JsonElement payload)
+    {
+        if (!payload.TryGetProperty("locator", out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) return null;
+        try { return JsonSerializer.Deserialize<DocumentLocator>(value.GetRawText(), ContractJson.Options) as EpubLocator; }
+        catch (JsonException) { return null; }
+    }
+
+    private async void SaveExplanation_Click(object sender, RoutedEventArgs args)
+    {
+        if (selectionRequest is null || completedExplanation is null || book is null) return;
+        SaveExplanationButton.IsEnabled = false;
+        ExplanationStatus.Text = "正在保存…";
+        try
+        {
+            library = await libraryStore.LoadAsync();
+            var now = DateTimeOffset.UtcNow;
+            var record = new SavedExplanation(
+                Guid.NewGuid(), new Document(book.Id, book.FileName), selectionRequest,
+                new PersistedExplanation(
+                    completedExplanation.Translation,
+                    completedExplanation.SentenceCore,
+                    completedExplanation.GrammarPoints.Select(point => new PersistedGrammarPoint(point.Text, point.Explanation)).ToArray(),
+                    completedExplanation.KeyPhrases.Select(phrase => new PersistedKeyPhrase(phrase.Text, phrase.Meaning)).ToArray(),
+                    device.Settings.Model),
+                now, now, Locator: selectionLocator);
+            library = LearningLibraryOperations.UpsertExplanation(library, record);
+            await libraryStore.SaveAsync(library);
+            ExplanationStatus.Text = "已保存到学习记录。";
+            Notice.Message = "解释已保存到学习记录。"; Notice.Severity = InfoBarSeverity.Success; Notice.IsOpen = true;
+        }
+        catch (Exception error) { ExplanationStatus.Text = "保存失败：" + error.Message; }
+        finally { SaveExplanationButton.IsEnabled = completedExplanation is not null; }
     }
 
     private void AddSection(string title, string body)
@@ -68,6 +109,8 @@ public sealed partial class MainWindow
     private void CancelExplanation_Click(object sender, RoutedEventArgs args) => explanationCancellation?.Cancel();
     private void CloseExplanation_Click(object sender, RoutedEventArgs args)
     {
-        explanationCancellation?.Cancel(); selectionRequest = null; ExplanationPane.Visibility = Visibility.Collapsed; ExplanationColumn.Width = new GridLength(0); Send("clearSelection", new { });
+        explanationCancellation?.Cancel(); selectionRequest = null; completedExplanation = null; selectionLocator = null;
+        SaveExplanationButton.Visibility = Visibility.Collapsed; SaveExplanationButton.IsEnabled = false;
+        ExplanationPane.Visibility = Visibility.Collapsed; ExplanationColumn.Width = new GridLength(0); Send("clearSelection", new { });
     }
 }

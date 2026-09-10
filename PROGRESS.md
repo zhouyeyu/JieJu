@@ -8,6 +8,12 @@
 
 ## 已完成
 
+- **2026-09-10 Windows 学习记录闭环（WIN-203）**：Ollama 最终校验通过后可保存解释；新增
+  `JsonLearningLibraryStore`，以共享 v5 契约在 `%LOCALAPPDATA%\JieJu\library.json` 原子保存，
+  损坏文件先备份再恢复。重复选区更新原记录并保留创建时间和既有 locator。学习记录页提供列表、
+  翻译/主干/语法/短语详情、确认删除，以及通过本机最近阅读解析文件后返回 EPUB 章节与章内位置。
+  Windows 测试增至 55 项、共享 Node 11 项，Solution 0 警告；`-Smoke` 的 WinUI、EPUB、WebView2
+  与选区解句栏回归通过。
 - **2026-09-10 Windows 划词解句界面（WIN-201）**：EPUB Reader Web 在选区变化后移除 `rt/rp`，
   发送目标文本、所在句、前后语境和章节 locator；WinUI 打开常驻解句栏，用户点击后才推理，并
   提供流式生成进度、停止、错误提示和翻译/主干/语法/短语卡片。新增请求清理、上下文串线拦截、

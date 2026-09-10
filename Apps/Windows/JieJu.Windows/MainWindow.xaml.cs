@@ -15,8 +15,10 @@ public sealed partial class MainWindow : Window
     private readonly bool smokeSelection;
     private readonly bool smokeInference;
     private readonly DeviceStateStore deviceStore;
+    private readonly ILearningLibraryStore libraryStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
     private DeviceState device = new(new(), []);
+    private LearningLibrary library = LearningLibrary.Empty;
     private EpubBook? book;
     private string? bookPath;
     private int chapterIndex;
@@ -36,6 +38,7 @@ public sealed partial class MainWindow : Window
         smokeSelection = arguments.Contains("--smoke-selection");
         smokeInference = arguments.Contains("--smoke-inference");
         deviceStore = new DeviceStateStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
+        libraryStore = new JsonLearningLibraryStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         try { device = deviceStore.Load(); }
         catch (Exception e) { Status.Text = "无法读取设置：" + e.Message; }
         LoadSettingsControls(); RefreshRecentBooks();

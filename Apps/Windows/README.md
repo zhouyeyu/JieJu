@@ -44,8 +44,9 @@ Apps/Windows/
 `WIN-001` 已建立三个项目、严格依赖方向、v1/v2/v3/v5 学习资料迁移、v4 单词解释 DTO 和共享
 Bridge。`WIN-101`～`WIN-105` 已加入原生导航、受限 EPUB 加载、章节阅读、排版设置和最近位置。
 `WIN-201`、`WIN-202` 已实现 WebView2 选区、上下文、常驻解句栏和 Ollama 流式推理，并在 RTX
-5060 Ti 上完成真实 GPU 验收。`-Smoke -OllamaSmoke` 可复跑完整链路。下一项任务是 `WIN-203`
-保存解释与回到原文。不得为了方便修改 macOS Reader 的公开接口。
+5060 Ti 上完成真实 GPU 验收。`WIN-203` 已加入 v5 学习资料保存、记录列表/详情/确认删除及从
+EPUB locator 回到原文。`-Smoke -OllamaSmoke` 可复跑推理链路。下一项任务是 `WIN-204` 独立
+词语解释与生词收藏。不得为了方便修改 macOS Reader 的公开接口。
 
 首个 Pull Request 只应包含可构建的 Windows 工程骨架、依赖方向和自动测试入口；EPUB 垂直闭环
 作为后续独立任务实现。

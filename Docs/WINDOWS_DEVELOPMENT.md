@@ -2,9 +2,10 @@
 
 ## 当前状态
 
-Windows 客户端已完成 `WIN-001`：`Apps/Windows` 包含可构建的 WinUI 3 外壳、空 WebView2 Reader
-Host、平台无关 Domain 和契约测试。当前可运行完整产品仍位于根目录的 macOS SwiftUI/Xcode 工程；
-Windows 下一阶段执行 `WIN-002`，共享 JSON 契约和 EPUB Web 层，不移植 SwiftUI、AppKit 或 PDFKit。
+Windows 客户端已完成 `WIN-001`、`WIN-101`～`WIN-105` 和 `WIN-201`～`WIN-203`：`Apps/Windows`
+包含可运行的 WinUI 3 + WebView2 EPUB 阅读器，可调用本机 Ollama 解句，并以共享 v5 契约保存、
+查看、删除学习记录和返回原文。EPUB 当前使用连续滚动布局；动态分页和稳定正文锚点归入
+`WIN-301`。下一阶段执行 `WIN-204` 独立词语解释与生词收藏。
 
 Windows 第一阶段的目标是验证这条最小闭环：
 
@@ -165,12 +166,12 @@ Web 层不能直接访问 Ollama、任意外网或用户文件系统。
 
 ### WIN-002：Windows EPUB 闭环
 
-- 打开和解析 EPUB；
-- WebView2 安全加载章节资源；
-- 逐页翻页、翻章和位置恢复；
-- 选区产生结构化 `selectionChanged`；
-- Ollama 流式翻译与语法讲解；
-- 保存 v5 学习记录，并从记录返回原文。
+- [x] 打开和解析 EPUB；
+- [x] WebView2 安全加载章节资源；
+- [x] 连续滚动、翻章和位置恢复；
+- [x] 选区产生结构化 `selectionChanged`；
+- [x] Ollama 流式翻译与语法讲解；
+- [x] 保存 v5 学习记录，并从记录返回原文。
 
 完成后再拆分生词本、复习、PDF.js 和云端 Provider，避免首个客户端工程同时承受过多变量。
 

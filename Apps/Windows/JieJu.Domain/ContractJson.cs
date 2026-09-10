@@ -4,6 +4,9 @@ using System.Text.Json.Serialization;
 
 namespace JieJu.Domain;
 
+public sealed class UnsupportedLibraryVersionException(int version)
+    : JsonException($"Unsupported learning-library version: {version}.");
+
 public static class ContractJson
 {
     public static JsonSerializerOptions Options { get; } = CreateOptions();
@@ -37,7 +40,7 @@ public static class ContractJson
             throw new JsonException("Missing or invalid schemaVersion.");
         // v4 defines word AI exchanges; it never published a library format.
         if (version is not (1 or 2 or 3 or 5))
-            throw new JsonException($"Unsupported learning-library version: {version}.");
+            throw new UnsupportedLibraryVersionException(version);
         var allowed = new HashSet<string> { "schemaVersion", "readingProgress", "savedExplanations" };
         if (version >= 2) allowed.Add("vocabularyEntries");
         if (version >= 3) { allowed.Add("reviewCards"); allowed.Add("reviewLogs"); }

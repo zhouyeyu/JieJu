@@ -4,7 +4,7 @@
 
 - 日期：2026-09-10
 - Agent：Codex
-- 阶段：Windows `WIN-201`、`WIN-202` 完成；下一步执行 `WIN-203` 保存解释与回到原文
+- 阶段：Windows `WIN-203` 完成，首条 EPUB→Ollama→保存垂直闭环可用；下一步执行 `WIN-204`
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -13,8 +13,10 @@
   白纸、夜间、羊皮纸和护眼绿主题；字号、行距、边距、注音开关；最近阅读和章内位置恢复
 - 划词能力：选区移除 Ruby 注音并提取句子语境，常驻解句栏仅在用户点击后调用 `IStreamingReadingAI`；
   Ollama `/api/chat` NDJSON 流、`temperature=0`、JSON Schema 和选区引用校验均已实现
-- 验证：Solution 0 警告；C# 50 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
-  `152.0.4191.66` 完成 EPUB 选区与真实 Ollama 解句冒烟
+- 学习记录：最终解释可写入共享 v5 `library.json`；重复选区更新、损坏文件备份、列表/详情、确认
+  删除和从记录返回 EPUB 章节/章内位置均已实现，平台绝对路径未进入共享资料
+- 验证：Solution 0 警告；C# 55 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+  `152.0.4191.66` 完成 EPUB 选区与解句栏冒烟
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
 - 测试入口：`./scripts/test-windows.ps1`；加 `-Smoke` 会依次验证欢迎页和生成的最小 EPUB
@@ -25,7 +27,7 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：只做 `WIN-203` 保存解释、学习记录详情、删除和从 EPUB locator 回到原文
+- 下一步：只做 `WIN-204` 独立词语解释、生词收藏、合并与详情
 
 ### 2026-09-09 macOS 基线交接
 

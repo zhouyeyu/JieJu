@@ -59,7 +59,7 @@ public class ContractTests
     {
         var fixture = Fixture();
         fixture["schemaVersion"] = version;
-        Assert.Throws<JsonException>(() => ContractJson.ReadLibrary(fixture.ToJsonString()));
+        Assert.Throws<UnsupportedLibraryVersionException>(() => ContractJson.ReadLibrary(fixture.ToJsonString()));
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using JieJu.Domain;
 using JieJu.Windows.Infrastructure;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -14,20 +15,89 @@ public sealed partial class MainWindow
         ReaderPage.Visibility = section == "reader" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = section == "settings" ? Visibility.Visible : Visibility.Collapsed;
         LibraryPage.Visibility = section is "records" or "vocabulary" or "review" ? Visibility.Visible : Visibility.Collapsed;
-        if (LibraryPage.Visibility == Visibility.Visible) ShowLibrarySection();
+        if (LibraryPage.Visibility == Visibility.Visible) _ = ShowLibrarySectionAsync();
     }
-    private void ShowLibrarySection()
+    private async Task ShowLibrarySectionAsync()
     {
         LibraryContent.Children.Clear();
         var title = section == "records" ? "学习记录" : section == "vocabulary" ? "生词本" : "随手温习";
         LibraryContent.Children.Add(new TextBlock { Text = title, FontSize = 28, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         LibraryContent.Children.Add(new TextBlock { Text = section == "review" ? "想看几张都可以，随时回到阅读。" : "让阅读中值得留下的表达，在这里慢慢积累。", Opacity = .65 });
-        LibraryContent.Children.Add(new TextBlock { Text = "还没有保存的内容", FontSize = 22, Margin = new Thickness(0, 96, 0, 0) });
-        LibraryContent.Children.Add(new TextBlock { Text = "从阅读中开始。选句解读和收藏功能将在下一阶段接入。", Opacity = .6 });
+        if (section == "records")
+        {
+            try { library = await libraryStore.LoadAsync(); }
+            catch (Exception error) { ShowError("无法读取学习记录：" + error.Message); }
+            if (library.SavedExplanations.Length == 0)
+            {
+                LibraryContent.Children.Add(new TextBlock { Text = "还没有保存的解释", FontSize = 22, Margin = new Thickness(0, 96, 0, 0) });
+                LibraryContent.Children.Add(new TextBlock { Text = "阅读时选中一段文字，完成解释后即可保存。", Opacity = .6 });
+            }
+            foreach (var record in library.SavedExplanations.OrderByDescending(item => item.UpdatedAt))
+            {
+                var content = new StackPanel { Spacing = 5 };
+                content.Children.Add(new TextBlock { Text = record.Request.TargetText, FontSize = 17, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+                content.Children.Add(new TextBlock { Text = record.Explanation.Translation, Opacity = .72, TextWrapping = TextWrapping.Wrap });
+                content.Children.Add(new TextBlock { Text = $"{record.Document.FileName} · {record.UpdatedAt.ToLocalTime():yyyy-MM-dd HH:mm}", FontSize = 11, Opacity = .5 });
+                var button = new Button { Content = content, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(16, 13, 16, 13) };
+                button.Click += (_, _) => ShowRecordDetail(record);
+                LibraryContent.Children.Add(button);
+            }
+        }
+        else
+        {
+            LibraryContent.Children.Add(new TextBlock { Text = "还没有保存的内容", FontSize = 22, Margin = new Thickness(0, 96, 0, 0) });
+            LibraryContent.Children.Add(new TextBlock { Text = section == "vocabulary" ? "生词收藏将在下一阶段接入。" : "完成生词本后，这里会出现可选的复习卡片。", Opacity = .6 });
+        }
         var back = new Button { Content = "回到阅读" };
         back.Click += (_, _) => Navigation.SelectedItem = Navigation.MenuItems[0];
         LibraryContent.Children.Add(back);
         if (section == "review") LibraryContent.Children.Add(new TextBlock { Text = "语言不是一条需要赶完的路。读一点，记一点，忘了也没关系；在漫长的相遇里，它终会成为你的一部分。", TextWrapping = TextWrapping.Wrap, Opacity = .6, Margin = new Thickness(0, 64, 0, 0) });
+    }
+
+    private void ShowRecordDetail(SavedExplanation record)
+    {
+        LibraryContent.Children.Clear();
+        var list = new Button { Content = "← 返回学习记录" };
+        list.Click += async (_, _) => await ShowLibrarySectionAsync();
+        LibraryContent.Children.Add(list);
+        LibraryContent.Children.Add(new TextBlock { Text = record.Request.TargetText, FontSize = 26, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
+        AddRecordSection("翻译", record.Explanation.Translation);
+        AddRecordSection("句子主干", record.Explanation.SentenceCore);
+        foreach (var point in record.Explanation.GrammarPoints) AddRecordSection(point.Title, point.Explanation);
+        foreach (var phrase in record.Explanation.KeyPhrases) AddRecordSection(phrase.Text, phrase.Meaning);
+        LibraryContent.Children.Add(new TextBlock { Text = $"来源：{record.Document.FileName} · 保存于 {record.UpdatedAt.ToLocalTime():yyyy-MM-dd HH:mm}", Opacity = .55, Margin = new Thickness(0, 10, 0, 0) });
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        var source = new Button { Content = "回到原文" };
+        source.Click += async (_, _) => await ReturnToSourceAsync(record);
+        var delete = new Button { Content = "删除记录" };
+        delete.Click += async (_, _) => await DeleteRecordAsync(record);
+        actions.Children.Add(source); actions.Children.Add(delete); LibraryContent.Children.Add(actions);
+    }
+
+    private void AddRecordSection(string title, string body)
+    {
+        LibraryContent.Children.Add(new TextBlock { Text = title, FontSize = 17, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 0) });
+        LibraryContent.Children.Add(new TextBlock { Text = body, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, Opacity = .76 });
+    }
+
+    private async Task DeleteRecordAsync(SavedExplanation record)
+    {
+        var dialog = new ContentDialog { Title = "删除这条学习记录？", Content = record.Request.TargetText, PrimaryButtonText = "删除", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close, XamlRoot = Content.XamlRoot };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        try
+        {
+            library = LearningLibraryOperations.DeleteExplanation(await libraryStore.LoadAsync(), record.Id);
+            await libraryStore.SaveAsync(library);
+            await ShowLibrarySectionAsync();
+        }
+        catch (Exception error) { ShowError("无法删除学习记录：" + error.Message); }
+    }
+
+    private async Task ReturnToSourceAsync(SavedExplanation record)
+    {
+        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == record.Document.Id && File.Exists(item.Path));
+        if (recent is null) { ShowError("找不到原书，请先从阅读页重新打开这本 EPUB。"); return; }
+        await OpenBook(recent.Path, record.Locator as EpubLocator);
     }
     private async void OpenBook_Click(object sender, RoutedEventArgs args)
     {
@@ -41,7 +111,7 @@ public sealed partial class MainWindow
         }
         catch (Exception e) { ShowError("无法打开文件选择器：" + e.Message); }
     }
-    private async Task OpenBook(string path)
+    private async Task OpenBook(string path, EpubLocator? preferredLocator = null)
     {
         if (!OpenButton.IsEnabled) return;
         OpenButton.IsEnabled = false;
@@ -53,6 +123,12 @@ public sealed partial class MainWindow
             var recent = device.RecentBooks.FirstOrDefault(b => b.Id == book.Id);
             chapterIndex = Math.Clamp(recent?.Chapter ?? 0, 0, book.Chapters.Count - 1);
             pendingProgress = Math.Clamp(recent?.Progress ?? 0, 0, 1);
+            if (preferredLocator is not null)
+            {
+                var locatedChapter = book.Chapters.ToList().FindIndex(chapter => chapter.Href == preferredLocator.ChapterHref);
+                if (locatedChapter >= 0) chapterIndex = locatedChapter;
+                pendingProgress = ReadProgress(preferredLocator.TextAnchor) ?? pendingProgress;
+            }
             changingChapter = true; ChapterPicker.ItemsSource = book.Chapters; ChapterPicker.SelectedIndex = chapterIndex; changingChapter = false;
             WelcomePanel.Visibility = Visibility.Collapsed;
             CloseBookButton.Visibility = ReaderToolbar.Visibility = Visibility.Visible;
@@ -62,6 +138,16 @@ public sealed partial class MainWindow
         }
         catch (Exception error) { ShowError("无法打开这本书：" + error.Message); }
         finally { OpenButton.IsEnabled = true; }
+    }
+    private static double? ReadProgress(string? textAnchor)
+    {
+        if (string.IsNullOrWhiteSpace(textAnchor)) return null;
+        try
+        {
+            using var anchor = System.Text.Json.JsonDocument.Parse(textAnchor);
+            return anchor.RootElement.TryGetProperty("progress", out var value) && value.TryGetDouble(out var progress) ? Math.Clamp(progress, 0, 1) : null;
+        }
+        catch (System.Text.Json.JsonException) { return null; }
     }
     private void NavigateChapter()
     {
