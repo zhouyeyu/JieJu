@@ -54,7 +54,7 @@
      <TextBlock Text="阅读排版" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,0"/>
      <ComboBox x:Name="ThemePicker" Header="阅读主题" SelectedIndex="0" HorizontalAlignment="Stretch"><ComboBoxItem Content="白纸" Tag="paper"/><ComboBoxItem Content="夜间" Tag="night"/><ComboBoxItem Content="羊皮纸" Tag="sepia"/><ComboBoxItem Content="护眼绿" Tag="sage"/></ComboBox>
      <Slider x:Name="FontSlider" Header="正文字号" Minimum="12" Maximum="32" StepFrequency="1" Value="18"/><Slider x:Name="LineSlider" Header="行距" Minimum="1.2" Maximum="2.5" StepFrequency="0.05" Value="1.75"/><Slider x:Name="MarginSlider" Header="左右边距" Minimum="20" Maximum="120" StepFrequency="2" Value="54"/>
-     <ToggleSwitch x:Name="RubyToggle" Header="日语假名" OnContent="显示原书注音" OffContent="隐藏注音"/>
+     <ToggleSwitch x:Name="RubyToggle" Header="日语假名" OnContent="显示汉字注音" OffContent="隐藏注音"/>
      <TextBlock Text="此阶段支持原书已有的假名注音；自动注音将在后续加入。" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
      <TextBlock Text="本地 AI" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,0"/>
      <ComboBox x:Name="ExplanationPresentationPicker" Header="解释显示方式" SelectedIndex="0" HorizontalAlignment="Stretch"><ComboBoxItem Content="侧边栏" Tag="sidebar"/><ComboBoxItem Content="弹窗" Tag="popup"/></ComboBox>

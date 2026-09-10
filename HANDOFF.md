@@ -4,7 +4,7 @@
 
 - 日期：2026-09-10
 - Agent：Codex
-- 阶段：Windows `WJA-101` 本地日语形态分析完成；下一步执行 `WJA-102` EPUB 自动注音
+- 阶段：Windows `WJA-101`～`WJA-102` 完成；下一步执行 `WJA-103` 解释面板本地日语层
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -22,7 +22,9 @@
   引用，最终校验前不能保存
 - 深入解析/显示：支持句型、成分、从句、深度语法和整句理解，侧边栏/弹窗选择持久化且不重建
   Reader；日语词语的读音、原形、词性和活用已由本地 MeCab/IPADic 覆盖模型输出
-- 验证：Solution 0 警告；C# 74 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+- EPUB 注音：日语章节自动生成本地词典 Ruby，跳过原书 Ruby 与活动内容；章内多读音表记不猜测，
+  错误英文元数据可由强日文证据纠正，中文短引用不会触发整章注音
+- 验证：Solution 0 警告；C# 78 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
   `152.0.4191.66` 完成真实解句和词语解释冒烟
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
@@ -34,7 +36,7 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：只做 `WJA-102` Windows 日语 EPUB 自动注音，跳过原书 Ruby 并保守处理多音词
+- 下一步：只做 `WJA-103` 解释面板本地词典 Ruby 与确定性日语深入解析，模型读音只作参考
 
 ### 2026-09-09 macOS 基线交接
 

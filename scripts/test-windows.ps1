@@ -6,21 +6,22 @@ param(
     [switch]$OllamaSmoke,
     [switch]$VocabularySmoke,
     [switch]$DeepSmoke,
-    [switch]$PopupSmoke
+    [switch]$PopupSmoke,
+    [switch]$FuriganaSmoke
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $windowsRoot = Join-Path $projectRoot 'Apps/Windows'
 
-function New-SmokeEpub([string]$Path) {
+function New-SmokeEpub([string]$Path, [bool]$Japanese = $false) {
     $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::CreateNew)
     try {
         $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create, $true)
         try {
             $files = [ordered]@{
                 'META-INF/container.xml' = '<container><rootfiles><rootfile full-path="OPS/package.opf"/></rootfiles></container>'
-                'OPS/package.opf' = '<package><metadata><title>Windows EPUB Smoke</title><language>zh-CN</language></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="one"/></spine></package>'
-                'OPS/one.xhtml' = '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章</title></head><body><h1>第一章</h1><p>她正在<ruby>读书<rt>どくしょ</rt></ruby>。</p></body></html>'
+                'OPS/package.opf' = if ($Japanese) { '<package><metadata><title>Windows EPUB Smoke</title><language>ja</language></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="one"/></spine></package>' } else { '<package><metadata><title>Windows EPUB Smoke</title><language>zh-CN</language></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="one"/></spine></package>' }
+                'OPS/one.xhtml' = if ($Japanese) { '<html xmlns="http://www.w3.org/1999/xhtml" lang="ja"><head><title>第一章</title></head><body><h1>第一章</h1><p>彼女は学校で本を読んでいます。</p></body></html>' } else { '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章</title></head><body><h1>第一章</h1><p>她正在<ruby>读书<rt>どくしょ</rt></ruby>。</p></body></html>' }
             }
             foreach ($pair in $files.GetEnumerator()) {
                 $writer = [System.IO.StreamWriter]::new($archive.CreateEntry($pair.Key).Open(), [System.Text.UTF8Encoding]::new($false))
@@ -71,14 +72,15 @@ try {
         Invoke-AppSmoke $exe $result @() 'WinUI + shared Reader Bridge'
         $epub = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.epub" -f [guid]::NewGuid())
         try {
-            New-SmokeEpub $epub
+            New-SmokeEpub $epub $FuriganaSmoke
             $epubResult = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.json" -f [guid]::NewGuid())
             $epubArguments = @('--open', ('"{0}"' -f $epub), '--smoke-selection')
             if ($PopupSmoke) { $epubArguments += '--smoke-popup' }
+            if ($FuriganaSmoke) { $epubArguments += '--smoke-furigana' }
             if ($VocabularySmoke) { $epubArguments += '--smoke-word' }
             elseif ($DeepSmoke) { $epubArguments += @('--smoke-inference', '--smoke-deep') }
             elseif ($OllamaSmoke) { $epubArguments += '--smoke-inference' }
-            $label = $VocabularySmoke ? 'EPUB selection and local Ollama vocabulary inference' : ($DeepSmoke ? 'EPUB selection and local Ollama deep analysis' : ($OllamaSmoke ? 'EPUB selection and local Ollama inference' : ($PopupSmoke ? 'EPUB selection and popup explanation panel' : 'EPUB selection and explanation panel')))
+            $label = $FuriganaSmoke ? 'EPUB local Japanese furigana' : ($VocabularySmoke ? 'EPUB selection and local Ollama vocabulary inference' : ($DeepSmoke ? 'EPUB selection and local Ollama deep analysis' : ($OllamaSmoke ? 'EPUB selection and local Ollama inference' : ($PopupSmoke ? 'EPUB selection and popup explanation panel' : 'EPUB selection and explanation panel'))))
             Invoke-AppSmoke $exe $epubResult $epubArguments $label
         }
         finally { if (Test-Path $epub) { Remove-Item -LiteralPath $epub } }

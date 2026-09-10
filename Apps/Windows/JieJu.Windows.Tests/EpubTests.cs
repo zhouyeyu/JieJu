@@ -1,5 +1,7 @@
 using System.IO.Compression;
 using System.Text;
+using System.Xml.Linq;
+using JieJu.Domain;
 using JieJu.Windows.Infrastructure;
 using Xunit;
 
@@ -64,6 +66,61 @@ public sealed class EpubTests
     [Fact]
     public void InvalidXmlCannotExpandExternalEntities() => Assert.ThrowsAny<Exception>(() => EpubBook.ParseXml(Encoding.UTF8.GetBytes("<!DOCTYPE a [<!ENTITY x SYSTEM 'file:///private'>]><a>&x;</a>")));
 
+    [Fact]
+    public void GeneratesRubyOnlyForJapaneseTextAndKeepsExistingRuby()
+    {
+        var document = XDocument.Parse("<html lang=\"ja\"><head><title>本</title></head><body><p>彼女は本を読む。</p><p><ruby>今日<rt>きょう</rt></ruby></p><script>学校</script></body></html>");
+        var morphology = new StubMorphology(new Dictionary<string, JapaneseToken[]>
+        {
+            ["彼女は本を読む。"] = [Token("彼女", "かのじょ"), Token("は", "は"), Token("本", "ほん"), Token("を", "を"), Token("読む", "よむ"), Token("。", "。")]
+        });
+
+        Assert.True(EpubFuriganaAnnotator.Annotate(document, "ja", morphology));
+        var generated = document.Descendants("ruby").Where(element => (string?)element.Attribute("data-jieju-generated") == "true").ToArray();
+        Assert.Equal(["彼女", "本", "読む"], generated.Select(element => ((XText)element.FirstNode!).Value));
+        Assert.Single(document.Descendants("rt"), element => element.Value == "きょう");
+        Assert.Equal("学校", document.Descendants("script").Single().Value);
+    }
+
+    [Fact]
+    public void SkipsAmbiguousReadingsAndNonJapaneseChapters()
+    {
+        var ambiguous = XDocument.Parse("<html lang=\"ja\"><body><p>今日 今日</p></body></html>");
+        var morphology = new StubMorphology(new Dictionary<string, JapaneseToken[]>
+        {
+            ["今日 今日"] = [Token("今日", "きょう"), Token("今日", "こんにち")]
+        });
+        Assert.False(EpubFuriganaAnnotator.Annotate(ambiguous, "ja", morphology));
+        Assert.Empty(ambiguous.Descendants("ruby"));
+
+        var chinese = XDocument.Parse("<html lang=\"zh-CN\"><body><p>今天学习中文，也引用日本語。</p></body></html>");
+        Assert.False(EpubFuriganaAnnotator.Annotate(chinese, "zh-CN", morphology));
+    }
+
+    [Fact]
+    public void StrongJapaneseTextOverridesIncorrectEnglishMetadata()
+    {
+        Assert.True(EpubFuriganaAnnotator.IsJapaneseChapter("en", "en", "彼女は東京の学校で日本語を勉強していました。明日も先生と本を読みます。"));
+        Assert.False(EpubFuriganaAnnotator.IsJapaneseChapter("en", "en", "This English text only quotes 日本語 once."));
+    }
+
+    [Fact]
+    public void RenderedJapaneseChapterContainsLocalDictionaryRuby()
+    {
+        WithBook((_, files) =>
+        {
+            files["OPS/package.opf"] = files["OPS/package.opf"].Replace("<language>en</language>", "<language>ja</language>");
+            files["OPS/first.xhtml"] = "<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"ja\"><head><title>読書</title></head><body><p>彼女は本を読みます。</p></body></html>";
+        }, path =>
+        {
+            using var morphology = new MeCabJapaneseMorphology();
+            var html = Encoding.UTF8.GetString(EpubBook.Open(path).RenderChapter(0, morphology));
+            Assert.Contains("data-jieju-generated=\"true\"", html);
+            Assert.Contains("<rt>かのじょ</rt>", html);
+            Assert.Contains("<rt>ほん</rt>", html);
+        });
+    }
+
     private static void WithBook(Action<string, Dictionary<string, string>>? modify, Action<string> assertion)
     {
         var path = Path.Combine(Path.GetTempPath(), "jieju-test-" + Guid.NewGuid() + ".epub");
@@ -85,4 +142,12 @@ public sealed class EpubTests
         ["OPS/second.xhtml"] = "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>The next page</title></head><body><h1>The next page</h1><p>Every page offers another chance to understand.</p></body></html>",
         ["private.txt"] = "not declared"
     };
+
+    private static JapaneseToken Token(string surface, string reading) => new(surface, reading, surface, "noun", false);
+
+    private sealed class StubMorphology(Dictionary<string, JapaneseToken[]> values) : IJapaneseMorphology
+    {
+        public IReadOnlyList<JapaneseToken> Tokenize(string text) => values.GetValueOrDefault(text, []);
+        public IReadOnlyList<JapaneseReadingSegment> ReadingSegments(string text) => [];
+    }
 }

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
+using JieJu.Domain;
 
 namespace JieJu.Windows.Infrastructure;
 
@@ -114,11 +115,12 @@ public sealed class EpubBook
         return XDocument.Load(reader, LoadOptions.PreserveWhitespace);
     }
 
-    public byte[] RenderChapter(int index)
+    public byte[] RenderChapter(int index, IJapaneseMorphology? japaneseMorphology = null)
     {
         var chapter = Chapters[index];
         var document = ParseXml(Resources[chapter.Href].Bytes);
         foreach (var element in document.Descendants().Where(e => e.Name.LocalName is "script" or "iframe" or "object" or "embed" or "base" or "form" or "meta").ToArray()) element.Remove();
+        if (japaneseMorphology is not null) EpubFuriganaAnnotator.Annotate(document, Language, japaneseMorphology);
         var html = document.Root ?? throw new InvalidDataException("章节为空。");
         foreach (var attribute in html.DescendantsAndSelf().Attributes().Where(a => a.Name.LocalName.StartsWith("on", StringComparison.OrdinalIgnoreCase)).ToArray()) attribute.Remove();
         var ns = html.Name.Namespace;

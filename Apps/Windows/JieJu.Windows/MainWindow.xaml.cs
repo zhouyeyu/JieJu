@@ -17,6 +17,7 @@ public sealed partial class MainWindow : Window
     private readonly bool smokeWord;
     private readonly bool smokeDeep;
     private readonly bool smokePopup;
+    private readonly bool smokeFurigana;
     private readonly DeviceStateStore deviceStore;
     private readonly ILearningLibraryStore libraryStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
@@ -47,6 +48,7 @@ public sealed partial class MainWindow : Window
         smokeWord = arguments.Contains("--smoke-word");
         smokeDeep = arguments.Contains("--smoke-deep");
         smokePopup = arguments.Contains("--smoke-popup");
+        smokeFurigana = arguments.Contains("--smoke-furigana");
         deviceStore = new DeviceStateStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         libraryStore = new JsonLearningLibraryStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         try { device = deviceStore.Load(); }
@@ -118,7 +120,13 @@ public sealed partial class MainWindow : Window
                             Status.Text = book is null ? "选择一本 EPUB，开始阅读。" : $"第 {chapterIndex + 1} / {book.Chapters.Count} 章";
                             ApplyReadingSettings();
                             if (book is not null) Send("restoreLocation", new { locator = new EpubLocator(book.Chapters[chapterIndex].Href, TextAnchor: JsonSerializer.Serialize(new { progress = pendingProgress })) });
-                            if (smokeSelection && book is not null)
+                            if (smokeFurigana && book is not null)
+                            {
+                                var json = await core.ExecuteScriptAsync("document.querySelector('ruby[data-jieju-generated=\\\"true\\\"] rt')?.textContent || ''");
+                                var reading = JsonSerializer.Deserialize<string>(json) ?? "";
+                                FinishSmoke(reading.Length > 0, reading.Length > 0 ? "Generated local furigana: " + reading : "No generated furigana found");
+                            }
+                            else if (smokeSelection && book is not null)
                                 await core.ExecuteScriptAsync($"const p=document.querySelector('{(smokeWord ? "p ruby" : "p")}');const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event('selectionchange'));");
                             else FinishSmoke(true, environment.BrowserVersionString);
                             break;

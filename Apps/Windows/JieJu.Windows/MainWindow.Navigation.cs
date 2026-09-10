@@ -210,7 +210,7 @@ public sealed partial class MainWindow
         if (book is null || Reader.CoreWebView2 is null) return;
         PreviousChapterButton.IsEnabled = chapterIndex > 0; NextChapterButton.IsEnabled = chapterIndex + 1 < book.Chapters.Count;
         chapterNavigationPending = true;
-        Reader.NavigateToString(System.Text.Encoding.UTF8.GetString(book.RenderChapter(chapterIndex)));
+        Reader.NavigateToString(System.Text.Encoding.UTF8.GetString(book.RenderChapter(chapterIndex, japaneseMorphology)));
     }
     private void ChapterPicker_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
