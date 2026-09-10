@@ -248,14 +248,16 @@ public sealed partial class MainWindow
         ThemePicker.SelectedIndex = Array.IndexOf(new[] { "paper", "night", "sepia", "sage" }, s.Theme);
         FontSlider.Value = s.FontSize; LineSlider.Value = s.LineHeight; MarginSlider.Value = s.HorizontalMargin;
         RubyToggle.IsOn = s.ShowsFurigana; OllamaAddress.Text = s.OllamaUrl; ModelName.Text = s.Model; TargetLanguage.Text = s.ExplanationLanguage;
+        ExplanationPresentationPicker.SelectedIndex = s.ExplanationPresentation == "popup" ? 1 : 0;
     }
     private void SaveSettings_Click(object sender, RoutedEventArgs args)
     {
         if (!Uri.TryCreate(OllamaAddress.Text.Trim(), UriKind.Absolute, out var address) || address.Scheme is not ("http" or "https") || string.IsNullOrWhiteSpace(ModelName.Text) || string.IsNullOrWhiteSpace(TargetLanguage.Text))
         { SettingsStatus.Text = "请输入有效的 HTTP 服务地址、模型名和解释语言。"; return; }
         var settings = DeviceStateStore.Normalize(new ReadingSettings(FontSlider.Value, LineSlider.Value, MarginSlider.Value,
-            ((ComboBoxItem)ThemePicker.SelectedItem).Tag.ToString()!, RubyToggle.IsOn, address.ToString().TrimEnd('/'), ModelName.Text.Trim(), TargetLanguage.Text.Trim()));
-        try { var next = device with { Settings = settings }; deviceStore.Save(next); device = next; ApplyReadingSettings(); SettingsStatus.Text = "设置已保存，当前阅读会话继续保留。"; }
+            ((ComboBoxItem)ThemePicker.SelectedItem).Tag.ToString()!, RubyToggle.IsOn, address.ToString().TrimEnd('/'), ModelName.Text.Trim(), TargetLanguage.Text.Trim(),
+            ((ComboBoxItem)ExplanationPresentationPicker.SelectedItem).Tag.ToString()!));
+        try { var next = device with { Settings = settings }; deviceStore.Save(next); device = next; ApplyReadingSettings(); if (ExplanationPane.Visibility == Visibility.Visible) PresentExplanationPane(); SettingsStatus.Text = "设置已保存，当前阅读会话继续保留。"; }
         catch (Exception e) { SettingsStatus.Text = "设置保存失败：" + e.Message; }
     }
     private async void CheckConnection_Click(object sender, RoutedEventArgs args)

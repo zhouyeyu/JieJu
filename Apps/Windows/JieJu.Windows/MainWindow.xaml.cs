@@ -15,6 +15,8 @@ public sealed partial class MainWindow : Window
     private readonly bool smokeSelection;
     private readonly bool smokeInference;
     private readonly bool smokeWord;
+    private readonly bool smokeDeep;
+    private readonly bool smokePopup;
     private readonly DeviceStateStore deviceStore;
     private readonly ILearningLibraryStore libraryStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
@@ -41,10 +43,13 @@ public sealed partial class MainWindow : Window
         smokeSelection = arguments.Contains("--smoke-selection");
         smokeInference = arguments.Contains("--smoke-inference");
         smokeWord = arguments.Contains("--smoke-word");
+        smokeDeep = arguments.Contains("--smoke-deep");
+        smokePopup = arguments.Contains("--smoke-popup");
         deviceStore = new DeviceStateStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         libraryStore = new JsonLearningLibraryStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         try { device = deviceStore.Load(); }
         catch (Exception e) { Status.Text = "无法读取设置：" + e.Message; }
+        if (smokePopup) device = device with { Settings = device.Settings with { ExplanationPresentation = "popup" } };
         LoadSettingsControls(); RefreshRecentBooks();
         Navigation.SelectedItem = Navigation.MenuItems[0];
         Closed += (_, _) => { closed = true; Reader.Close(); };

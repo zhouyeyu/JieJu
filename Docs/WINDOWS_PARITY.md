@@ -24,7 +24,7 @@
 
 - [ ] `WIN-301` EPUB 分页、窗口/字体重排、稳定正文锚点；逐模块迁入 Shared/ReaderWeb
 - [ ] `WIN-302` PDF.js 阅读、页码、选区、位置恢复与来源跳转
-- [ ] `WIN-303` 深入句法分析与侧栏/弹窗解释方式
+- [x] `WIN-303` 深入句法分析与侧栏/弹窗解释方式（日语本地词形部分归入 `WIN-305`）
 - [ ] `WIN-304` OpenAI-compatible Provider、SSE 与 Windows Credential Manager
 - [ ] `WIN-305` 本地日语形态分析和自动假名注入
 - [ ] `WIN-306` 固定 EPUB/PDF 的端到端 UI 回归、可访问性、发布包

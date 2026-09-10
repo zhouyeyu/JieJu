@@ -7,7 +7,7 @@ using JieJu.Domain;
 
 namespace JieJu.Windows.Infrastructure;
 
-public sealed class OllamaReadingAI(HttpClient client, string address, string model) : IStreamingReadingAI
+public sealed class OllamaReadingAI(HttpClient client, string address, string model) : IStreamingReadingAI, IDeepReadingAI
 {
     private const string SystemPrompt = """
         You are a language tutor. Analyze targetText only. Context is reference only.
@@ -54,6 +54,21 @@ public sealed class OllamaReadingAI(HttpClient client, string address, string mo
         yield return new ExplanationProgress(generated, result);
     }
 
+    public async Task<DeepAnalysis> AnalyzeDeepAsync(ExplanationRequest request, CancellationToken cancellationToken = default)
+    {
+        var valid = ExplanationValidation.Normalize(request);
+        if (!Uri.TryCreate(address.TrimEnd('/') + "/api/chat", UriKind.Absolute, out var endpoint) || endpoint.Scheme is not ("http" or "https"))
+            throw new ArgumentException("Ollama 服务地址无效。");
+        async Task<string> Complete(bool repair)
+        {
+            var generated = "";
+            await foreach (var value in GenerateAsync(endpoint, DeepPayload(valid, repair), cancellationToken)) generated = value;
+            return generated;
+        }
+        try { return DeepAnalysisValidation.Parse(await Complete(false), valid); }
+        catch (JsonException) { return DeepAnalysisValidation.Parse(await Complete(true), valid); }
+    }
+
     private async IAsyncEnumerable<string> GenerateAsync(Uri endpoint, object payload, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, endpoint) { Content = JsonContent.Create(payload) };
@@ -85,6 +100,19 @@ public sealed class OllamaReadingAI(HttpClient client, string address, string mo
         stream = true, format = Schema, options = new { temperature = 0, num_predict = 350 }
     };
 
+    private object DeepPayload(ExplanationRequest request, bool repair) => new
+    {
+        model,
+        messages = new[]
+        {
+            new { role = "system", content = "You are a rigorous syntax tutor. Analyze targetText only. Copy every components.text, non-empty modifies, clauses.text and grammarPoints.text exactly from targetText. Explain sentence type, pattern, roles, relationships and interpretation in explanationLanguage. Use empty arrays when uncertain. Return JSON only." },
+            new { role = "user", content = repair
+                ? $"Start over. Analyze only: {request.TargetText}\nAll explanations must use {request.ExplanationLanguage}. Every analyzed text fragment must be copied exactly from targetText. Use fewer items when uncertain. Return JSON only."
+                : $"Deeply analyze targetText syntax. Request:\n{JsonSerializer.Serialize(request, PromptJson)}" }
+        },
+        stream = true, format = DeepSchema, options = new { temperature = 0, num_predict = 700 }
+    };
+
     private static readonly object Schema = new
     {
         type = "object", additionalProperties = false,
@@ -95,6 +123,21 @@ public sealed class OllamaReadingAI(HttpClient client, string address, string mo
             keyPhrases = new { type = "array", maxItems = 4, items = new { type = "object", additionalProperties = false, properties = new { text = new { type = "string" }, meaning = new { type = "string" } }, required = new[] { "text", "meaning" } } }
         },
         required = new[] { "translation", "sentenceCore", "grammarPoints", "keyPhrases" }
+    };
+
+    private static readonly object DeepSchema = new
+    {
+        type = "object", additionalProperties = false,
+        properties = new
+        {
+            sentenceType = new { type = "string" }, sentencePattern = new { type = "string" },
+            components = new { type = "array", maxItems = 8, items = new { type = "object", additionalProperties = false, properties = new { text = new { type = "string" }, role = new { type = "string" }, explanation = new { type = "string" }, modifies = new { type = new[] { "string", "null" } } }, required = new[] { "text", "role", "explanation" } } },
+            clauses = new { type = "array", maxItems = 6, items = new { type = "object", additionalProperties = false, properties = new { text = new { type = "string" }, type = new { type = "string" }, function = new { type = "string" }, explanation = new { type = "string" } }, required = new[] { "text", "type", "function", "explanation" } } },
+            grammarPoints = new { type = "array", maxItems = 6, items = new { type = "object", additionalProperties = false, properties = new { text = new { type = "string" }, explanation = new { type = "string" } }, required = new[] { "text", "explanation" } } },
+            interpretation = new { type = "string" },
+            japaneseWords = new { type = new[] { "array", "null" }, maxItems = 12, items = new { type = "object", additionalProperties = false, properties = new { text = new { type = "string" }, baseForm = new { type = "string" }, reading = new { type = "string" }, inflectionType = new { type = "string" }, grammaticalFunction = new { type = "string" } }, required = new[] { "text", "baseForm", "reading", "inflectionType", "grammaticalFunction" } } }
+        },
+        required = new[] { "sentenceType", "sentencePattern", "components", "clauses", "grammarPoints", "interpretation" }
     };
 
     private static readonly JsonSerializerOptions PromptJson = new(ContractJson.Options)

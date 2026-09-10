@@ -72,6 +72,27 @@ public sealed class ExplanationTests
         Assert.Equal(1, handler.RequestCount);
     }
 
+    [Fact]
+    public async Task OllamaClientReturnsValidatedDeepAnalysis()
+    {
+        var content = "{\"sentenceType\":\"陈述句\",\"sentencePattern\":\"SVO\",\"components\":[{\"text\":\"She\",\"role\":\"主语\",\"explanation\":\"动作执行者\",\"modifies\":null}],\"clauses\":[],\"grammarPoints\":[],\"interpretation\":\"描述她打开书的动作。\",\"japaneseWords\":null}";
+        var line = "{\"message\":{\"content\":" + JsonSerializer.Serialize(content) + "},\"done\":true}\n";
+        var handler = new StubHandler(line); using var http = new HttpClient(handler);
+
+        var result = await new OllamaReadingAI(http, "http://127.0.0.1:11434", "test-model").AnalyzeDeepAsync(Request);
+
+        Assert.Equal("SVO", result.SentencePattern);
+        Assert.Equal("She", Assert.Single(result.Components).Text);
+        Assert.Contains("\"num_predict\":700", handler.Body);
+    }
+
+    [Fact]
+    public void DeepAnalysisDropsComponentsCopiedFromContext()
+    {
+        const string json = "{\"sentenceType\":\"陈述句\",\"sentencePattern\":\"SVO\",\"components\":[{\"text\":\"Before\",\"role\":\"主语\",\"explanation\":\"越界\",\"modifies\":null}],\"clauses\":[],\"grammarPoints\":[],\"interpretation\":\"描述一个动作。\",\"japaneseWords\":null}";
+        Assert.Empty(DeepAnalysisValidation.Parse(json, ExplanationValidation.Normalize(Request)).Components);
+    }
+
     private sealed class StubHandler(params string[] responses) : HttpMessageHandler
     {
         public string Body { get; private set; } = "";

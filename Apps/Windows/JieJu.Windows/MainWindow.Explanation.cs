@@ -40,9 +40,10 @@ public sealed partial class MainWindow
         BoundarySuggestionPanel.Visibility = boundarySuggestion is null ? Visibility.Collapsed : Visibility.Visible;
         BoundarySuggestionText.Text = boundarySuggestion is null ? "" : $"选区可能不完整，建议按“{boundarySuggestion.SuggestedText}”解释。";
         ExplanationContent.Children.Clear(); ExplanationStatus.Text = "准备好后，点击“解释这段”。";
+        DeepAnalysisContent.Children.Clear(); AnalyzeDeepButton.Visibility = DeepAnalysisStatus.Visibility = Visibility.Collapsed;
         SaveExplanationButton.Visibility = Visibility.Collapsed; SaveExplanationButton.IsEnabled = false;
         SaveVocabularyButton.Visibility = Visibility.Collapsed; SaveVocabularyButton.IsEnabled = false;
-        ExplanationColumn.Width = new GridLength(360); ExplanationPane.Visibility = Visibility.Visible;
+        PresentExplanationPane();
         ExplainButton.IsEnabled = true;
         if (smokeWord) ExplainWord_Click(this, new RoutedEventArgs());
         else if (smokeInference) ExplainSelection_Click(this, new RoutedEventArgs());
@@ -142,7 +143,50 @@ public sealed partial class MainWindow
         foreach (var point in result.GrammarPoints) AddSection(point.Text, point.Explanation);
         foreach (var phrase in result.KeyPhrases) AddSection(phrase.Text, phrase.Meaning);
         SaveExplanationButton.Visibility = Visibility.Visible; SaveExplanationButton.IsEnabled = true;
-        if (smokeInference) FinishSmoke(true, "Local Ollama: " + result.Translation);
+        AnalyzeDeepButton.Visibility = Visibility.Visible; AnalyzeDeepButton.IsEnabled = true;
+        if (smokeDeep) AnalyzeDeep_Click(this, new RoutedEventArgs());
+        else if (smokeInference) FinishSmoke(true, "Local Ollama: " + result.Translation);
+    }
+
+    private async void AnalyzeDeep_Click(object sender, RoutedEventArgs args)
+    {
+        if (selectionRequest is null) return;
+        explanationCancellation?.Cancel(); explanationCancellation = new CancellationTokenSource();
+        var provider = readingAIFactory(device.Settings);
+        if (provider is not IDeepReadingAI deep)
+        {
+            DeepAnalysisStatus.Text = "当前解释服务不支持深入解析。"; DeepAnalysisStatus.Visibility = Visibility.Visible; return;
+        }
+        AnalyzeDeepButton.IsEnabled = false; DeepAnalysisContent.Children.Clear();
+        DeepAnalysisStatus.Text = "正在深入分析句式、成分和从句…"; DeepAnalysisStatus.Visibility = Visibility.Visible;
+        try
+        {
+            var result = await deep.AnalyzeDeepAsync(selectionRequest, explanationCancellation.Token);
+            ShowDeepAnalysis(result); DeepAnalysisStatus.Text = "深入解析完成";
+        }
+        catch (OperationCanceledException) { DeepAnalysisStatus.Text = "已停止深入解析。"; }
+        catch (Exception error) { DeepAnalysisStatus.Text = "深入解析失败：" + error.Message; }
+        finally { AnalyzeDeepButton.IsEnabled = selectionRequest is not null; }
+    }
+
+    private void ShowDeepAnalysis(DeepAnalysis result)
+    {
+        AddDeepSection("句子类型", result.SentenceType);
+        AddDeepSection("句型结构", result.SentencePattern);
+        foreach (var component in result.Components)
+            AddDeepSection($"{component.Text} · {component.Role}", component.Explanation + (string.IsNullOrWhiteSpace(component.Modifies) ? "" : $"\n修饰：{component.Modifies}"));
+        foreach (var clause in result.Clauses) AddDeepSection($"{clause.Text} · {clause.Type}", $"{clause.Function}\n{clause.Explanation}");
+        foreach (var point in result.GrammarPoints) AddDeepSection("深度语法 · " + point.Text, point.Explanation);
+        AddDeepSection("整句理解", result.Interpretation);
+        if (smokeDeep) FinishSmoke(true, "Local Ollama deep: " + result.SentencePattern);
+    }
+
+    private void AddDeepSection(string title, string body)
+    {
+        var card = new StackPanel { Spacing = 5, Padding = new Thickness(12) };
+        card.Children.Add(new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+        card.Children.Add(new TextBlock { Text = body, Opacity = .75, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
+        DeepAnalysisContent.Children.Add(card);
     }
 
     private void ShowExplanationPreview(ExplanationPreview preview)
@@ -220,12 +264,29 @@ public sealed partial class MainWindow
     }
 
     private void CancelExplanation_Click(object sender, RoutedEventArgs args) => explanationCancellation?.Cancel();
+    private void PresentExplanationPane()
+    {
+        ExplanationPane.Visibility = Visibility.Visible;
+        if (device.Settings.ExplanationPresentation == "popup")
+        {
+            ExplanationColumn.Width = new GridLength(0); Grid.SetColumn(ExplanationPane, 0); Canvas.SetZIndex(ExplanationPane, 10);
+            ExplanationPane.Width = 420; ExplanationPane.MaxHeight = 700; ExplanationPane.HorizontalAlignment = HorizontalAlignment.Right;
+            ExplanationPane.VerticalAlignment = VerticalAlignment.Top; ExplanationPane.Margin = new Thickness(24);
+        }
+        else
+        {
+            ExplanationColumn.Width = new GridLength(360); Grid.SetColumn(ExplanationPane, 1); Canvas.SetZIndex(ExplanationPane, 0);
+            ExplanationPane.Width = double.NaN; ExplanationPane.MaxHeight = double.PositiveInfinity; ExplanationPane.HorizontalAlignment = HorizontalAlignment.Stretch;
+            ExplanationPane.VerticalAlignment = VerticalAlignment.Stretch; ExplanationPane.Margin = new Thickness(0);
+        }
+    }
     private void CloseExplanation_Click(object sender, RoutedEventArgs args)
     {
         explanationCancellation?.Cancel(); selectionRequest = null; completedExplanation = null; completedWordExplanation = null; selectionLocator = null; selectionSentence = ""; boundarySuggestion = null;
         BoundarySuggestionPanel.Visibility = Visibility.Collapsed;
         SaveExplanationButton.Visibility = Visibility.Collapsed; SaveExplanationButton.IsEnabled = false;
         SaveVocabularyButton.Visibility = Visibility.Collapsed; SaveVocabularyButton.IsEnabled = false;
+        AnalyzeDeepButton.Visibility = DeepAnalysisStatus.Visibility = Visibility.Collapsed; DeepAnalysisContent.Children.Clear();
         ExplanationPane.Visibility = Visibility.Collapsed; ExplanationColumn.Width = new GridLength(0); Send("clearSelection", new { });
     }
 }

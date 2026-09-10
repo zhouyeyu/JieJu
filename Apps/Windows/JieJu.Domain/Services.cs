@@ -13,6 +13,11 @@ public interface IStreamingReadingAI : IReadingAI
     IAsyncEnumerable<ExplanationProgress> ExplainStreamAsync(ExplanationRequest request, CancellationToken cancellationToken = default);
 }
 
+public interface IDeepReadingAI
+{
+    Task<DeepAnalysis> AnalyzeDeepAsync(ExplanationRequest request, CancellationToken cancellationToken = default);
+}
+
 public interface IVocabularyAI
 {
     Task<WordExplanation> ExplainWordAsync(WordExplanationRequest request, CancellationToken cancellationToken = default);

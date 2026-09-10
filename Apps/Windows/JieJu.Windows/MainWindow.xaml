@@ -29,6 +29,9 @@
        <ProgressRing x:Name="ExplanationProgressRing" IsActive="False" Width="22" Height="22" HorizontalAlignment="Left"/>
        <TextBlock x:Name="ExplanationStatus" Text="选择后可开始解释。" Opacity="0.65" TextWrapping="Wrap"/>
        <StackPanel x:Name="ExplanationContent" Spacing="14"/>
+       <Button x:Name="AnalyzeDeepButton" Content="深入解析句式与结构" Click="AnalyzeDeep_Click" HorizontalAlignment="Left" Visibility="Collapsed"/>
+       <TextBlock x:Name="DeepAnalysisStatus" TextWrapping="Wrap" Opacity="0.65" Visibility="Collapsed"/>
+       <StackPanel x:Name="DeepAnalysisContent" Spacing="14"/>
       </StackPanel></ScrollViewer>
      </Border>
      <ScrollViewer x:Name="WelcomePanel" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="36"><StackPanel MaxWidth="640" HorizontalAlignment="Center" Spacing="24" Margin="0,64,0,24">
@@ -54,6 +57,7 @@
      <ToggleSwitch x:Name="RubyToggle" Header="日语假名" OnContent="显示原书注音" OffContent="隐藏注音"/>
      <TextBlock Text="此阶段支持原书已有的假名注音；自动注音将在后续加入。" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
      <TextBlock Text="本地 AI" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,0"/>
+     <ComboBox x:Name="ExplanationPresentationPicker" Header="解释显示方式" SelectedIndex="0" HorizontalAlignment="Stretch"><ComboBoxItem Content="侧边栏" Tag="sidebar"/><ComboBoxItem Content="弹窗" Tag="popup"/></ComboBox>
      <TextBox x:Name="OllamaAddress" Header="Ollama 服务地址" Text="http://127.0.0.1:11434"/><TextBox x:Name="ModelName" Header="模型" Text="qwen2.5:1.5b-instruct"/><TextBox x:Name="TargetLanguage" Header="解释语言" Text="Chinese"/>
      <StackPanel Orientation="Horizontal" Spacing="10"><Button Content="保存设置" Click="SaveSettings_Click" Style="{StaticResource AccentButtonStyle}"/><Button Content="检查模型连接" Click="CheckConnection_Click"/></StackPanel><TextBlock x:Name="SettingsStatus" TextWrapping="Wrap" Opacity="0.7"/>
    </StackPanel></ScrollViewer>

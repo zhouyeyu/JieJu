@@ -4,7 +4,7 @@
 
 - 日期：2026-09-10
 - Agent：Codex
-- 阶段：Windows `WEXP-101` 渐进解释完成；下一步执行 `WEXP-102` 深入解析
+- 阶段：Windows `WEXP-101`～`WEXP-103` 完成；下一步执行 `WJA-101` 本地日语形态分析
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -21,7 +21,9 @@
   等待 `WIN-305` 本地形态分析后启用
 - 渐进解释：翻译、主干、语法和重点表达随 Ollama NDJSON 中完整字段逐步显示，预览继续过滤越界
   引用，最终校验前不能保存
-- 验证：Solution 0 警告；C# 68 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+- 深入解析/显示：支持句型、成分、从句、深度语法和整句理解，侧边栏/弹窗选择持久化且不重建
+  Reader；日语本地词形仍等待 `WJA-101`
+- 验证：Solution 0 警告；C# 71 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
   `152.0.4191.66` 完成真实解句和词语解释冒烟
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
@@ -33,7 +35,7 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：只做 `WEXP-102` 深入句法分析，再独立补侧栏/弹窗解释方式
+- 下一步：只做 `WJA-101` Windows 本地日语形态分析和词典打包，不使用模型读音冒充真值
 
 ### 2026-09-09 macOS 基线交接
 

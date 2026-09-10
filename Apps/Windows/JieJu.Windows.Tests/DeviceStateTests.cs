@@ -38,5 +38,13 @@ public class DeviceStateTests
         var settings = DeviceStateStore.Normalize(new(double.NaN, 200, -4, "invalid"));
         Assert.Equal(18, settings.FontSize); Assert.Equal(2.5, settings.LineHeight);
         Assert.Equal(20, settings.HorizontalMargin); Assert.Equal("paper", settings.Theme);
+        Assert.Equal("sidebar", settings.ExplanationPresentation);
+    }
+
+    [Fact]
+    public void ExplanationPresentationIsValidatedAndPersisted()
+    {
+        Assert.Equal("popup", DeviceStateStore.Normalize(new(ExplanationPresentation: "popup")).ExplanationPresentation);
+        Assert.Equal("sidebar", DeviceStateStore.Normalize(new(ExplanationPresentation: "floating-window")).ExplanationPresentation);
     }
 }
