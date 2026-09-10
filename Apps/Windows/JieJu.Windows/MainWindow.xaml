@@ -23,6 +23,7 @@
       <ScrollViewer><StackPanel Spacing="14">
        <Grid><TextBlock Text="解读" FontSize="20" FontWeight="SemiBold"/><Button HorizontalAlignment="Right" Content="关闭" Click="CloseExplanation_Click"/></Grid>
        <TextBlock x:Name="SelectedText" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+       <StackPanel x:Name="SelectedFurigana" Visibility="Collapsed" Spacing="4"/>
        <TextBlock x:Name="SelectionContext" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
        <StackPanel x:Name="BoundarySuggestionPanel" Visibility="Collapsed" Spacing="6"><TextBlock x:Name="BoundarySuggestionText" TextWrapping="Wrap" Opacity="0.7"/><Button x:Name="UseBoundarySuggestionButton" Content="使用完整词语" HorizontalAlignment="Left" Click="UseBoundarySuggestion_Click"/></StackPanel>
        <StackPanel Spacing="8"><StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="ExplainButton" Content="解释所选内容" Click="ExplainPrimary_Click" Style="{StaticResource AccentButtonStyle}"/><Button x:Name="ExplainWordButton" Content="按词语解释" Click="ExplainAlternative_Click"/></StackPanel><StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="SaveExplanationButton" Content="保存记录" Click="SaveExplanation_Click" IsEnabled="False" Visibility="Collapsed"/><Button x:Name="SaveVocabularyButton" Content="收藏生词" Click="SaveVocabulary_Click" IsEnabled="False" Visibility="Collapsed"/><Button x:Name="CancelExplanationButton" Content="停止" Click="CancelExplanation_Click" Visibility="Collapsed"/></StackPanel></StackPanel>
@@ -55,7 +56,7 @@
      <ComboBox x:Name="ThemePicker" Header="阅读主题" SelectedIndex="0" HorizontalAlignment="Stretch"><ComboBoxItem Content="白纸" Tag="paper"/><ComboBoxItem Content="夜间" Tag="night"/><ComboBoxItem Content="羊皮纸" Tag="sepia"/><ComboBoxItem Content="护眼绿" Tag="sage"/></ComboBox>
      <Slider x:Name="FontSlider" Header="正文字号" Minimum="12" Maximum="32" StepFrequency="1" Value="18"/><Slider x:Name="LineSlider" Header="行距" Minimum="1.2" Maximum="2.5" StepFrequency="0.05" Value="1.75"/><Slider x:Name="MarginSlider" Header="左右边距" Minimum="20" Maximum="120" StepFrequency="2" Value="54"/>
      <ToggleSwitch x:Name="RubyToggle" Header="日语假名" OnContent="显示汉字注音" OffContent="隐藏注音"/>
-     <TextBlock Text="此阶段支持原书已有的假名注音；自动注音将在后续加入。" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+     <TextBlock Text="开启后显示原书注音，并为确认是日语的正文和解释内容生成本地词典注音。" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
      <TextBlock Text="本地 AI" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,0"/>
      <ComboBox x:Name="ExplanationPresentationPicker" Header="解释显示方式" SelectedIndex="0" HorizontalAlignment="Stretch"><ComboBoxItem Content="侧边栏" Tag="sidebar"/><ComboBoxItem Content="弹窗" Tag="popup"/></ComboBox>
      <TextBox x:Name="OllamaAddress" Header="Ollama 服务地址" Text="http://127.0.0.1:11434"/><TextBox x:Name="ModelName" Header="模型" Text="qwen2.5:1.5b-instruct"/><TextBox x:Name="TargetLanguage" Header="解释语言" Text="Chinese"/>

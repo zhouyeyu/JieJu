@@ -7,7 +7,8 @@ param(
     [switch]$VocabularySmoke,
     [switch]$DeepSmoke,
     [switch]$PopupSmoke,
-    [switch]$FuriganaSmoke
+    [switch]$FuriganaSmoke,
+    [switch]$JapaneseDeepSmoke
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -72,15 +73,16 @@ try {
         Invoke-AppSmoke $exe $result @() 'WinUI + shared Reader Bridge'
         $epub = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.epub" -f [guid]::NewGuid())
         try {
-            New-SmokeEpub $epub $FuriganaSmoke
+            New-SmokeEpub $epub ($FuriganaSmoke -or $JapaneseDeepSmoke)
             $epubResult = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.json" -f [guid]::NewGuid())
             $epubArguments = @('--open', ('"{0}"' -f $epub), '--smoke-selection')
             if ($PopupSmoke) { $epubArguments += '--smoke-popup' }
             if ($FuriganaSmoke) { $epubArguments += '--smoke-furigana' }
+            if ($JapaneseDeepSmoke) { $epubArguments += @('--smoke-inference', '--smoke-deep') }
             if ($VocabularySmoke) { $epubArguments += '--smoke-word' }
             elseif ($DeepSmoke) { $epubArguments += @('--smoke-inference', '--smoke-deep') }
             elseif ($OllamaSmoke) { $epubArguments += '--smoke-inference' }
-            $label = $FuriganaSmoke ? 'EPUB local Japanese furigana' : ($VocabularySmoke ? 'EPUB selection and local Ollama vocabulary inference' : ($DeepSmoke ? 'EPUB selection and local Ollama deep analysis' : ($OllamaSmoke ? 'EPUB selection and local Ollama inference' : ($PopupSmoke ? 'EPUB selection and popup explanation panel' : 'EPUB selection and explanation panel'))))
+            $label = $FuriganaSmoke ? 'EPUB local Japanese furigana' : ($JapaneseDeepSmoke ? 'EPUB local Japanese deep analysis' : ($VocabularySmoke ? 'EPUB selection and local Ollama vocabulary inference' : ($DeepSmoke ? 'EPUB selection and local Ollama deep analysis' : ($OllamaSmoke ? 'EPUB selection and local Ollama inference' : ($PopupSmoke ? 'EPUB selection and popup explanation panel' : 'EPUB selection and explanation panel')))))
             Invoke-AppSmoke $exe $epubResult $epubArguments $label
         }
         finally { if (Test-Path $epub) { Remove-Item -LiteralPath $epub } }

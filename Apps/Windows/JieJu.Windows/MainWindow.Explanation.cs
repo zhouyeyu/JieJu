@@ -31,6 +31,7 @@ public sealed partial class MainWindow
         completedWordExplanation = null;
         selectionLocator = ReadLocator(payload);
         SelectedText.Text = selectionRequest.TargetText;
+        UpdateSelectedFurigana();
         selectionSentence = Read("containingSentence") is { Length: > 0 } sentence ? ExplanationValidation.Clean(sentence) : target;
         selectionKind = SelectionClassifier.Classify(target, selectionRequest.SourceLanguage);
         boundarySuggestion = SelectionClassifier.SuggestBoundary(target, selectionSentence, selectionRequest.SourceLanguage, japaneseMorphology);
@@ -69,6 +70,7 @@ public sealed partial class MainWindow
         if (selectionRequest is null || boundarySuggestion is null) return;
         selectionRequest = selectionRequest with { TargetText = boundarySuggestion.SuggestedText };
         SelectedText.Text = selectionRequest.TargetText;
+        UpdateSelectedFurigana();
         selectionKind = SelectionClassifier.Classify(selectionRequest.TargetText, selectionRequest.SourceLanguage);
         boundarySuggestion = null; BoundarySuggestionPanel.Visibility = Visibility.Collapsed;
         ExplainButton.Content = SelectionClassifier.ActionTitle(selectionKind);
@@ -126,7 +128,9 @@ public sealed partial class MainWindow
 
     private void ShowWordExplanation(WordExplanation result)
     {
-        AddSection(result.Reading is { Length: > 0 } ? $"{result.Lemma} · {result.Reading}" : result.Lemma, result.PartOfSpeech);
+        if (selectionRequest is not null && JapaneseLanguage.IsJapanese(selectionRequest.SourceLanguage, result.Surface) && device.Settings.ShowsFurigana)
+            AddJapaneseSection(ExplanationContent, result.Surface, $"原形：{result.Lemma}　词性：{result.PartOfSpeech}");
+        else AddSection(result.Reading is { Length: > 0 } ? $"{result.Lemma} · {result.Reading}" : result.Lemma, result.PartOfSpeech);
         AddSection("当前语境", result.ContextualMeaning);
         if (result.BriefMeaning != result.ContextualMeaning) AddSection("简明释义", result.BriefMeaning);
         if (!string.IsNullOrWhiteSpace(result.Inflection)) AddSection("词形", result.Inflection);
@@ -177,6 +181,13 @@ public sealed partial class MainWindow
             AddDeepSection($"{component.Text} · {component.Role}", component.Explanation + (string.IsNullOrWhiteSpace(component.Modifies) ? "" : $"\n修饰：{component.Modifies}"));
         foreach (var clause in result.Clauses) AddDeepSection($"{clause.Text} · {clause.Type}", $"{clause.Function}\n{clause.Explanation}");
         foreach (var point in result.GrammarPoints) AddDeepSection("深度语法 · " + point.Text, point.Explanation);
+        if (result.JapaneseWords is { Length: > 0 })
+        {
+            DeepAnalysisContent.Children.Add(new TextBlock { Text = "日语词形与读音（本地词典）", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 8, 0, 0) });
+            foreach (var word in result.JapaneseWords)
+                AddJapaneseWordSection(word);
+            DeepAnalysisContent.Children.Add(new TextBlock { Text = "读音、原形和词性来自本地 MeCab/IPADic，不依赖语言模型。", FontSize = 11, Opacity = .6, TextWrapping = TextWrapping.Wrap });
+        }
         AddDeepSection("整句理解", result.Interpretation);
         if (smokeDeep) FinishSmoke(true, "Local Ollama deep: " + result.SentencePattern);
     }
@@ -187,6 +198,73 @@ public sealed partial class MainWindow
         card.Children.Add(new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
         card.Children.Add(new TextBlock { Text = body, Opacity = .75, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
         DeepAnalysisContent.Children.Add(card);
+    }
+
+    private void UpdateSelectedFurigana()
+    {
+        SelectedFurigana.Children.Clear();
+        var show = selectionRequest is not null && device.Settings.ShowsFurigana &&
+            JapaneseLanguage.IsJapanese(selectionRequest.SourceLanguage, selectionRequest.TargetText);
+        SelectedText.Visibility = show ? Visibility.Collapsed : Visibility.Visible;
+        SelectedFurigana.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        if (show) SelectedFurigana.Children.Add(CreateFuriganaView(selectionRequest!.TargetText, 16));
+    }
+
+    private void AddJapaneseSection(StackPanel destination, string text, string body)
+    {
+        var card = new StackPanel { Spacing = 5, Padding = new Thickness(12) };
+        card.Children.Add(CreateFuriganaView(text, 17));
+        card.Children.Add(new TextBlock { Text = body, Opacity = .75, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
+        destination.Children.Add(card);
+    }
+
+    private void AddJapaneseWordSection(JapaneseWord word)
+    {
+        var card = new StackPanel { Spacing = 5, Padding = new Thickness(12) };
+        card.Children.Add(CreateFuriganaView(word.Text, 17));
+        card.Children.Add(new TextBlock { Text = $"原形：{word.BaseForm}　{word.GrammaticalFunction}\n{word.InflectionType}", Opacity = .75, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
+        var save = new Button { Content = "加入生词本", HorizontalAlignment = HorizontalAlignment.Left };
+        save.Click += async (_, _) => await SaveJapaneseWordAsync(word, save);
+        card.Children.Add(save); DeepAnalysisContent.Children.Add(card);
+    }
+
+    private async Task SaveJapaneseWordAsync(JapaneseWord word, Button button)
+    {
+        if (selectionRequest is null || book is null) return;
+        button.IsEnabled = false;
+        try
+        {
+            library = await libraryStore.LoadAsync();
+            var now = DateTimeOffset.UtcNow;
+            var entry = new VocabularyEntry(Guid.NewGuid(), selectionRequest.SourceLanguage, word.BaseForm, [word.Text],
+                [new VocabularySense(Guid.NewGuid(), word.GrammaticalFunction, selectionRequest.ExplanationLanguage)],
+                [new VocabularySource(Guid.NewGuid(), new Document(book.Id, book.FileName), selectionSentence, word.Text, now, Locator: selectionLocator)],
+                now, now, word.Reading, word.InflectionType);
+            library = LearningLibraryOperations.UpsertVocabulary(library, entry);
+            await libraryStore.SaveAsync(library);
+            button.Content = "已加入生词本";
+        }
+        catch (Exception error) { ShowError("无法收藏日语词形：" + error.Message); button.IsEnabled = true; }
+    }
+
+    private StackPanel CreateFuriganaView(string text, double fontSize)
+    {
+        var root = new StackPanel { Spacing = 5 };
+        var row = NewRow();
+        root.Children.Add(row);
+        var width = 0;
+        foreach (var segment in japaneseMorphology.ReadingSegments(text))
+        {
+            var length = Math.Max(1, segment.Surface.Length);
+            if (width > 0 && width + length > 18) { row = NewRow(); root.Children.Add(row); width = 0; }
+            var token = new StackPanel { Spacing = 0, VerticalAlignment = VerticalAlignment.Bottom };
+            token.Children.Add(new TextBlock { Text = segment.Reading ?? " ", FontSize = Math.Max(9, fontSize * .58), Opacity = segment.Reading is null ? 0 : .72, HorizontalAlignment = HorizontalAlignment.Center });
+            token.Children.Add(new TextBlock { Text = segment.Surface, FontSize = fontSize, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, IsTextSelectionEnabled = true });
+            row.Children.Add(token); width += length;
+        }
+        return root;
+
+        static StackPanel NewRow() => new() { Orientation = Orientation.Horizontal, Spacing = 1 };
     }
 
     private void ShowExplanationPreview(ExplanationPreview preview)

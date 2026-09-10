@@ -257,7 +257,7 @@ public sealed partial class MainWindow
         var settings = DeviceStateStore.Normalize(new ReadingSettings(FontSlider.Value, LineSlider.Value, MarginSlider.Value,
             ((ComboBoxItem)ThemePicker.SelectedItem).Tag.ToString()!, RubyToggle.IsOn, address.ToString().TrimEnd('/'), ModelName.Text.Trim(), TargetLanguage.Text.Trim(),
             ((ComboBoxItem)ExplanationPresentationPicker.SelectedItem).Tag.ToString()!));
-        try { var next = device with { Settings = settings }; deviceStore.Save(next); device = next; ApplyReadingSettings(); if (ExplanationPane.Visibility == Visibility.Visible) PresentExplanationPane(); SettingsStatus.Text = "设置已保存，当前阅读会话继续保留。"; }
+        try { var next = device with { Settings = settings }; deviceStore.Save(next); device = next; ApplyReadingSettings(); UpdateSelectedFurigana(); if (ExplanationPane.Visibility == Visibility.Visible) PresentExplanationPane(); SettingsStatus.Text = "设置已保存，当前阅读会话继续保留。"; }
         catch (Exception e) { SettingsStatus.Text = "设置保存失败：" + e.Message; }
     }
     private async void CheckConnection_Click(object sender, RoutedEventArgs args)

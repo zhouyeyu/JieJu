@@ -25,9 +25,19 @@ public sealed class MeCabJapaneseMorphology : IJapaneseMorphology, IDisposable
     public IReadOnlyList<JapaneseReadingSegment> ReadingSegments(string text)
     {
         var tokens = Tokenize(text);
-        return tokens.Select(token => new JapaneseReadingSegment(
-            token.Surface,
-            ContainsHan(token.Surface) && token.Reading.Length > 0 ? token.Reading : null)).ToArray();
+        var result = new List<JapaneseReadingSegment>();
+        var cursor = 0;
+        foreach (var token in tokens)
+        {
+            var position = text.IndexOf(token.Surface, cursor, StringComparison.Ordinal);
+            if (position < 0) continue;
+            if (position > cursor) result.Add(new JapaneseReadingSegment(text[cursor..position]));
+            result.Add(new JapaneseReadingSegment(token.Surface,
+                ContainsHan(token.Surface) && token.Reading.Length > 0 ? token.Reading : null));
+            cursor = position + token.Surface.Length;
+        }
+        if (cursor < text.Length) result.Add(new JapaneseReadingSegment(text[cursor..]));
+        return result;
     }
 
     private static JapaneseToken ToToken(MeCabNode node)

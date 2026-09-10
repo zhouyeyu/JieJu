@@ -12,7 +12,7 @@ public partial class App : Application
     {
         var japanese = new MeCabJapaneseMorphology();
         window = new MainWindow(
-            settings => new OllamaReadingAI(http, settings.OllamaUrl, settings.Model),
+            settings => new LocalJapaneseReadingAI(new OllamaReadingAI(http, settings.OllamaUrl, settings.Model), japanese),
             settings => new LocalJapaneseVocabularyAI(new OllamaVocabularyAI(http, settings.OllamaUrl, settings.Model), japanese),
             japanese);
         window.Activate();
