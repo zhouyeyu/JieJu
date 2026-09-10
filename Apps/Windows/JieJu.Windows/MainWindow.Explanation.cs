@@ -9,6 +9,8 @@ public sealed partial class MainWindow
 {
     private ExplanationRequest? selectionRequest;
     private Explanation? completedExplanation;
+    private WordExplanation? completedWordExplanation;
+    private string selectionSentence = "";
     private EpubLocator? selectionLocator;
     private CancellationTokenSource? explanationCancellation;
 
@@ -24,14 +26,18 @@ public sealed partial class MainWindow
             SourceLanguage = book?.Language ?? "Auto", ExplanationLanguage = device.Settings.ExplanationLanguage
         });
         completedExplanation = null;
+        completedWordExplanation = null;
         selectionLocator = ReadLocator(payload);
         SelectedText.Text = selectionRequest.TargetText;
-        SelectionContext.Text = Read("containingSentence") is { Length: > 0 } sentence && sentence != target ? "所在句：" + sentence : "";
+        selectionSentence = Read("containingSentence") is { Length: > 0 } sentence ? ExplanationValidation.Clean(sentence) : target;
+        SelectionContext.Text = selectionSentence != target ? "所在句：" + selectionSentence : "";
         ExplanationContent.Children.Clear(); ExplanationStatus.Text = "准备好后，点击“解释这段”。";
         SaveExplanationButton.Visibility = Visibility.Collapsed; SaveExplanationButton.IsEnabled = false;
+        SaveVocabularyButton.Visibility = Visibility.Collapsed; SaveVocabularyButton.IsEnabled = false;
         ExplanationColumn.Width = new GridLength(360); ExplanationPane.Visibility = Visibility.Visible;
         ExplainButton.IsEnabled = true;
-        if (smokeInference) ExplainSelection_Click(this, new RoutedEventArgs());
+        if (smokeWord) ExplainWord_Click(this, new RoutedEventArgs());
+        else if (smokeInference) ExplainSelection_Click(this, new RoutedEventArgs());
         else if (smokeSelection) FinishSmoke(true, "EPUB selection bridge and explanation pane");
     }
 
@@ -39,7 +45,8 @@ public sealed partial class MainWindow
     {
         if (selectionRequest is null) return;
         explanationCancellation?.Cancel(); explanationCancellation = new CancellationTokenSource();
-        ExplainButton.IsEnabled = false; CancelExplanationButton.Visibility = Visibility.Visible;
+        ExplainButton.IsEnabled = ExplainWordButton.IsEnabled = false; CancelExplanationButton.Visibility = Visibility.Visible;
+        completedWordExplanation = null; SaveVocabularyButton.Visibility = Visibility.Collapsed;
         ExplanationProgressRing.IsActive = true; ExplanationContent.Children.Clear(); ExplanationStatus.Text = "正在连接本地 Ollama…";
         try
         {
@@ -51,7 +58,46 @@ public sealed partial class MainWindow
         }
         catch (OperationCanceledException) { ExplanationStatus.Text = "已停止。"; }
         catch (Exception error) { ExplanationStatus.Text = "解释失败：" + error.Message; if (smokeInference) FinishSmoke(false, error.Message); }
-        finally { ExplanationProgressRing.IsActive = false; CancelExplanationButton.Visibility = Visibility.Collapsed; ExplainButton.IsEnabled = selectionRequest is not null; }
+        finally { ExplanationProgressRing.IsActive = false; CancelExplanationButton.Visibility = Visibility.Collapsed; ExplainButton.IsEnabled = ExplainWordButton.IsEnabled = selectionRequest is not null; }
+    }
+
+    private async void ExplainWord_Click(object sender, RoutedEventArgs args)
+    {
+        if (selectionRequest is null) return;
+        explanationCancellation?.Cancel(); explanationCancellation = new CancellationTokenSource();
+        ExplainButton.IsEnabled = ExplainWordButton.IsEnabled = false;
+        CancelExplanationButton.Visibility = Visibility.Visible; ExplanationProgressRing.IsActive = true;
+        ExplanationContent.Children.Clear(); SaveExplanationButton.Visibility = Visibility.Collapsed;
+        SaveVocabularyButton.Visibility = Visibility.Collapsed; ExplanationStatus.Text = "正在解释词语…";
+        try
+        {
+            var request = new WordExplanationRequest
+            {
+                SelectedText = selectionRequest.TargetText, SentenceContext = selectionSentence,
+                PrecedingContext = selectionRequest.PrecedingContext, FollowingContext = selectionRequest.FollowingContext,
+                SourceLanguage = selectionRequest.SourceLanguage, ExplanationLanguage = selectionRequest.ExplanationLanguage
+            };
+            completedWordExplanation = await vocabularyAIFactory(device.Settings).ExplainWordAsync(request, explanationCancellation.Token);
+            completedExplanation = null; ShowWordExplanation(completedWordExplanation); ExplanationStatus.Text = "词语解释完成";
+        }
+        catch (OperationCanceledException) { ExplanationStatus.Text = "已停止。"; }
+        catch (Exception error) { ExplanationStatus.Text = "词语解释失败：" + error.Message; }
+        finally
+        {
+            ExplanationProgressRing.IsActive = false; CancelExplanationButton.Visibility = Visibility.Collapsed;
+            ExplainButton.IsEnabled = ExplainWordButton.IsEnabled = selectionRequest is not null;
+        }
+    }
+
+    private void ShowWordExplanation(WordExplanation result)
+    {
+        AddSection(result.Reading is { Length: > 0 } ? $"{result.Lemma} · {result.Reading}" : result.Lemma, result.PartOfSpeech);
+        AddSection("当前语境", result.ContextualMeaning);
+        if (result.BriefMeaning != result.ContextualMeaning) AddSection("简明释义", result.BriefMeaning);
+        if (!string.IsNullOrWhiteSpace(result.Inflection)) AddSection("词形", result.Inflection);
+        foreach (var item in result.Collocations) AddSection(item.Text, item.Meaning);
+        SaveVocabularyButton.Visibility = Visibility.Visible; SaveVocabularyButton.IsEnabled = true;
+        if (smokeWord) FinishSmoke(true, "Local Ollama word: " + result.ContextualMeaning);
     }
 
     private void ShowExplanation(Explanation result)
@@ -98,6 +144,29 @@ public sealed partial class MainWindow
         finally { SaveExplanationButton.IsEnabled = completedExplanation is not null; }
     }
 
+    private async void SaveVocabulary_Click(object sender, RoutedEventArgs args)
+    {
+        if (completedWordExplanation is null || selectionRequest is null || book is null) return;
+        SaveVocabularyButton.IsEnabled = false; ExplanationStatus.Text = "正在收藏…";
+        try
+        {
+            library = await libraryStore.LoadAsync();
+            var now = DateTimeOffset.UtcNow;
+            var word = completedWordExplanation;
+            var entry = new VocabularyEntry(
+                Guid.NewGuid(), selectionRequest.SourceLanguage, word.Lemma, [word.Surface],
+                [new VocabularySense(Guid.NewGuid(), word.ContextualMeaning, selectionRequest.ExplanationLanguage)],
+                [new VocabularySource(Guid.NewGuid(), new Document(book.Id, book.FileName), selectionSentence, word.Surface, now, Locator: selectionLocator)],
+                now, now, word.Reading, word.PartOfSpeech);
+            library = LearningLibraryOperations.UpsertVocabulary(library, entry);
+            await libraryStore.SaveAsync(library);
+            ExplanationStatus.Text = "已收藏到生词本。";
+            Notice.Message = "词语已收藏到生词本。"; Notice.Severity = InfoBarSeverity.Success; Notice.IsOpen = true;
+        }
+        catch (Exception error) { ExplanationStatus.Text = "收藏失败：" + error.Message; }
+        finally { SaveVocabularyButton.IsEnabled = completedWordExplanation is not null; }
+    }
+
     private void AddSection(string title, string body)
     {
         var card = new StackPanel { Spacing = 5, Padding = new Thickness(12) };
@@ -109,8 +178,9 @@ public sealed partial class MainWindow
     private void CancelExplanation_Click(object sender, RoutedEventArgs args) => explanationCancellation?.Cancel();
     private void CloseExplanation_Click(object sender, RoutedEventArgs args)
     {
-        explanationCancellation?.Cancel(); selectionRequest = null; completedExplanation = null; selectionLocator = null;
+        explanationCancellation?.Cancel(); selectionRequest = null; completedExplanation = null; completedWordExplanation = null; selectionLocator = null; selectionSentence = "";
         SaveExplanationButton.Visibility = Visibility.Collapsed; SaveExplanationButton.IsEnabled = false;
+        SaveVocabularyButton.Visibility = Visibility.Collapsed; SaveVocabularyButton.IsEnabled = false;
         ExplanationPane.Visibility = Visibility.Collapsed; ExplanationColumn.Width = new GridLength(0); Send("clearSelection", new { });
     }
 }

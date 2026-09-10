@@ -39,6 +39,21 @@ public class LearningLibraryTests
     }
 
     [Fact]
+    public void VocabularyMergesMeaningsAndSourcesByLemma()
+    {
+        var first = Vocabulary("河岸", "one.epub", "the bank of the river");
+        var second = Vocabulary("银行", "two.epub", "went to the bank") with { Id = Guid.NewGuid() };
+        var library = LearningLibraryOperations.UpsertVocabulary(LearningLibrary.Empty, first);
+
+        library = LearningLibraryOperations.UpsertVocabulary(library, second);
+
+        var entry = Assert.Single(library.VocabularyEntries);
+        Assert.Equal(first.Id, entry.Id);
+        Assert.Equal(2, entry.Senses.Length);
+        Assert.Equal(2, entry.Sources.Length);
+    }
+
+    [Fact]
     public async Task JsonStoreCreatesAndReloadsVersionFiveLibrary()
     {
         var directory = TemporaryDirectory();
@@ -119,4 +134,13 @@ public class LearningLibraryTests
         timestamp,
         timestamp,
         Locator: new EpubLocator("Text/chapter.xhtml", TextAnchor: "{\"progress\":0.4}"));
+
+    private static VocabularyEntry Vocabulary(string meaning, string fileName, string sentence)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return new VocabularyEntry(Guid.NewGuid(), "English", "bank", ["bank"],
+            [new VocabularySense(Guid.NewGuid(), meaning, "Chinese")],
+            [new VocabularySource(Guid.NewGuid(), new Document(fileName, fileName), sentence, "bank", now)],
+            now, now, PartOfSpeech: "noun");
+    }
 }

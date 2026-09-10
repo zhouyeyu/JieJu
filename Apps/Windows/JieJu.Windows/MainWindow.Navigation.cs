@@ -43,10 +43,30 @@ public sealed partial class MainWindow
                 LibraryContent.Children.Add(button);
             }
         }
+        else if (section == "vocabulary")
+        {
+            try { library = await libraryStore.LoadAsync(); }
+            catch (Exception error) { ShowError("无法读取生词本：" + error.Message); }
+            if (library.VocabularyEntries.Length == 0)
+            {
+                LibraryContent.Children.Add(new TextBlock { Text = "还没有收藏生词", FontSize = 22, Margin = new Thickness(0, 96, 0, 0) });
+                LibraryContent.Children.Add(new TextBlock { Text = "阅读时选中词语，点击“解释为词语”，完成后即可收藏。", Opacity = .6 });
+            }
+            foreach (var entry in library.VocabularyEntries.OrderByDescending(item => item.UpdatedAt))
+            {
+                var content = new StackPanel { Spacing = 5 };
+                content.Children.Add(new TextBlock { Text = entry.Reading is { Length: > 0 } ? $"{entry.Lemma} · {entry.Reading}" : entry.Lemma, FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+                content.Children.Add(new TextBlock { Text = entry.Senses.FirstOrDefault()?.Meaning ?? "", Opacity = .72, TextWrapping = TextWrapping.Wrap });
+                content.Children.Add(new TextBlock { Text = $"{entry.PartOfSpeech} · {entry.Sources.Length} 个来源", FontSize = 11, Opacity = .5 });
+                var button = new Button { Content = content, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(16, 13, 16, 13) };
+                button.Click += (_, _) => ShowVocabularyDetail(entry);
+                LibraryContent.Children.Add(button);
+            }
+        }
         else
         {
             LibraryContent.Children.Add(new TextBlock { Text = "还没有保存的内容", FontSize = 22, Margin = new Thickness(0, 96, 0, 0) });
-            LibraryContent.Children.Add(new TextBlock { Text = section == "vocabulary" ? "生词收藏将在下一阶段接入。" : "完成生词本后，这里会出现可选的复习卡片。", Opacity = .6 });
+            LibraryContent.Children.Add(new TextBlock { Text = "收藏生词后，这里会出现可选的复习卡片。", Opacity = .6 });
         }
         var back = new Button { Content = "回到阅读" };
         back.Click += (_, _) => Navigation.SelectedItem = Navigation.MenuItems[0];
@@ -98,6 +118,42 @@ public sealed partial class MainWindow
         var recent = device.RecentBooks.FirstOrDefault(item => item.Id == record.Document.Id && File.Exists(item.Path));
         if (recent is null) { ShowError("找不到原书，请先从阅读页重新打开这本 EPUB。"); return; }
         await OpenBook(recent.Path, record.Locator as EpubLocator);
+    }
+
+    private void ShowVocabularyDetail(VocabularyEntry entry)
+    {
+        LibraryContent.Children.Clear();
+        var list = new Button { Content = "← 返回生词本" };
+        list.Click += async (_, _) => await ShowLibrarySectionAsync(); LibraryContent.Children.Add(list);
+        LibraryContent.Children.Add(new TextBlock { Text = entry.Reading is { Length: > 0 } ? $"{entry.Lemma} · {entry.Reading}" : entry.Lemma, FontSize = 28, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        if (!string.IsNullOrWhiteSpace(entry.PartOfSpeech)) AddRecordSection("词性", entry.PartOfSpeech);
+        foreach (var sense in entry.Senses) AddRecordSection("释义", sense.Meaning);
+        foreach (var source in entry.Sources.OrderByDescending(item => item.CreatedAt)) AddRecordSection(source.Document.FileName, source.Sentence);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Margin = new Thickness(0, 12, 0, 0) };
+        var sourceButton = new Button { Content = "回到最近来源", IsEnabled = entry.Sources.Length > 0 };
+        sourceButton.Click += async (_, _) => await ReturnToSourceAsync(entry.Sources.OrderByDescending(item => item.CreatedAt).First());
+        var delete = new Button { Content = "删除生词" };
+        delete.Click += async (_, _) => await DeleteVocabularyAsync(entry);
+        actions.Children.Add(sourceButton); actions.Children.Add(delete); LibraryContent.Children.Add(actions);
+    }
+
+    private async Task DeleteVocabularyAsync(VocabularyEntry entry)
+    {
+        var dialog = new ContentDialog { Title = "删除这个生词？", Content = entry.Lemma, PrimaryButtonText = "删除", CloseButtonText = "取消", DefaultButton = ContentDialogButton.Close, XamlRoot = Content.XamlRoot };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+        try
+        {
+            library = LearningLibraryOperations.DeleteVocabulary(await libraryStore.LoadAsync(), entry.Id);
+            await libraryStore.SaveAsync(library); await ShowLibrarySectionAsync();
+        }
+        catch (Exception error) { ShowError("无法删除生词：" + error.Message); }
+    }
+
+    private async Task ReturnToSourceAsync(VocabularySource source)
+    {
+        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == source.Document.Id && File.Exists(item.Path));
+        if (recent is null) { ShowError("找不到原书，请先从阅读页重新打开这本 EPUB。"); return; }
+        await OpenBook(recent.Path, source.Locator as EpubLocator);
     }
     private async void OpenBook_Click(object sender, RoutedEventArgs args)
     {

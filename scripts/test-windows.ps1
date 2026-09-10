@@ -3,7 +3,8 @@ param(
     [string]$DotNetPath = 'dotnet',
     [ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug',
     [switch]$Smoke,
-    [switch]$OllamaSmoke
+    [switch]$OllamaSmoke,
+    [switch]$VocabularySmoke
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -71,8 +72,9 @@ try {
             New-SmokeEpub $epub
             $epubResult = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.json" -f [guid]::NewGuid())
             $epubArguments = @('--open', ('"{0}"' -f $epub), '--smoke-selection')
-            if ($OllamaSmoke) { $epubArguments += '--smoke-inference' }
-            $label = $OllamaSmoke ? 'EPUB selection and local Ollama inference' : 'EPUB selection and explanation panel'
+            if ($VocabularySmoke) { $epubArguments += '--smoke-word' }
+            elseif ($OllamaSmoke) { $epubArguments += '--smoke-inference' }
+            $label = $VocabularySmoke ? 'EPUB selection and local Ollama vocabulary inference' : ($OllamaSmoke ? 'EPUB selection and local Ollama inference' : 'EPUB selection and explanation panel')
             Invoke-AppSmoke $exe $epubResult $epubArguments $label
         }
         finally { if (Test-Path $epub) { Remove-Item -LiteralPath $epub } }

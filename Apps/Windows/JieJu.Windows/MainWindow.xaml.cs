@@ -14,9 +14,11 @@ public sealed partial class MainWindow : Window
     private readonly string? smokeResult;
     private readonly bool smokeSelection;
     private readonly bool smokeInference;
+    private readonly bool smokeWord;
     private readonly DeviceStateStore deviceStore;
     private readonly ILearningLibraryStore libraryStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
+    private readonly Func<ReadingSettings, IVocabularyAI> vocabularyAIFactory;
     private DeviceState device = new(new(), []);
     private LearningLibrary library = LearningLibrary.Empty;
     private EpubBook? book;
@@ -27,9 +29,10 @@ public sealed partial class MainWindow : Window
     private const string BookPrefix = "https://reader.jieju.invalid/book/";
     private const string HtmlDataPrefix = "data:text/html;charset=utf-8;base64,";
 
-    public MainWindow(Func<ReadingSettings, IStreamingReadingAI> readingAIFactory)
+    public MainWindow(Func<ReadingSettings, IStreamingReadingAI> readingAIFactory, Func<ReadingSettings, IVocabularyAI> vocabularyAIFactory)
     {
         this.readingAIFactory = readingAIFactory;
+        this.vocabularyAIFactory = vocabularyAIFactory;
         InitializeComponent();
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(1280, 860));
         var arguments = Environment.GetCommandLineArgs();
@@ -37,6 +40,7 @@ public sealed partial class MainWindow : Window
         if (index >= 0 && index + 1 < arguments.Length) smokeResult = arguments[index + 1];
         smokeSelection = arguments.Contains("--smoke-selection");
         smokeInference = arguments.Contains("--smoke-inference");
+        smokeWord = arguments.Contains("--smoke-word");
         deviceStore = new DeviceStateStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         libraryStore = new JsonLearningLibraryStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
         try { device = deviceStore.Load(); }
@@ -108,7 +112,7 @@ public sealed partial class MainWindow : Window
                             ApplyReadingSettings();
                             if (book is not null) Send("restoreLocation", new { locator = new EpubLocator(book.Chapters[chapterIndex].Href, TextAnchor: JsonSerializer.Serialize(new { progress = pendingProgress })) });
                             if (smokeSelection && book is not null)
-                                await core.ExecuteScriptAsync("const p=document.querySelector('p');const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event('selectionchange'));");
+                                await core.ExecuteScriptAsync($"const p=document.querySelector('{(smokeWord ? "p ruby" : "p")}');const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event('selectionchange'));");
                             else FinishSmoke(true, environment.BrowserVersionString);
                             break;
                         case "locationChanged":
