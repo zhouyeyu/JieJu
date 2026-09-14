@@ -1,5 +1,30 @@
 # JieJu Decisions
 
+## 2026-09-11：Windows 云端解释显式选择并使用系统凭据
+
+Windows 默认继续使用 `127.0.0.1` 的 Ollama。用户只有在设置页显式选择 OpenAI-compatible 云端
+服务后，选区、所在句和有限前后文才会发送到配置的 API；界面同时提示云端与 VPN 流量影响。
+API Key 通过 Windows Credential Manager 的 Generic Credential 保存，设备 JSON 和共享学习资料
+只记录服务地址、模型与 Provider。云端沿用 macOS 的 Chat Completions、SSE、`json_object`、
+`temperature=0`、严格本地校验和一次修复策略。
+
+## 2026-09-10：Windows 日语真值层采用 MeCab.DotNet 与 IPADic
+
+Windows 使用 MeCab.DotNet 1.2.0 随包携带的 IPADic 提供分词、读音、原形、词性和活用信息，保持
+与 macOS 的 MeCab/IPADic 数据来源一致。词典结果覆盖模型返回的日语身份字段；模型只负责语境义和
+教学说明。Tagger 由平台服务持有并加锁复用，不把第三方依赖引入 `JieJu.Domain`。该包约 14.6 MB，
+按 LGPL-2.1-only 或 GPL-2.0-only 双许可发布，版权与许可信息记录在根 `NOTICE`。
+
+## 2026-09-10：Windows 骨架采用无打包、自包含 WinUI 外壳与受限虚拟 Reader Host
+
+Windows 首个可运行骨架采用 WinUI 3 的无 MSIX、自包含部署模式，固定 Windows App SDK 1.8 与
+.NET 10 SDK，使命令行构建和真机启动不依赖开发机预装 Windows App Runtime。当前只引用 WinUI
+组件包，避免为 EPUB 首条链路引入未使用的 AI、ML 和 Widgets 组件。
+
+WebView2 不直接加载用户路径或远程 URL；原生 Host 将随应用发布的 Reader 目录映射到固定 HTTPS
+虚拟域名，并拒绝其他资源、外部导航、新窗口、下载和权限请求。共享 `bridge.mjs` 仍是消息通道的
+事实来源。EPUB 章节资源将在 `WIN-002` 中接入同一受限 Host，并继续验证包内路径和网络边界。
+
 ## 2026-09-06：EPUB 语言标签是提示，强日文正文证据可以纠正错误元数据
 
 真实《ノルウェイの森》EPUB 的整书元数据和每章根元素均错误标记为 `en`，若把明确非日语标签

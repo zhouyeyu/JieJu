@@ -2,9 +2,11 @@
 
 ## 当前状态
 
-Windows 客户端尚未生成工程。当前可运行产品位于根目录的 macOS SwiftUI/Xcode 工程；Windows
-版本采用独立的 WinUI 3 外壳，共享 JSON 契约和 EPUB Web 层，而不是移植 SwiftUI、AppKit 或
-PDFKit。
+Windows 客户端已完成第一阶段 `WIN-001`、`WIN-101`～`WIN-105`、`WIN-201`～`WIN-207` 和
+`WIN-303`～`WIN-306`：`Apps/Windows` 包含可运行的 WinUI 3 + WebView2 EPUB 阅读器、本地与云端
+解释、日语注音、学习记录、生词本和随手温习。Windows 已可通过受限的 WebView2 本地文件导航
+打开、显示并重新进入最近 PDF；PDF 选区解释仍待 `WIN-402`～`WIN-404`。EPUB 当前仍使用连续滚动
+与章内比例定位。完整对齐按 `TODO.md` 的 `WIN-401`～`WIN-492` 顺序逐项实施。
 
 Windows 第一阶段的目标是验证这条最小闭环：
 
@@ -12,7 +14,8 @@ Windows 第一阶段的目标是验证这条最小闭环：
 打开 EPUB → WebView2 排版与分页 → 选择句子 → Ollama 流式解句 → 保存 → 回到原文
 ```
 
-PDF、OCR、同步、内嵌模型和完整 macOS 功能对齐均不阻塞第一阶段。
+第一阶段已经完成；PDF、EPUB 分页与稳定锚点是下一阶段核心对齐项。OCR、同步和内嵌模型继续放在
+后续评估，不与核心阅读闭环混在同一任务中。
 
 ## 接手前必读
 
@@ -45,6 +48,11 @@ PDF、OCR、同步、内嵌模型和完整 macOS 功能对齐均不阻塞第一�
 
 创建工程时，把实际使用的 Visual Studio、Windows App SDK、Windows SDK 和 .NET 版本写入本文件，
 不要在 macOS 上猜测并提交未经 Windows 构建验证的工程文件。
+
+`WIN-001` 的实际验证环境（2026-09-10）：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401`、
+MSBuild `18.9.11`、Windows App SDK WinUI `1.8.260803003`、Windows SDK Build Tools
+`10.0.26100.9169`、WebView2 Runtime `152.0.4191.66`。本轮未安装或使用 Visual Studio，工程由
+`dotnet` CLI 真机构建；后续使用 Visual Studio 时需在这里补记其版本。
 
 首次拉取后先运行平台无关测试：
 
@@ -143,12 +151,12 @@ Web 层不能直接访问 Ollama、任意外网或用户文件系统。
 
 ### WIN-001：可构建骨架
 
-- 创建 WinUI 3 Solution 和三个项目；
-- 显示最小窗口并承载空 WebView2；
-- 建立 `IReadingAI`、`IVocabularyAI`、`ILearningLibraryStore` 接口；
-- 为 v1～v5 建立必要 C# DTO 和 JSON 往返测试；
-- 增加一个 Windows 测试脚本或明确的 `dotnet test` 命令；
-- 在 Windows 真机完成 build 与 test，再提交工程文件。
+- [x] 创建 WinUI 3 Solution 和三个项目；
+- [x] 显示最小窗口并承载空 WebView2；
+- [x] 建立 `IReadingAI`、`IVocabularyAI`、`ILearningLibraryStore` 接口；
+- [x] 为已发布的 v1/v2/v3/v5 学习资料及 v4 单词解释建立必要 C# DTO 和 JSON 往返测试；
+- [x] 增加 `scripts/test-windows.ps1`，支持 build/test 和可选 WebView2 冒烟；
+- [x] 在 Windows 真机完成 build、test、WebView2 启动和可见界面验证。
 
 ### XPLAT-101～105：共享 Reader
 
@@ -160,12 +168,12 @@ Web 层不能直接访问 Ollama、任意外网或用户文件系统。
 
 ### WIN-002：Windows EPUB 闭环
 
-- 打开和解析 EPUB；
-- WebView2 安全加载章节资源；
-- 逐页翻页、翻章和位置恢复；
-- 选区产生结构化 `selectionChanged`；
-- Ollama 流式翻译与语法讲解；
-- 保存 v5 学习记录，并从记录返回原文。
+- [x] 打开和解析 EPUB；
+- [x] WebView2 安全加载章节资源；
+- [x] 连续滚动、翻章和位置恢复；
+- [x] 选区产生结构化 `selectionChanged`；
+- [x] Ollama 流式翻译与语法讲解；
+- [x] 保存 v5 学习记录，并从记录返回原文。
 
 完成后再拆分生词本、复习、PDF.js 和云端 Provider，避免首个客户端工程同时承受过多变量。
 

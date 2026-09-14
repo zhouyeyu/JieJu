@@ -1,0 +1,78 @@
+<Window x:Class="JieJu.Windows.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="解句 · JieJu">
+ <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+ <NavigationView x:Name="Navigation" PaneDisplayMode="Left" OpenPaneLength="190" IsBackButtonVisible="Collapsed" IsSettingsVisible="True" SelectionChanged="Navigation_SelectionChanged" AlwaysShowHeader="False">
+  <NavigationView.PaneHeader><StackPanel Margin="16,28,0,28" Spacing="4"><TextBlock Text="解句" FontSize="26" FontWeight="SemiBold"/><TextBlock Text="JIEJU" CharacterSpacing="180" FontSize="11" Opacity="0.5"/></StackPanel></NavigationView.PaneHeader>
+  <NavigationView.MenuItems>
+   <NavigationViewItem Content="阅读" Tag="reader" Icon="Read" AutomationProperties.AutomationId="navigation.reader"/>
+   <NavigationViewItem Content="学习记录" Tag="records" Icon="Document" AutomationProperties.AutomationId="navigation.records"/>
+   <NavigationViewItem Content="生词本" Tag="vocabulary" Icon="Library" AutomationProperties.AutomationId="navigation.vocabulary"/>
+   <NavigationViewItem Content="随手温习" Tag="review" Icon="Favorite" AutomationProperties.AutomationId="navigation.review"/>
+  </NavigationView.MenuItems>
+  <NavigationView.PaneFooter><TextBlock Text="读一点，记一点。" Margin="20,16" FontSize="12" Opacity="0.5"/></NavigationView.PaneFooter>
+  <Grid Padding="24,16,24,12" RowSpacing="12">
+   <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <Grid x:Name="ReaderPage" RowSpacing="12">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <StackPanel Spacing="4"><TextBlock x:Name="BookTitle" Text="回到阅读" FontSize="24" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock x:Name="BookSubtitle" Text="从一本喜欢的书开始，在阅读中慢慢理解。" FontSize="12" Opacity="0.6"/></StackPanel>
+     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button x:Name="CloseBookButton" Content="关闭书籍" Click="CloseBook_Click" Visibility="Collapsed"/><Button x:Name="OpenButton" Content="打开 PDF 或 EPUB" Click="OpenBook_Click" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="reader.open"/></StackPanel>
+    </Grid>
+    <Grid x:Name="ReadingSurface" Grid.Row="1" ColumnSpacing="16" SizeChanged="ReadingSurface_SizeChanged"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="ExplanationColumn" Width="0"/></Grid.ColumnDefinitions>
+     <Border CornerRadius="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"><WebView2 x:Name="Reader" Loaded="Reader_Loaded" AutomationProperties.Name="阅读区域"/></Border>
+     <Border x:Name="ExplanationPane" Grid.Column="1" Visibility="Collapsed" CornerRadius="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="18">
+      <ScrollViewer><StackPanel Spacing="14">
+       <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="ExplanationDragHandle" Text="解读" FontSize="20" FontWeight="SemiBold" Padding="0,6" PointerPressed="ExplanationDragHandle_PointerPressed" PointerMoved="ExplanationDragHandle_PointerMoved" PointerReleased="ExplanationDragHandle_PointerReleased" PointerCanceled="ExplanationDragHandle_PointerCanceled" PointerCaptureLost="ExplanationDragHandle_PointerCaptureLost" AutomationProperties.Name="拖动弹出式解释" ToolTipService.ToolTip="弹出式模式下可按住拖动"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button x:Name="ExplanationModeButton" Content="切换为弹出式" Click="SwitchExplanationPresentation_Click" AutomationProperties.Name="切换解释显示方式"/><Button Content="关闭" Click="CloseExplanation_Click"/></StackPanel></Grid>
+       <TextBlock x:Name="SelectedText" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
+       <StackPanel x:Name="SelectedFurigana" Visibility="Collapsed" Spacing="4"/>
+       <TextBlock x:Name="SelectionContext" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+       <StackPanel x:Name="BoundarySuggestionPanel" Visibility="Collapsed" Spacing="6"><TextBlock x:Name="BoundarySuggestionText" TextWrapping="Wrap" Opacity="0.7"/><Button x:Name="UseBoundarySuggestionButton" Content="使用完整词语" HorizontalAlignment="Left" Click="UseBoundarySuggestion_Click"/></StackPanel>
+       <StackPanel Spacing="8"><StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="ExplainButton" Content="解释所选内容" Click="ExplainPrimary_Click" Style="{StaticResource AccentButtonStyle}"/><Button x:Name="ExplainWordButton" Content="按词语解释" Click="ExplainAlternative_Click"/></StackPanel><StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="SaveExplanationButton" Content="保存记录" Click="SaveExplanation_Click" IsEnabled="False" Visibility="Collapsed"/><Button x:Name="SaveVocabularyButton" Content="收藏生词" Click="SaveVocabulary_Click" IsEnabled="False" Visibility="Collapsed"/><Button x:Name="CancelExplanationButton" Content="停止" Click="CancelExplanation_Click" Visibility="Collapsed"/></StackPanel></StackPanel>
+       <ProgressRing x:Name="ExplanationProgressRing" IsActive="False" Width="22" Height="22" HorizontalAlignment="Left"/>
+       <TextBlock x:Name="ExplanationStatus" Text="选择后可开始解释。" Opacity="0.65" TextWrapping="Wrap"/>
+       <StackPanel x:Name="ExplanationContent" Spacing="14"/>
+       <Button x:Name="AnalyzeDeepButton" Content="深入解析句式与结构" Click="AnalyzeDeep_Click" HorizontalAlignment="Left" Visibility="Collapsed"/>
+       <TextBlock x:Name="DeepAnalysisStatus" TextWrapping="Wrap" Opacity="0.65" Visibility="Collapsed"/>
+       <StackPanel x:Name="DeepAnalysisContent" Spacing="14"/>
+      </StackPanel></ScrollViewer>
+     </Border>
+     <ScrollViewer x:Name="WelcomePanel" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="36"><StackPanel MaxWidth="640" HorizontalAlignment="Center" Spacing="24" Margin="0,64,0,24">
+       <TextBlock Text="让阅读，成为学习的起点。" FontSize="30" FontWeight="SemiBold" TextWrapping="Wrap"/>
+       <TextBlock Text="打开一份 PDF 或一本 EPUB，在原文中停留、理解、积累。&#xA;不用赶进度，也不必记住每个词。" Opacity="0.65" FontSize="15" TextWrapping="Wrap"/>
+       <Button Content="打开一本书" Click="OpenBook_Click" Style="{StaticResource AccentButtonStyle}"/>
+       <TextBlock Text="最近阅读" FontSize="17" FontWeight="SemiBold" Margin="0,16,0,0"/><StackPanel x:Name="RecentBooksPanel" Spacing="8"/>
+       <TextBlock Text="语言不是一条需要赶完的路。读一点，记一点，忘了也没关系。" Opacity="0.5" FontSize="12" TextWrapping="Wrap" Margin="0,24,0,0"/>
+     </StackPanel></ScrollViewer>
+    </Grid>
+    <Grid x:Name="ReaderToolbar" Grid.Row="2" Visibility="Collapsed" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="← 上一章" Click="PreviousChapter_Click" x:Name="PreviousChapterButton"/><ToggleButton x:Name="FuriganaToolbarToggle" Content="注音" Click="FuriganaToolbarToggle_Click" AutomationProperties.Name="显示日语汉字注音"/></StackPanel>
+     <ComboBox x:Name="ChapterPicker" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Title" SelectionChanged="ChapterPicker_SelectionChanged" AutomationProperties.Name="章节目录"/>
+     <Button Grid.Column="2" Content="下一章 →" Click="NextChapter_Click" x:Name="NextChapterButton"/>
+    </Grid>
+   </Grid>
+   <ScrollViewer x:Name="LibraryPage" Visibility="Collapsed" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="LibraryContent" Spacing="16" Width="{Binding ActualWidth, ElementName=LibraryPage}" MaxWidth="920" HorizontalAlignment="Left" Padding="8,12"/></ScrollViewer>
+   <ScrollViewer x:Name="SettingsPage" Visibility="Collapsed" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="SettingsContent" Width="{Binding ActualWidth, ElementName=SettingsPage}" MaxWidth="760" HorizontalAlignment="Left" Spacing="20" Padding="8,12,24,24">
+     <TextBlock Text="设置" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="让阅读适合自己的节奏。设置会保存在这台设备上。" Opacity="0.6" TextWrapping="Wrap"/>
+     <TextBlock Text="阅读排版" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,0"/>
+     <ComboBox x:Name="ThemePicker" Header="阅读主题" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="ReadingAppearance_Changed"><ComboBoxItem Content="白纸" Tag="paper"/><ComboBoxItem Content="夜间" Tag="night"/><ComboBoxItem Content="羊皮纸" Tag="sepia"/><ComboBoxItem Content="护眼绿" Tag="sage"/></ComboBox>
+     <Slider x:Name="FontSlider" Header="正文字号" Minimum="12" Maximum="32" StepFrequency="1" Value="18" ValueChanged="ReadingAppearance_Changed"/><Slider x:Name="LineSlider" Header="行距" Minimum="1.2" Maximum="2.5" StepFrequency="0.05" Value="1.75" ValueChanged="ReadingAppearance_Changed"/><Slider x:Name="MarginSlider" Header="左右边距" Minimum="20" Maximum="120" StepFrequency="2" Value="54" ValueChanged="ReadingAppearance_Changed"/>
+     <Border x:Name="ReadingPreview" CornerRadius="10" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" AutomationProperties.Name="阅读排版实时预览">
+      <StackPanel x:Name="ReadingPreviewPage" Spacing="12" Padding="54,24,54,28">
+       <TextBlock x:Name="ReadingPreviewLabel" Text="实时预览 · EPUB 正文" FontSize="11" CharacterSpacing="80" Opacity="0.58"/>
+       <TextBlock x:Name="ReadingPreviewText" Text="彼女は窓の外を眺めながら、静かに本を読んでいました。&#xA;Reading becomes a way to meet another language.&#xA;阅读，让陌生的表达慢慢变得熟悉。" TextWrapping="Wrap" FontSize="18" LineHeight="31.5" LineStackingStrategy="BlockLineHeight"/>
+      </StackPanel>
+     </Border>
+     <ToggleSwitch x:Name="RubyToggle" Header="日语假名" OnContent="显示汉字注音" OffContent="隐藏注音"/>
+     <TextBlock Text="开启后显示原书注音，并为确认是日语的正文和解释内容生成本地词典注音。" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
+     <TextBlock Text="解释服务" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,0"/>
+     <ComboBox x:Name="AIProviderPicker" Header="解释服务" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="AIProviderPicker_SelectionChanged"><ComboBoxItem Content="Ollama（本地模型）" Tag="ollama"/><ComboBoxItem Content="云端 API（OpenAI 兼容）" Tag="cloud"/></ComboBox>
+     <ComboBox x:Name="ExplanationPresentationPicker" Header="解释显示方式" SelectedIndex="0" HorizontalAlignment="Stretch"><ComboBoxItem Content="侧边栏" Tag="sidebar"/><ComboBoxItem Content="弹窗" Tag="popup"/></ComboBox>
+     <StackPanel x:Name="OllamaSettings" Spacing="12"><TextBox x:Name="OllamaAddress" Header="Ollama 服务地址" Text="http://127.0.0.1:11434"/><TextBox x:Name="ModelName" Header="模型" Text="qwen2.5:1.5b-instruct"/><TextBlock Text="选区和上下文只发送到本机 Ollama，不会发送到云端。" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/></StackPanel>
+     <StackPanel x:Name="CloudSettings" Spacing="12" Visibility="Collapsed"><TextBox x:Name="CloudAddress" Header="API 地址" Text="https://api.openai.com/v1"/><PasswordBox x:Name="CloudApiKey" Header="API Key（保存在 Windows 凭据管理器）"/><TextBox x:Name="CloudModelName" Header="模型" Text="gpt-4.1-mini"/><InfoBar IsOpen="True" IsClosable="False" Severity="Informational" Message="云端模式会把选中内容、所在句及有限前后文发送给所选服务，并可能消耗 VPN 流量。"/></StackPanel>
+     <TextBox x:Name="TargetLanguage" Header="解释语言" Text="Chinese"/>
+     <StackPanel Orientation="Horizontal" Spacing="10"><Button Content="保存设置" Click="SaveSettings_Click" Style="{StaticResource AccentButtonStyle}"/><Button Content="检查模型连接" Click="CheckConnection_Click"/></StackPanel><TextBlock x:Name="SettingsStatus" TextWrapping="Wrap" Opacity="0.7"/>
+   </StackPanel></ScrollViewer>
+   <StackPanel Grid.Row="1"><InfoBar x:Name="Notice" IsOpen="False" IsClosable="True" Severity="Informational"/><TextBlock x:Name="Status" Text="正在准备阅读区域…" FontSize="11" Opacity="0.55" AutomationProperties.AutomationId="ReaderHostStatus" AutomationProperties.LiveSetting="Polite"/></StackPanel>
+  </Grid>
+ </NavigationView>
+ </Grid>
+</Window>
