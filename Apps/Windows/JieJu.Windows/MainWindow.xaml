@@ -53,8 +53,14 @@
    <ScrollViewer x:Name="SettingsPage" Visibility="Collapsed" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="SettingsContent" Width="{Binding ActualWidth, ElementName=SettingsPage}" MaxWidth="760" HorizontalAlignment="Left" Spacing="20" Padding="8,12,24,24">
      <TextBlock Text="设置" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="让阅读适合自己的节奏。设置会保存在这台设备上。" Opacity="0.6" TextWrapping="Wrap"/>
      <TextBlock Text="阅读排版" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,0"/>
-     <ComboBox x:Name="ThemePicker" Header="阅读主题" SelectedIndex="0" HorizontalAlignment="Stretch"><ComboBoxItem Content="白纸" Tag="paper"/><ComboBoxItem Content="夜间" Tag="night"/><ComboBoxItem Content="羊皮纸" Tag="sepia"/><ComboBoxItem Content="护眼绿" Tag="sage"/></ComboBox>
-     <Slider x:Name="FontSlider" Header="正文字号" Minimum="12" Maximum="32" StepFrequency="1" Value="18"/><Slider x:Name="LineSlider" Header="行距" Minimum="1.2" Maximum="2.5" StepFrequency="0.05" Value="1.75"/><Slider x:Name="MarginSlider" Header="左右边距" Minimum="20" Maximum="120" StepFrequency="2" Value="54"/>
+     <ComboBox x:Name="ThemePicker" Header="阅读主题" SelectedIndex="0" HorizontalAlignment="Stretch" SelectionChanged="ReadingAppearance_Changed"><ComboBoxItem Content="白纸" Tag="paper"/><ComboBoxItem Content="夜间" Tag="night"/><ComboBoxItem Content="羊皮纸" Tag="sepia"/><ComboBoxItem Content="护眼绿" Tag="sage"/></ComboBox>
+     <Slider x:Name="FontSlider" Header="正文字号" Minimum="12" Maximum="32" StepFrequency="1" Value="18" ValueChanged="ReadingAppearance_Changed"/><Slider x:Name="LineSlider" Header="行距" Minimum="1.2" Maximum="2.5" StepFrequency="0.05" Value="1.75" ValueChanged="ReadingAppearance_Changed"/><Slider x:Name="MarginSlider" Header="左右边距" Minimum="20" Maximum="120" StepFrequency="2" Value="54" ValueChanged="ReadingAppearance_Changed"/>
+     <Border x:Name="ReadingPreview" CornerRadius="10" BorderThickness="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" AutomationProperties.Name="阅读排版实时预览">
+      <StackPanel x:Name="ReadingPreviewPage" Spacing="12" Padding="54,24,54,28">
+       <TextBlock x:Name="ReadingPreviewLabel" Text="实时预览 · EPUB 正文" FontSize="11" CharacterSpacing="80" Opacity="0.58"/>
+       <TextBlock x:Name="ReadingPreviewText" Text="彼女は窓の外を眺めながら、静かに本を読んでいました。&#xA;Reading becomes a way to meet another language.&#xA;阅读，让陌生的表达慢慢变得熟悉。" TextWrapping="Wrap" FontSize="18" LineHeight="31.5" LineStackingStrategy="BlockLineHeight"/>
+      </StackPanel>
+     </Border>
      <ToggleSwitch x:Name="RubyToggle" Header="日语假名" OnContent="显示汉字注音" OffContent="隐藏注音"/>
      <TextBlock Text="开启后显示原书注音，并为确认是日语的正文和解释内容生成本地词典注音。" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
      <TextBlock Text="解释服务" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,0"/>

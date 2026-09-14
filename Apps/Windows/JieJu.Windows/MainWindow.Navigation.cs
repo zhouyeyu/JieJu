@@ -291,6 +291,39 @@ public sealed partial class MainWindow
         RubyToggle.IsOn = s.ShowsFurigana; FuriganaToolbarToggle.IsChecked = s.ShowsFurigana; OllamaAddress.Text = s.OllamaUrl; ModelName.Text = s.Model; TargetLanguage.Text = s.ExplanationLanguage;
         AIProviderPicker.SelectedIndex = s.Provider == "cloud" ? 1 : 0; CloudAddress.Text = s.CloudUrl; CloudModelName.Text = s.CloudModel; CloudApiKey.Password = apiKeyStore.Load(); UpdateProviderSettings();
         ExplanationPresentationPicker.SelectedIndex = s.ExplanationPresentation == "popup" ? 1 : 0;
+        settingsControlsLoaded = true;
+        UpdateReadingPreview(s);
+    }
+    private void ReadingAppearance_Changed(object sender, RoutedEventArgs args)
+    {
+        if (!settingsControlsLoaded || ThemePicker.SelectedItem is not ComboBoxItem theme) return;
+        var appearance = DeviceStateStore.Normalize(device.Settings with
+        {
+            FontSize = FontSlider.Value,
+            LineHeight = LineSlider.Value,
+            HorizontalMargin = MarginSlider.Value,
+            Theme = theme.Tag?.ToString() ?? "paper"
+        });
+        UpdateReadingPreview(appearance);
+        ApplyReadingSettings(appearance);
+        SettingsStatus.Text = "排版已实时应用到预览和当前 EPUB；保存后会在下次启动时保留。";
+    }
+    private void UpdateReadingPreview(ReadingSettings settings)
+    {
+        var colors = settings.Theme switch
+        {
+            "night" => (Paper: global::Windows.UI.Color.FromArgb(255, 22, 24, 29), Ink: global::Windows.UI.Color.FromArgb(255, 229, 231, 235)),
+            "sepia" => (Paper: global::Windows.UI.Color.FromArgb(255, 244, 236, 216), Ink: global::Windows.UI.Color.FromArgb(255, 67, 60, 48)),
+            "sage" => (Paper: global::Windows.UI.Color.FromArgb(255, 221, 232, 213), Ink: global::Windows.UI.Color.FromArgb(255, 41, 58, 41)),
+            _ => (Paper: global::Windows.UI.Color.FromArgb(255, 250, 250, 248), Ink: global::Windows.UI.Color.FromArgb(255, 41, 44, 41))
+        };
+        ReadingPreview.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(colors.Paper);
+        var ink = new Microsoft.UI.Xaml.Media.SolidColorBrush(colors.Ink);
+        ReadingPreviewLabel.Foreground = ink;
+        ReadingPreviewText.Foreground = ink;
+        ReadingPreviewText.FontSize = settings.FontSize;
+        ReadingPreviewText.LineHeight = settings.FontSize * settings.LineHeight;
+        ReadingPreviewPage.Padding = new Thickness(settings.HorizontalMargin, 24, settings.HorizontalMargin, 28);
     }
     private void SaveSettings_Click(object sender, RoutedEventArgs args)
     {

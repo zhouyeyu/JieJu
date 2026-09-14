@@ -10,7 +10,7 @@ namespace JieJu.Windows;
 
 public sealed partial class MainWindow : Window
 {
-    private bool initialized, closed, changingChapter, chapterNavigationPending;
+    private bool initialized, closed, changingChapter, chapterNavigationPending, settingsControlsLoaded;
     private readonly string? smokeResult;
     private readonly bool smokeSelection;
     private readonly bool smokeInference;
@@ -19,6 +19,7 @@ public sealed partial class MainWindow : Window
     private readonly bool smokePopup;
     private readonly bool smokeFurigana;
     private readonly bool smokeCloudSettings;
+    private readonly bool smokeReadingSettings;
     private readonly bool smokeReview;
     private readonly bool smokePdf;
     private bool smokePdfReopened;
@@ -58,6 +59,7 @@ public sealed partial class MainWindow : Window
         smokePopup = arguments.Contains("--smoke-popup");
         smokeFurigana = arguments.Contains("--smoke-furigana");
         smokeCloudSettings = arguments.Contains("--smoke-cloud-settings");
+        smokeReadingSettings = arguments.Contains("--smoke-reading-settings");
         smokeReview = arguments.Contains("--smoke-review");
         smokePdf = arguments.Contains("--smoke-pdf");
         var dataIndex = Array.IndexOf(arguments, "--data-directory");
@@ -136,7 +138,25 @@ public sealed partial class MainWindow : Window
                             Status.Text = book is null ? "选择一本 EPUB，开始阅读。" : $"第 {chapterIndex + 1} / {book.Chapters.Count} 章";
                             ApplyReadingSettings();
                             if (book is not null) Send("restoreLocation", new { locator = new EpubLocator(book.Chapters[chapterIndex].Href, TextAnchor: JsonSerializer.Serialize(new { progress = pendingProgress })) });
-                            if (smokeFurigana && book is not null)
+                            if (smokeReadingSettings && book is not null)
+                            {
+                                ThemePicker.SelectedIndex = 2;
+                                FontSlider.Value = 27;
+                                LineSlider.Value = 2.15;
+                                MarginSlider.Value = 88;
+                                await Task.Delay(200);
+                                var json = await core.ExecuteScriptAsync("(()=>{const s=getComputedStyle(document.body);return {fontSize:s.fontSize,lineHeight:s.lineHeight,paddingLeft:s.paddingLeft,background:s.backgroundColor}})()");
+                                using var styles = JsonDocument.Parse(json);
+                                var result = styles.RootElement;
+                                var readerReady = result.GetProperty("fontSize").GetString() == "27px" &&
+                                    result.GetProperty("paddingLeft").GetString() == "88px" &&
+                                    result.GetProperty("background").GetString() == "rgb(244, 236, 216)";
+                                var previewReady = Math.Abs(ReadingPreviewText.FontSize - 27) < .01 &&
+                                    Math.Abs(ReadingPreviewText.LineHeight - 58.05) < .01 &&
+                                    Math.Abs(ReadingPreviewPage.Padding.Left - 88) < .01;
+                                FinishSmoke(readerReady && previewReady, readerReady && previewReady ? "live EPUB typography and settings preview updated" : "Reading appearance did not update live");
+                            }
+                            else if (smokeFurigana && book is not null)
                             {
                                 var json = await core.ExecuteScriptAsync("(()=>{const rt=document.querySelector('ruby[data-jieju-generated=\\\"true\\\"] rt');return rt?{reading:rt.textContent,display:getComputedStyle(rt).display,enabled:document.documentElement.dataset.ruby}:null})()");
                                 using var visibleRuby = JsonDocument.Parse(json);
@@ -197,7 +217,8 @@ public sealed partial class MainWindow : Window
     private bool AllowsMessageSource(string value) => AllowsPage(value) || (book is not null && (value == "about:blank" || value.StartsWith(HtmlDataPrefix, StringComparison.Ordinal)));
     private static string BookUrl(string href) => BookPrefix + string.Join('/', href.Split('/').Select(Uri.EscapeDataString));
     private void Send(string type, object payload) => Reader.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(new { contractVersion = 1, type, payload }, ContractJson.Options));
-    private void ApplyReadingSettings() { var s = device.Settings; Send("configure", new { s.FontSize, s.LineHeight, s.HorizontalMargin, s.Theme, s.ShowsFurigana }); }
+    private void ApplyReadingSettings() => ApplyReadingSettings(device.Settings);
+    private void ApplyReadingSettings(ReadingSettings s) => Send("configure", new { s.FontSize, s.LineHeight, s.HorizontalMargin, s.Theme, s.ShowsFurigana });
     private void ShowError(string text) { Notice.Message = text; Notice.Severity = InfoBarSeverity.Error; Notice.IsOpen = true; }
     private void FinishSmoke(bool ready, string detail) { if (smokeResult is null) return; File.WriteAllText(smokeResult, JsonSerializer.Serialize(new { ready, detail })); DispatcherQueue.TryEnqueue(Close); }
 }
