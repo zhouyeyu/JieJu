@@ -2,6 +2,8 @@ using System.Text.Json;
 using JieJu.Domain;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 
 namespace JieJu.Windows;
 
@@ -15,6 +17,10 @@ public sealed partial class MainWindow
     private SelectionBoundarySuggestion? boundarySuggestion;
     private EpubLocator? selectionLocator;
     private CancellationTokenSource? explanationCancellation;
+    private bool draggingExplanation;
+    private global::Windows.Foundation.Point explanationDragStart;
+    private double explanationDragOriginX, explanationDragOriginY;
+    private double explanationPopupOffsetX, explanationPopupOffsetY;
 
     private void HandleSelection(JsonElement payload)
     {
@@ -53,9 +59,12 @@ public sealed partial class MainWindow
             if (smokePopup)
             {
                 SwitchExplanationPresentation();
+                SetExplanationPopupOffset(-80, 60);
+                var translation = ExplanationPane.RenderTransform as TranslateTransform;
                 var overlaysReader = device.Settings.ExplanationPresentation == "popup"
-                    && ExplanationColumn.Width.Value == 0 && Grid.GetColumn(ExplanationPane) == 0 && Canvas.GetZIndex(ExplanationPane) > 0;
-                FinishSmoke(overlaysReader, overlaysReader ? "EPUB popup explanation overlays without resizing reader" : "Popup explanation still resized the reader");
+                    && ExplanationColumn.Width.Value == 0 && Grid.GetColumn(ExplanationPane) == 0 && Canvas.GetZIndex(ExplanationPane) > 0
+                    && translation?.X == -80 && translation.Y == 60;
+                FinishSmoke(overlaysReader, overlaysReader ? "EPUB popup explanation overlays, moves, and does not resize reader" : "Popup explanation layout or dragging failed");
             }
             else FinishSmoke(true, "EPUB selection bridge and explanation pane");
         }
@@ -375,6 +384,7 @@ public sealed partial class MainWindow
             ExplanationColumn.Width = new GridLength(0); Grid.SetColumn(ExplanationPane, 0); Canvas.SetZIndex(ExplanationPane, 10);
             ExplanationPane.Width = 420; ExplanationPane.MaxHeight = 700; ExplanationPane.HorizontalAlignment = HorizontalAlignment.Right;
             ExplanationPane.VerticalAlignment = VerticalAlignment.Top; ExplanationPane.Margin = new Thickness(24);
+            SetExplanationPopupOffset(explanationPopupOffsetX, explanationPopupOffsetY);
         }
         else
         {
@@ -382,7 +392,64 @@ public sealed partial class MainWindow
             ExplanationColumn.Width = new GridLength(360); Grid.SetColumn(ExplanationPane, 1); Canvas.SetZIndex(ExplanationPane, 0);
             ExplanationPane.Width = double.NaN; ExplanationPane.MaxHeight = double.PositiveInfinity; ExplanationPane.HorizontalAlignment = HorizontalAlignment.Stretch;
             ExplanationPane.VerticalAlignment = VerticalAlignment.Stretch; ExplanationPane.Margin = new Thickness(0);
+            ExplanationPane.RenderTransform = new TranslateTransform();
         }
+    }
+
+    private void ExplanationDragHandle_PointerPressed(object sender, PointerRoutedEventArgs args)
+    {
+        if (device.Settings.ExplanationPresentation != "popup") return;
+        draggingExplanation = ExplanationDragHandle.CapturePointer(args.Pointer);
+        if (!draggingExplanation) return;
+        explanationDragStart = args.GetCurrentPoint(ReadingSurface).Position;
+        explanationDragOriginX = explanationPopupOffsetX;
+        explanationDragOriginY = explanationPopupOffsetY;
+        args.Handled = true;
+    }
+
+    private void ExplanationDragHandle_PointerMoved(object sender, PointerRoutedEventArgs args)
+    {
+        if (!draggingExplanation) return;
+        var point = args.GetCurrentPoint(ReadingSurface);
+        if (!point.Properties.IsLeftButtonPressed) { EndExplanationDrag(args); return; }
+        SetExplanationPopupOffset(explanationDragOriginX + point.Position.X - explanationDragStart.X,
+            explanationDragOriginY + point.Position.Y - explanationDragStart.Y, clamp: true);
+        args.Handled = true;
+    }
+
+    private void ExplanationDragHandle_PointerReleased(object sender, PointerRoutedEventArgs args) => EndExplanationDrag(args);
+    private void ExplanationDragHandle_PointerCanceled(object sender, PointerRoutedEventArgs args) => EndExplanationDrag(args);
+    private void ExplanationDragHandle_PointerCaptureLost(object sender, PointerRoutedEventArgs args) => draggingExplanation = false;
+    private void ReadingSurface_SizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        if (device.Settings.ExplanationPresentation == "popup" && ExplanationPane.Visibility == Visibility.Visible)
+            SetExplanationPopupOffset(explanationPopupOffsetX, explanationPopupOffsetY, clamp: true);
+    }
+
+    private void EndExplanationDrag(PointerRoutedEventArgs args)
+    {
+        if (!draggingExplanation) return;
+        draggingExplanation = false;
+        ExplanationDragHandle.ReleasePointerCapture(args.Pointer);
+        args.Handled = true;
+    }
+
+    private void SetExplanationPopupOffset(double x, double y, bool clamp = false)
+    {
+        if (clamp)
+        {
+            const double edge = 8;
+            var originX = Math.Max(0, ReadingSurface.ActualWidth - ExplanationPane.ActualWidth - ExplanationPane.Margin.Right);
+            var originY = ExplanationPane.Margin.Top;
+            var minimumX = edge - originX;
+            var maximumX = Math.Max(minimumX, ReadingSurface.ActualWidth - edge - originX - ExplanationPane.ActualWidth);
+            var minimumY = edge - originY;
+            var maximumY = Math.Max(minimumY, ReadingSurface.ActualHeight - edge - originY - ExplanationPane.ActualHeight);
+            x = Math.Clamp(x, minimumX, maximumX);
+            y = Math.Clamp(y, minimumY, maximumY);
+        }
+        explanationPopupOffsetX = x; explanationPopupOffsetY = y;
+        ExplanationPane.RenderTransform = new TranslateTransform { X = x, Y = y };
     }
     private void CloseExplanation_Click(object sender, RoutedEventArgs args) => ResetExplanation();
     private void ResetExplanation()
