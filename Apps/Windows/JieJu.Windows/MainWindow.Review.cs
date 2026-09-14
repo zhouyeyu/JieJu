@@ -189,6 +189,8 @@ public sealed partial class MainWindow
             await libraryStore.SaveAsync(library);
             section = "review";
             await ShowLibrarySectionAsync();
+            var left = LibraryContent.TransformToVisual(LibraryPage).TransformPoint(new global::Windows.Foundation.Point()).X;
+            if (left > 16) throw new InvalidOperationException("Library content was not aligned to the left edge.");
             if (!HasAutomationId("review.showAnswer") || HasAutomationId("review.answer"))
                 throw new InvalidOperationException("Recognition card front did not hide the answer.");
 

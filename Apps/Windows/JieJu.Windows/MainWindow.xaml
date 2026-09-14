@@ -49,8 +49,8 @@
      <Button Grid.Column="2" Content="下一章 →" Click="NextChapter_Click" x:Name="NextChapterButton"/>
     </Grid>
    </Grid>
-   <ScrollViewer x:Name="LibraryPage" Visibility="Collapsed"><StackPanel x:Name="LibraryContent" Spacing="16" MaxWidth="920" HorizontalAlignment="Stretch" Padding="8,12"/></ScrollViewer>
-   <ScrollViewer x:Name="SettingsPage" Visibility="Collapsed"><StackPanel MaxWidth="760" HorizontalAlignment="Stretch" Spacing="20" Padding="8,12,24,24">
+   <ScrollViewer x:Name="LibraryPage" Visibility="Collapsed" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="LibraryContent" Spacing="16" Width="{Binding ActualWidth, ElementName=LibraryPage}" MaxWidth="920" HorizontalAlignment="Left" Padding="8,12"/></ScrollViewer>
+   <ScrollViewer x:Name="SettingsPage" Visibility="Collapsed" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="SettingsContent" Width="{Binding ActualWidth, ElementName=SettingsPage}" MaxWidth="760" HorizontalAlignment="Left" Spacing="20" Padding="8,12,24,24">
      <TextBlock Text="设置" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="让阅读适合自己的节奏。设置会保存在这台设备上。" Opacity="0.6" TextWrapping="Wrap"/>
      <TextBlock Text="阅读排版" FontSize="19" FontWeight="SemiBold" Margin="0,12,0,0"/>
      <ComboBox x:Name="ThemePicker" Header="阅读主题" SelectedIndex="0" HorizontalAlignment="Stretch"><ComboBoxItem Content="白纸" Tag="paper"/><ComboBoxItem Content="夜间" Tag="night"/><ComboBoxItem Content="羊皮纸" Tag="sepia"/><ComboBoxItem Content="护眼绿" Tag="sage"/></ComboBox>

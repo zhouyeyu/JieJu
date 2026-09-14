@@ -147,7 +147,12 @@ public sealed partial class MainWindow : Window
                             }
                             else if (smokeSelection && book is not null)
                                 await core.ExecuteScriptAsync($"const p=document.querySelector('{(smokeWord ? "p ruby" : "p")}');const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event('selectionchange'));");
-                            else if (smokeCloudSettings) FinishSmoke(CloudSettings.Visibility == Visibility.Visible && OllamaSettings.Visibility == Visibility.Collapsed, "Cloud provider settings visible");
+                            else if (smokeCloudSettings)
+                            {
+                                var left = SettingsContent.TransformToVisual(SettingsPage).TransformPoint(new global::Windows.Foundation.Point()).X;
+                                var ready = CloudSettings.Visibility == Visibility.Visible && OllamaSettings.Visibility == Visibility.Collapsed && left <= 16;
+                                FinishSmoke(ready, ready ? "Cloud provider settings visible and left aligned" : "Cloud settings layout was incorrect");
+                            }
                             else if (smokeReview) await RunReviewSmokeAsync();
                             else FinishSmoke(true, environment.BrowserVersionString);
                             break;
