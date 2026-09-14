@@ -69,6 +69,7 @@ public sealed partial class MainWindow : Window
         try { device = deviceStore.Load(); }
         catch (Exception e) { Status.Text = "无法读取设置：" + e.Message; }
         if (smokePopup) device = device with { Settings = device.Settings with { ExplanationPresentation = "popup" } };
+        if (smokeFurigana) device = device with { Settings = device.Settings with { ShowsFurigana = true } };
         LoadSettingsControls(); RefreshRecentBooks();
         if (smokeCloudSettings) AIProviderPicker.SelectedIndex = 1;
         Navigation.SelectedItem = Navigation.MenuItems[0];
@@ -138,9 +139,12 @@ public sealed partial class MainWindow : Window
                             if (book is not null) Send("restoreLocation", new { locator = new EpubLocator(book.Chapters[chapterIndex].Href, TextAnchor: JsonSerializer.Serialize(new { progress = pendingProgress })) });
                             if (smokeFurigana && book is not null)
                             {
-                                var json = await core.ExecuteScriptAsync("document.querySelector('ruby[data-jieju-generated=\\\"true\\\"] rt')?.textContent || ''");
-                                var reading = JsonSerializer.Deserialize<string>(json) ?? "";
-                                FinishSmoke(reading.Length > 0, reading.Length > 0 ? "Generated local furigana: " + reading : "No generated furigana found");
+                                var json = await core.ExecuteScriptAsync("(()=>{const rt=document.querySelector('ruby[data-jieju-generated=\\\"true\\\"] rt');return rt?{reading:rt.textContent,display:getComputedStyle(rt).display,enabled:document.documentElement.dataset.ruby}:null})()");
+                                using var visibleRuby = JsonDocument.Parse(json);
+                                var rubyResult = visibleRuby.RootElement;
+                                var reading = rubyResult.ValueKind == JsonValueKind.Object && rubyResult.TryGetProperty("reading", out var readingValue) ? readingValue.GetString() ?? "" : "";
+                                var visible = reading.Length > 0 && rubyResult.GetProperty("display").GetString() != "none" && rubyResult.GetProperty("enabled").GetString() == "true" && FuriganaToolbarToggle.IsChecked == true;
+                                FinishSmoke(visible, visible ? "Visible local furigana: " + reading : "Generated furigana was not visible");
                             }
                             else if (smokeSelection && book is not null)
                                 await core.ExecuteScriptAsync($"const p=document.querySelector('{(smokeWord ? "p ruby" : "p")}');const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event('selectionchange'));");

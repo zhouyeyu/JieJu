@@ -44,7 +44,7 @@
      </StackPanel></ScrollViewer>
     </Grid>
     <Grid x:Name="ReaderToolbar" Grid.Row="2" Visibility="Collapsed" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-     <Button Content="← 上一章" Click="PreviousChapter_Click" x:Name="PreviousChapterButton"/>
+     <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="← 上一章" Click="PreviousChapter_Click" x:Name="PreviousChapterButton"/><ToggleButton x:Name="FuriganaToolbarToggle" Content="注音" Click="FuriganaToolbarToggle_Click" AutomationProperties.Name="显示日语汉字注音"/></StackPanel>
      <ComboBox x:Name="ChapterPicker" Grid.Column="1" HorizontalAlignment="Stretch" DisplayMemberPath="Title" SelectionChanged="ChapterPicker_SelectionChanged" AutomationProperties.Name="章节目录"/>
      <Button Grid.Column="2" Content="下一章 →" Click="NextChapter_Click" x:Name="NextChapterButton"/>
     </Grid>

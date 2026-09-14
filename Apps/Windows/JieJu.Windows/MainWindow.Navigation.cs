@@ -245,6 +245,20 @@ public sealed partial class MainWindow
     }
     private void PreviousChapter_Click(object sender, RoutedEventArgs args) { if (chapterIndex > 0) ChapterPicker.SelectedIndex--; }
     private void NextChapter_Click(object sender, RoutedEventArgs args) { if (book is not null && chapterIndex + 1 < book.Chapters.Count) ChapterPicker.SelectedIndex++; }
+    private void FuriganaToolbarToggle_Click(object sender, RoutedEventArgs args)
+    {
+        var enabled = FuriganaToolbarToggle.IsChecked == true;
+        RubyToggle.IsOn = enabled;
+        try
+        {
+            device = device with { Settings = device.Settings with { ShowsFurigana = enabled } };
+            deviceStore.Save(device);
+            ApplyReadingSettings();
+            UpdateSelectedFurigana();
+            Status.Text = enabled ? "已显示日语汉字注音。" : "已隐藏日语汉字注音。";
+        }
+        catch (Exception error) { ShowError("无法保存注音设置：" + error.Message); }
+    }
     private void CloseBook_Click(object sender, RoutedEventArgs args)
     {
         book = null; pdf = null; pdfUrl = null; bookPath = null; WelcomePanel.Visibility = Visibility.Visible;
@@ -274,7 +288,7 @@ public sealed partial class MainWindow
         var s = device.Settings;
         ThemePicker.SelectedIndex = Array.IndexOf(new[] { "paper", "night", "sepia", "sage" }, s.Theme);
         FontSlider.Value = s.FontSize; LineSlider.Value = s.LineHeight; MarginSlider.Value = s.HorizontalMargin;
-        RubyToggle.IsOn = s.ShowsFurigana; OllamaAddress.Text = s.OllamaUrl; ModelName.Text = s.Model; TargetLanguage.Text = s.ExplanationLanguage;
+        RubyToggle.IsOn = s.ShowsFurigana; FuriganaToolbarToggle.IsChecked = s.ShowsFurigana; OllamaAddress.Text = s.OllamaUrl; ModelName.Text = s.Model; TargetLanguage.Text = s.ExplanationLanguage;
         AIProviderPicker.SelectedIndex = s.Provider == "cloud" ? 1 : 0; CloudAddress.Text = s.CloudUrl; CloudModelName.Text = s.CloudModel; CloudApiKey.Password = apiKeyStore.Load(); UpdateProviderSettings();
         ExplanationPresentationPicker.SelectedIndex = s.ExplanationPresentation == "popup" ? 1 : 0;
     }
@@ -288,7 +302,7 @@ public sealed partial class MainWindow
         var settings = DeviceStateStore.Normalize(new ReadingSettings(FontSlider.Value, LineSlider.Value, MarginSlider.Value,
             ((ComboBoxItem)ThemePicker.SelectedItem).Tag.ToString()!, RubyToggle.IsOn, OllamaAddress.Text.Trim().TrimEnd('/'), ModelName.Text.Trim(), TargetLanguage.Text.Trim(),
             ((ComboBoxItem)ExplanationPresentationPicker.SelectedItem).Tag.ToString()!, provider, CloudAddress.Text.Trim(), CloudModelName.Text.Trim()));
-        try { if (provider == "cloud") apiKeyStore.Save(CloudApiKey.Password); var next = device with { Settings = settings }; deviceStore.Save(next); device = next; ApplyReadingSettings(); UpdateSelectedFurigana(); if (ExplanationPane.Visibility == Visibility.Visible) PresentExplanationPane(); SettingsStatus.Text = "设置已保存，当前阅读会话继续保留。"; }
+        try { if (provider == "cloud") apiKeyStore.Save(CloudApiKey.Password); var next = device with { Settings = settings }; deviceStore.Save(next); device = next; FuriganaToolbarToggle.IsChecked = settings.ShowsFurigana; ApplyReadingSettings(); UpdateSelectedFurigana(); if (ExplanationPane.Visibility == Visibility.Visible) PresentExplanationPane(); SettingsStatus.Text = "设置已保存，当前阅读会话继续保留。"; }
         catch (Exception e) { SettingsStatus.Text = "设置保存失败：" + e.Message; }
     }
     private async void CheckConnection_Click(object sender, RoutedEventArgs args)

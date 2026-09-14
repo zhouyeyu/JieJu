@@ -61,6 +61,12 @@ function New-SmokePdf([string]$Path) {
 }
 
 function Invoke-AppSmoke([string]$Exe, [string]$Result, [string[]]$ExtraArguments, [string]$Label) {
+    $automaticDataDirectory = $null
+    if ($ExtraArguments -notcontains '--data-directory') {
+        $automaticDataDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-app-smoke-{0}" -f [guid]::NewGuid())
+        [System.IO.Directory]::CreateDirectory($automaticDataDirectory) | Out-Null
+        $ExtraArguments = @($ExtraArguments) + @('--data-directory', ('"{0}"' -f $automaticDataDirectory))
+    }
     $arguments = @($ExtraArguments) + @('--smoke-result', ('"{0}"' -f $Result))
     $process = Start-Process -FilePath $Exe -ArgumentList $arguments -PassThru -WindowStyle Hidden
     try {
@@ -74,6 +80,13 @@ function Invoke-AppSmoke([string]$Exe, [string]$Result, [string[]]$ExtraArgument
     finally {
         if (-not $process.HasExited) { Stop-Process -Id $process.Id }
         if (Test-Path $Result) { Remove-Item -LiteralPath $Result }
+        if ($automaticDataDirectory) {
+            $resolvedAutomaticDirectory = [System.IO.Path]::GetFullPath($automaticDataDirectory)
+            $resolvedTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+            if ($resolvedAutomaticDirectory.StartsWith($resolvedTemp, [System.StringComparison]::OrdinalIgnoreCase) -and [System.IO.Directory]::Exists($resolvedAutomaticDirectory)) {
+                [System.IO.Directory]::Delete($resolvedAutomaticDirectory, $true)
+            }
+        }
     }
 }
 if (-not (Get-Command $DotNetPath -ErrorAction SilentlyContinue)) {
