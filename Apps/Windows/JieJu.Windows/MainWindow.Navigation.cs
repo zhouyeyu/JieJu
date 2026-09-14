@@ -65,13 +65,12 @@ public sealed partial class MainWindow
         }
         else
         {
-            LibraryContent.Children.Add(new TextBlock { Text = "还没有保存的内容", FontSize = 22, Margin = new Thickness(0, 96, 0, 0) });
-            LibraryContent.Children.Add(new TextBlock { Text = "收藏生词后，这里会出现可选的复习卡片。", Opacity = .6 });
+            await ShowReviewContentsAsync();
+            return;
         }
         var back = new Button { Content = "回到阅读" };
         back.Click += (_, _) => Navigation.SelectedItem = Navigation.MenuItems[0];
         LibraryContent.Children.Add(back);
-        if (section == "review") LibraryContent.Children.Add(new TextBlock { Text = "语言不是一条需要赶完的路。读一点，记一点，忘了也没关系；在漫长的相遇里，它终会成为你的一部分。", TextWrapping = TextWrapping.Wrap, Opacity = .6, Margin = new Thickness(0, 64, 0, 0) });
     }
 
     private void ShowRecordDetail(SavedExplanation record)

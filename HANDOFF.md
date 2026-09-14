@@ -2,9 +2,9 @@
 
 ## 本次交接
 
-- 日期：2026-09-11
+- 日期：2026-09-14
 - Agent：Codex
-- 阶段：Windows 解释与注音清单已全部对齐；下一步可执行 `WIN-205` 随手温习
+- 阶段：Windows 解释、注音与随手温习已对齐 macOS；可继续梳理下一项平台差异
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -28,8 +28,10 @@
   活用，日语身份字段不依赖模型，并支持从词形卡片加入生词本
 - 云端解释：支持 OpenAI-compatible Chat Completions SSE、词语/深入解析、连接检查和隐私提示；
   API Key 仅保存在 Windows 凭据管理器，未使用真实云端凭据或产生推理流量
-- 验证：Solution 0 警告；C# 88 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
-  `152.0.4191.66` 完成真实解句和词语解释冒烟
+- 随手温习：收藏生词自动生成识别卡，旧 Windows v5 生词自动补卡；先回想再揭示答案，支持空格、
+  数字 1～4 评分、返回最近原文、10 张温和暂停和 `jieju-interval-v1` 只追加日志
+- 验证：Solution 0 警告；C# 96 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+  `152.0.4191.66` 完成识别卡正面、答案、评分持久化和温和暂停冒烟
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
 - 测试入口：`./scripts/test-windows.ps1`；加 `-Smoke` 会依次验证欢迎页和生成的最小 EPUB
@@ -40,7 +42,7 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：解释与注音无剩余项；按产品任务继续 `WIN-205` 识别卡、四档熟悉程度和温和暂停
+- 下一步：再次按 macOS 当前实现逐页盘点 Windows 差异，选择一个边界明确的未对齐功能继续实现
 
 ### 2026-09-09 macOS 基线交接
 

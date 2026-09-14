@@ -19,6 +19,7 @@ public sealed partial class MainWindow : Window
     private readonly bool smokePopup;
     private readonly bool smokeFurigana;
     private readonly bool smokeCloudSettings;
+    private readonly bool smokeReview;
     private readonly DeviceStateStore deviceStore;
     private readonly ILearningLibraryStore libraryStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
@@ -53,8 +54,13 @@ public sealed partial class MainWindow : Window
         smokePopup = arguments.Contains("--smoke-popup");
         smokeFurigana = arguments.Contains("--smoke-furigana");
         smokeCloudSettings = arguments.Contains("--smoke-cloud-settings");
-        deviceStore = new DeviceStateStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
-        libraryStore = new JsonLearningLibraryStore(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu"));
+        smokeReview = arguments.Contains("--smoke-review");
+        var dataIndex = Array.IndexOf(arguments, "--data-directory");
+        var dataDirectory = dataIndex >= 0 && dataIndex + 1 < arguments.Length
+            ? Path.GetFullPath(arguments[dataIndex + 1])
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu");
+        deviceStore = new DeviceStateStore(dataDirectory);
+        libraryStore = new JsonLearningLibraryStore(dataDirectory);
         try { device = deviceStore.Load(); }
         catch (Exception e) { Status.Text = "无法读取设置：" + e.Message; }
         if (smokePopup) device = device with { Settings = device.Settings with { ExplanationPresentation = "popup" } };
@@ -134,6 +140,7 @@ public sealed partial class MainWindow : Window
                             else if (smokeSelection && book is not null)
                                 await core.ExecuteScriptAsync($"const p=document.querySelector('{(smokeWord ? "p ruby" : "p")}');const r=document.createRange();r.selectNodeContents(p);const s=getSelection();s.removeAllRanges();s.addRange(r);document.dispatchEvent(new Event('selectionchange'));");
                             else if (smokeCloudSettings) FinishSmoke(CloudSettings.Visibility == Visibility.Visible && OllamaSettings.Visibility == Visibility.Collapsed, "Cloud provider settings visible");
+                            else if (smokeReview) await RunReviewSmokeAsync();
                             else FinishSmoke(true, environment.BrowserVersionString);
                             break;
                         case "locationChanged":

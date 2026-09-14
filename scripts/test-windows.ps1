@@ -9,7 +9,8 @@ param(
     [switch]$PopupSmoke,
     [switch]$FuriganaSmoke,
     [switch]$JapaneseDeepSmoke,
-    [switch]$CloudSettingsSmoke
+    [switch]$CloudSettingsSmoke,
+    [switch]$ReviewSmoke
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -73,6 +74,21 @@ try {
         $result = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-smoke-{0}.json" -f [guid]::NewGuid())
         $welcomeArguments = $CloudSettingsSmoke ? @('--smoke-cloud-settings') : @()
         Invoke-AppSmoke $exe $result $welcomeArguments ($CloudSettingsSmoke ? 'Cloud provider settings' : 'WinUI + shared Reader Bridge')
+        if ($ReviewSmoke) {
+            $reviewDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-review-smoke-{0}" -f [guid]::NewGuid())
+            $reviewResult = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-review-smoke-{0}.json" -f [guid]::NewGuid())
+            try {
+                [System.IO.Directory]::CreateDirectory($reviewDirectory) | Out-Null
+                Invoke-AppSmoke $exe $reviewResult @('--smoke-review', '--data-directory', ('"{0}"' -f $reviewDirectory)) 'Review recognition-card flow'
+            }
+            finally {
+                $resolvedReviewDirectory = [System.IO.Path]::GetFullPath($reviewDirectory)
+                $resolvedTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+                if ($resolvedReviewDirectory.StartsWith($resolvedTemp, [System.StringComparison]::OrdinalIgnoreCase) -and [System.IO.Directory]::Exists($resolvedReviewDirectory)) {
+                    [System.IO.Directory]::Delete($resolvedReviewDirectory, $true)
+                }
+            }
+        }
         $epub = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.epub" -f [guid]::NewGuid())
         try {
             New-SmokeEpub $epub ($FuriganaSmoke -or $JapaneseDeepSmoke)

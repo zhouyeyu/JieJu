@@ -20,7 +20,10 @@ public sealed class JsonLearningLibraryStore(string directory) : ILearningLibrar
             }
             try
             {
-                return ContractJson.ReadLibrary(await File.ReadAllTextAsync(file, cancellationToken));
+                var loaded = ContractJson.ReadLibrary(await File.ReadAllTextAsync(file, cancellationToken));
+                var repaired = LearningLibraryOperations.EnsureRecognitionCards(loaded, DateTimeOffset.UtcNow);
+                if (repaired.ReviewCards.Length != loaded.ReviewCards.Length) await WriteAsync(repaired, cancellationToken);
+                return repaired;
             }
             catch (UnsupportedLibraryVersionException) { throw; }
             catch (System.Text.Json.JsonException)

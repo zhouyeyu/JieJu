@@ -23,7 +23,7 @@ public static class LearningLibraryOperations
     public static LearningLibrary DeleteExplanation(LearningLibrary library, Guid id) =>
         library with { SavedExplanations = library.SavedExplanations.Where(record => record.Id != id).ToArray() };
 
-    public static LearningLibrary UpsertVocabulary(LearningLibrary library, VocabularyEntry incoming)
+    public static LearningLibrary UpsertVocabulary(LearningLibrary library, VocabularyEntry incoming, DateTimeOffset? dueAt = null)
     {
         var entries = library.VocabularyEntries.ToList();
         var index = entries.FindIndex(item => Normalize(item.Language) == Normalize(incoming.Language)
@@ -43,7 +43,40 @@ public static class LearningLibraryOperations
                 UpdatedAt = incoming.UpdatedAt
             };
         }
-        return library with { VocabularyEntries = entries.ToArray() };
+        return EnsureRecognitionCards(library with { VocabularyEntries = entries.ToArray() }, dueAt ?? incoming.UpdatedAt);
+    }
+
+    public static LearningLibrary EnsureRecognitionCards(LearningLibrary library, DateTimeOffset dueAt)
+    {
+        var cards = library.ReviewCards.ToList();
+        foreach (var entry in library.VocabularyEntries)
+        {
+            if (cards.Any(card => card.VocabularyEntryId == entry.Id && card.Template == ReviewTemplate.Recognition)) continue;
+            cards.Add(new ReviewCard(Guid.NewGuid(), entry.Id, ReviewTemplate.Recognition, ReviewState.New,
+                dueAt, 0, 2.5, 0, 0, dueAt, dueAt));
+        }
+        return library with { ReviewCards = cards.ToArray() };
+    }
+
+    public static ReviewQueueItem[] DueReviews(LearningLibrary library, DateTimeOffset at, int limit = 50)
+    {
+        var entries = library.VocabularyEntries.ToDictionary(entry => entry.Id);
+        return library.ReviewCards
+            .Where(card => card.State != ReviewState.Suspended && card.DueAt <= at && entries.ContainsKey(card.VocabularyEntryId))
+            .OrderBy(card => card.DueAt).ThenBy(card => card.CreatedAt)
+            .Take(Math.Max(0, limit))
+            .Select(card => new ReviewQueueItem(card, entries[card.VocabularyEntryId]))
+            .ToArray();
+    }
+
+    public static LearningLibrary Review(LearningLibrary library, Guid cardId, ReviewRating rating, DateTimeOffset at)
+    {
+        var cards = library.ReviewCards.ToArray();
+        var index = Array.FindIndex(cards, card => card.Id == cardId);
+        if (index < 0) throw new KeyNotFoundException($"Review card {cardId} was not found.");
+        var outcome = ReviewScheduler.Review(cards[index], rating, at);
+        cards[index] = outcome.Card;
+        return library with { ReviewCards = cards, ReviewLogs = [.. library.ReviewLogs, outcome.Log] };
     }
 
     public static LearningLibrary DeleteVocabulary(LearningLibrary library, Guid id)
@@ -67,3 +100,5 @@ public static class LearningLibraryOperations
     private static string Normalize(string? value) =>
         string.Join(' ', (value ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
 }
+
+public sealed record ReviewQueueItem(ReviewCard Card, VocabularyEntry Entry);
