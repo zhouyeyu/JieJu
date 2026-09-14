@@ -68,7 +68,6 @@ public sealed partial class MainWindow : Window
         libraryStore = new JsonLearningLibraryStore(dataDirectory);
         try { device = deviceStore.Load(); }
         catch (Exception e) { Status.Text = "无法读取设置：" + e.Message; }
-        if (smokePopup) device = device with { Settings = device.Settings with { ExplanationPresentation = "popup" } };
         if (smokeFurigana) device = device with { Settings = device.Settings with { ShowsFurigana = true } };
         LoadSettingsControls(); RefreshRecentBooks();
         if (smokeCloudSettings) AIProviderPicker.SelectedIndex = 1;

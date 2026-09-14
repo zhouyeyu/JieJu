@@ -48,7 +48,17 @@ public sealed partial class MainWindow
         ExplainButton.IsEnabled = true;
         if (smokeWord) ExplainWord_Click(this, new RoutedEventArgs());
         else if (smokeInference) ExplainSelection_Click(this, new RoutedEventArgs());
-        else if (smokeSelection) FinishSmoke(true, "EPUB selection bridge and explanation pane");
+        else if (smokeSelection)
+        {
+            if (smokePopup)
+            {
+                SwitchExplanationPresentation();
+                var overlaysReader = device.Settings.ExplanationPresentation == "popup"
+                    && ExplanationColumn.Width.Value == 0 && Grid.GetColumn(ExplanationPane) == 0 && Canvas.GetZIndex(ExplanationPane) > 0;
+                FinishSmoke(overlaysReader, overlaysReader ? "EPUB popup explanation overlays without resizing reader" : "Popup explanation still resized the reader");
+            }
+            else FinishSmoke(true, "EPUB selection bridge and explanation pane");
+        }
     }
 
     private void ExplainPrimary_Click(object sender, RoutedEventArgs args)
@@ -342,17 +352,33 @@ public sealed partial class MainWindow
     }
 
     private void CancelExplanation_Click(object sender, RoutedEventArgs args) => explanationCancellation?.Cancel();
+    private void SwitchExplanationPresentation_Click(object sender, RoutedEventArgs args) => SwitchExplanationPresentation();
+    private void SwitchExplanationPresentation()
+    {
+        var mode = device.Settings.ExplanationPresentation == "popup" ? "sidebar" : "popup";
+        try
+        {
+            var next = device with { Settings = device.Settings with { ExplanationPresentation = mode } };
+            deviceStore.Save(next); device = next;
+            ExplanationPresentationPicker.SelectedIndex = mode == "popup" ? 1 : 0;
+            PresentExplanationPane();
+            Status.Text = mode == "popup" ? "解释已切换为弹出式，不改变正文宽度。" : "解释已切换为侧边栏。";
+        }
+        catch (Exception error) { ShowError("无法保存解释显示方式：" + error.Message); }
+    }
     private void PresentExplanationPane()
     {
         ExplanationPane.Visibility = Visibility.Visible;
         if (device.Settings.ExplanationPresentation == "popup")
         {
+            ExplanationModeButton.Content = "切换为侧边栏";
             ExplanationColumn.Width = new GridLength(0); Grid.SetColumn(ExplanationPane, 0); Canvas.SetZIndex(ExplanationPane, 10);
             ExplanationPane.Width = 420; ExplanationPane.MaxHeight = 700; ExplanationPane.HorizontalAlignment = HorizontalAlignment.Right;
             ExplanationPane.VerticalAlignment = VerticalAlignment.Top; ExplanationPane.Margin = new Thickness(24);
         }
         else
         {
+            ExplanationModeButton.Content = "切换为弹出式";
             ExplanationColumn.Width = new GridLength(360); Grid.SetColumn(ExplanationPane, 1); Canvas.SetZIndex(ExplanationPane, 0);
             ExplanationPane.Width = double.NaN; ExplanationPane.MaxHeight = double.PositiveInfinity; ExplanationPane.HorizontalAlignment = HorizontalAlignment.Stretch;
             ExplanationPane.VerticalAlignment = VerticalAlignment.Stretch; ExplanationPane.Margin = new Thickness(0);

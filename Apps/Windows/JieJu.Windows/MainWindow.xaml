@@ -21,7 +21,7 @@
      <Border CornerRadius="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"><WebView2 x:Name="Reader" Loaded="Reader_Loaded" AutomationProperties.Name="阅读区域"/></Border>
      <Border x:Name="ExplanationPane" Grid.Column="1" Visibility="Collapsed" CornerRadius="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Padding="18">
       <ScrollViewer><StackPanel Spacing="14">
-       <Grid><TextBlock Text="解读" FontSize="20" FontWeight="SemiBold"/><Button HorizontalAlignment="Right" Content="关闭" Click="CloseExplanation_Click"/></Grid>
+       <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="解读" FontSize="20" FontWeight="SemiBold"/><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button x:Name="ExplanationModeButton" Content="切换为弹出式" Click="SwitchExplanationPresentation_Click" AutomationProperties.Name="切换解释显示方式"/><Button Content="关闭" Click="CloseExplanation_Click"/></StackPanel></Grid>
        <TextBlock x:Name="SelectedText" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" IsTextSelectionEnabled="True"/>
        <StackPanel x:Name="SelectedFurigana" Visibility="Collapsed" Spacing="4"/>
        <TextBlock x:Name="SelectionContext" FontSize="12" Opacity="0.6" TextWrapping="Wrap"/>
