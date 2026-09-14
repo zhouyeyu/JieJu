@@ -56,16 +56,18 @@ public sealed class EpubBook
             throw new InvalidDataException("暂不支持固定版式 EPUB，请使用可重排版本。");
         var basePath = opfPath.Contains('/') ? opfPath[..(opfPath.LastIndexOf('/') + 1)] : "";
         var resources = new Dictionary<string, BookResource>(StringComparer.Ordinal);
-        var manifest = new Dictionary<string, (string Href, string Type)>(StringComparer.Ordinal);
+        var manifest = new Dictionary<string, (string Href, string Type, string Properties)>(StringComparer.Ordinal);
         foreach (var item in package.Descendants().Where(e => e.Name.LocalName == "manifest").Elements())
         {
             var itemId = (string?)item.Attribute("id") ?? throw new InvalidDataException("EPUB manifest 缺少 id。");
             var href = ResolvePath(basePath, (string?)item.Attribute("href") ?? "");
             var mime = (string?)item.Attribute("media-type") ?? "application/octet-stream";
-            if (!manifest.TryAdd(itemId, (href, mime))) throw new InvalidDataException("EPUB manifest id 重复。");
+            var properties = (string?)item.Attribute("properties") ?? "";
+            if (!manifest.TryAdd(itemId, (href, mime, properties))) throw new InvalidDataException("EPUB manifest id 重复。");
             // Only the declared book resources are served; no archive is extracted to disk.
             resources[href] = new BookResource(Read(href), mime);
         }
+        var navigationTitles = ReadNavigationTitles(manifest, resources);
         var chapters = new List<EpubChapter>();
         foreach (var item in package.Descendants().Where(e => e.Name.LocalName == "spine").Elements())
         {
@@ -74,8 +76,8 @@ public sealed class EpubBook
                 throw new InvalidDataException("EPUB 阅读顺序引用了不存在的章节。");
             if (resource.Type != "application/xhtml+xml") throw new InvalidDataException("暂不支持此 EPUB 章节格式。");
             var xhtml = ParseXml(resources[resource.Href].Bytes);
-            var title = xhtml.Descendants().FirstOrDefault(e => e.Name.LocalName is "h1" or "h2")?.Value.Trim();
-            if (string.IsNullOrWhiteSpace(title)) title = xhtml.Descendants().FirstOrDefault(e => e.Name.LocalName == "title")?.Value.Trim();
+            navigationTitles.TryGetValue(resource.Href, out var navigationTitle);
+            var title = ChapterTitle(xhtml, navigationTitle);
             chapters.Add(new EpubChapter((string)item.Attribute("idref")!, resource.Href,
                 string.IsNullOrWhiteSpace(title) ? $"第 {chapters.Count + 1} 章" : title));
         }
@@ -87,6 +89,64 @@ public sealed class EpubBook
             FileName = Path.GetFileName(path), Chapters = chapters, Resources = resources
         };
     }
+
+    private static Dictionary<string, string> ReadNavigationTitles(
+        Dictionary<string, (string Href, string Type, string Properties)> manifest,
+        Dictionary<string, BookResource> resources)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        var navigationItems = manifest.Values.Where(item =>
+            item.Properties.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains("nav")
+            || item.Type == "application/x-dtbncx+xml");
+        foreach (var item in navigationItems)
+        {
+            if (!resources.TryGetValue(item.Href, out var resource)) continue;
+            var navigation = ParseXml(resource.Bytes);
+            var directory = item.Href.Contains('/') ? item.Href[..(item.Href.LastIndexOf('/') + 1)] : "";
+            foreach (var point in navigation.Descendants().Where(element => element.Name.LocalName == "navPoint"))
+            {
+                var href = point.Descendants().FirstOrDefault(element => element.Name.LocalName == "content")?.Attribute("src")?.Value;
+                var label = point.Descendants().FirstOrDefault(element => element.Name.LocalName == "navLabel")?
+                    .Descendants().FirstOrDefault(element => element.Name.LocalName == "text")?.Value;
+                AddNavigationTitle(result, directory, href, label);
+            }
+            foreach (var link in navigation.Descendants().Where(element => element.Name.LocalName == "a"))
+                AddNavigationTitle(result, directory, (string?)link.Attribute("href"), link.Value);
+        }
+        return result;
+    }
+
+    private static void AddNavigationTitle(Dictionary<string, string> result, string directory, string? href, string? label)
+    {
+        if (!MeaningfulTitle(label) || string.IsNullOrWhiteSpace(href)) return;
+        try { result.TryAdd(ResolvePath(directory, href), NormalizeText(label!)); }
+        catch (InvalidDataException) { }
+    }
+
+    private static string? ChapterTitle(XDocument document, string? navigationTitle)
+    {
+        if (MeaningfulTitle(navigationTitle)) return NormalizeText(navigationTitle!);
+        var heading = document.Descendants().FirstOrDefault(element =>
+            (element.Name.LocalName is "h1" or "h2" or "h3" or "h4" or "h5" or "h6") && MeaningfulTitle(element.Value));
+        if (heading is not null) return NormalizeText(heading.Value);
+        var blockTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "p", "div", "li", "blockquote", "dt", "dd", "figcaption" };
+        var firstBlock = document.Descendants().FirstOrDefault(element => blockTags.Contains(element.Name.LocalName)
+            && !element.Descendants().Any(child => blockTags.Contains(child.Name.LocalName))
+            && MeaningfulTitle(element.Value) && NormalizeText(element.Value).Length <= 80);
+        if (firstBlock is not null) return NormalizeText(firstBlock.Value);
+        var htmlTitle = document.Descendants().FirstOrDefault(element => element.Name.LocalName == "title")?.Value;
+        return MeaningfulTitle(htmlTitle) ? NormalizeText(htmlTitle!) : null;
+    }
+
+    private static bool MeaningfulTitle(string? value)
+    {
+        var title = NormalizeText(value ?? "");
+        return title.Length > 0 && title.ToLowerInvariant() is not ("unknown" or "untitled" or "未命名");
+    }
+
+    private static string NormalizeText(string value) =>
+        string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     public static string ResolvePath(string directory, string href, bool decode = true)
     {

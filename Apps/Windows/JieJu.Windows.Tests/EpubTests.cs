@@ -40,6 +40,30 @@ public sealed class EpubTests
     }
 
     [Fact]
+    public void ReplacesUnknownHtmlTitleWithFirstConciseBodyBlock()
+    {
+        WithBook((_, files) => files["OPS/first.xhtml"] =
+            "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Unknown</title></head><body><p>第一章</p><p>これは章の本文です。</p></body></html>", path =>
+        {
+            var book = EpubBook.Open(path);
+            Assert.Equal("第一章", book.Chapters[0].Title);
+        });
+    }
+
+    [Fact]
+    public void UsesNcxNavigationLabelBeforeGenericDocumentTitle()
+    {
+        WithBook((_, files) =>
+        {
+            files["OPS/package.opf"] = files["OPS/package.opf"]
+                .Replace("<manifest>", "<manifest><item id=\"ncx\" href=\"toc.ncx\" media-type=\"application/x-dtbncx+xml\"/>")
+                .Replace("<spine>", "<spine toc=\"ncx\">");
+            files["OPS/toc.ncx"] = "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\"><navMap><navPoint><navLabel><text>森の入口</text></navLabel><content src=\"first.xhtml\"/></navPoint></navMap></ncx>";
+            files["OPS/first.xhtml"] = "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Unknown</title></head><body><p>本文</p></body></html>";
+        }, path => Assert.Equal("森の入口", EpubBook.Open(path).Chapters[0].Title));
+    }
+
+    [Fact]
     public void RemovesActiveBookContentAndPreservesRubyAndImages()
     {
         WithBook(null, path =>
