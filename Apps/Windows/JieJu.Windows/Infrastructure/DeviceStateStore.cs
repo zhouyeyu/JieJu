@@ -6,7 +6,8 @@ public sealed record ReadingSettings(double FontSize = 18, double LineHeight = 1
     string Theme = "paper", bool ShowsFurigana = false, string OllamaUrl = "http://127.0.0.1:11434",
     string Model = "qwen2.5:1.5b-instruct", string ExplanationLanguage = "Chinese", string ExplanationPresentation = "sidebar",
     string Provider = "ollama", string CloudUrl = "https://api.openai.com/v1", string CloudModel = "gpt-4.1-mini");
-public sealed record RecentBook(string Id, string Path, string Title, int Chapter, double Progress, DateTimeOffset OpenedAt);
+public sealed record RecentBook(string Id, string Path, string Title, int Chapter, double Progress, DateTimeOffset OpenedAt,
+    string Kind = "epub");
 public sealed record DeviceState(ReadingSettings Settings, RecentBook[] RecentBooks);
 
 public sealed class DeviceStateStore(string directory)

@@ -67,6 +67,16 @@ public class DeviceStateTests
     }
 
     [Fact]
+    public void OlderRecentBookDefaultsToEpubAndPdfKindRoundTrips()
+    {
+        var old = System.Text.Json.JsonSerializer.Deserialize<RecentBook>("{\"Id\":\"old\",\"Path\":\"old.epub\",\"Title\":\"Old\",\"Chapter\":1,\"Progress\":0.2,\"OpenedAt\":\"2026-09-14T00:00:00Z\"}")!;
+        var pdf = new RecentBook("pdf", "book.pdf", "Book", 0, 0, DateTimeOffset.UtcNow, "pdf");
+
+        Assert.Equal("epub", old.Kind);
+        Assert.Equal("pdf", System.Text.Json.JsonSerializer.Deserialize<RecentBook>(System.Text.Json.JsonSerializer.Serialize(pdf))!.Kind);
+    }
+
+    [Fact]
     public void ApiKeyRoundTripsThroughWindowsCredentialManager()
     {
         if (!OperatingSystem.IsWindows()) return;

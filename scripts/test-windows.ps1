@@ -10,7 +10,8 @@ param(
     [switch]$FuriganaSmoke,
     [switch]$JapaneseDeepSmoke,
     [switch]$CloudSettingsSmoke,
-    [switch]$ReviewSmoke
+    [switch]$ReviewSmoke,
+    [switch]$PdfSmoke
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -34,6 +35,29 @@ function New-SmokeEpub([string]$Path, [bool]$Japanese = $false) {
         finally { $archive.Dispose() }
     }
     finally { $stream.Dispose() }
+}
+
+function New-SmokePdf([string]$Path) {
+    $encoding = [System.Text.Encoding]::ASCII
+    $content = "BT /F1 24 Tf 72 720 Td (JieJu PDF smoke) Tj ET"
+    $objects = @(
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        ("<< /Length {0} >>`nstream`n{1}`nendstream" -f $content.Length, $content)
+    )
+    $pdf = "%PDF-1.4`n"
+    $offsets = @()
+    for ($index = 0; $index -lt $objects.Count; $index++) {
+        $offsets += $encoding.GetByteCount($pdf)
+        $pdf += ("{0} 0 obj`n{1}`nendobj`n" -f ($index + 1), $objects[$index])
+    }
+    $xref = $encoding.GetByteCount($pdf)
+    $pdf += "xref`n0 6`n0000000000 65535 f `n"
+    foreach ($offset in $offsets) { $pdf += ("{0:D10} 00000 n `n" -f $offset) }
+    $pdf += ("trailer`n<< /Size 6 /Root 1 0 R >>`nstartxref`n{0}`n%%EOF`n" -f $xref)
+    [System.IO.File]::WriteAllBytes($Path, $encoding.GetBytes($pdf))
 }
 
 function Invoke-AppSmoke([string]$Exe, [string]$Result, [string[]]$ExtraArguments, [string]$Label) {
@@ -86,6 +110,24 @@ try {
                 $resolvedTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
                 if ($resolvedReviewDirectory.StartsWith($resolvedTemp, [System.StringComparison]::OrdinalIgnoreCase) -and [System.IO.Directory]::Exists($resolvedReviewDirectory)) {
                     [System.IO.Directory]::Delete($resolvedReviewDirectory, $true)
+                }
+            }
+        }
+        if ($PdfSmoke) {
+            $pdf = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-pdf-smoke-{0}.pdf" -f [guid]::NewGuid())
+            $pdfResult = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-pdf-smoke-{0}.json" -f [guid]::NewGuid())
+            $pdfDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-pdf-data-{0}" -f [guid]::NewGuid())
+            try {
+                [System.IO.Directory]::CreateDirectory($pdfDirectory) | Out-Null
+                New-SmokePdf $pdf
+                Invoke-AppSmoke $exe $pdfResult @('--open', ('"{0}"' -f $pdf), '--smoke-pdf', '--data-directory', ('"{0}"' -f $pdfDirectory)) 'Restricted local PDF reader'
+            }
+            finally {
+                if (Test-Path $pdf) { Remove-Item -LiteralPath $pdf }
+                $resolvedPdfDirectory = [System.IO.Path]::GetFullPath($pdfDirectory)
+                $resolvedTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+                if ($resolvedPdfDirectory.StartsWith($resolvedTemp, [System.StringComparison]::OrdinalIgnoreCase) -and [System.IO.Directory]::Exists($resolvedPdfDirectory)) {
+                    [System.IO.Directory]::Delete($resolvedPdfDirectory, $true)
                 }
             }
         }

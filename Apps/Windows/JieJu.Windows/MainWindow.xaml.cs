@@ -20,6 +20,8 @@ public sealed partial class MainWindow : Window
     private readonly bool smokeFurigana;
     private readonly bool smokeCloudSettings;
     private readonly bool smokeReview;
+    private readonly bool smokePdf;
+    private bool smokePdfReopened;
     private readonly DeviceStateStore deviceStore;
     private readonly ILearningLibraryStore libraryStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
@@ -29,6 +31,8 @@ public sealed partial class MainWindow : Window
     private DeviceState device = new(new(), []);
     private LearningLibrary library = LearningLibrary.Empty;
     private EpubBook? book;
+    private PdfBook? pdf;
+    private string? pdfUrl;
     private string? bookPath;
     private int chapterIndex;
     private double pendingProgress;
@@ -55,6 +59,7 @@ public sealed partial class MainWindow : Window
         smokeFurigana = arguments.Contains("--smoke-furigana");
         smokeCloudSettings = arguments.Contains("--smoke-cloud-settings");
         smokeReview = arguments.Contains("--smoke-review");
+        smokePdf = arguments.Contains("--smoke-pdf");
         var dataIndex = Array.IndexOf(arguments, "--data-directory");
         var dataDirectory = dataIndex >= 0 && dataIndex + 1 < arguments.Length
             ? Path.GetFullPath(arguments[dataIndex + 1])
@@ -115,7 +120,7 @@ public sealed partial class MainWindow : Window
                     catch (Exception error) { ShowError("章节加载失败：" + error.Message); e.Response = environment.CreateWebResourceResponse(null, 400, "Bad Request", ""); }
                     finally { deferral.Complete(); }
                 }
-                else if (!ReaderHostPolicy.AllowsResource(e.Request.Uri)) e.Response = environment.CreateWebResourceResponse(null, 403, "Forbidden", "");
+                else if (e.Request.Uri != pdfUrl && !ReaderHostPolicy.AllowsResource(e.Request.Uri)) e.Response = environment.CreateWebResourceResponse(null, 403, "Forbidden", "");
             };
             core.WebMessageReceived += async (_, e) =>
             {
@@ -154,22 +159,33 @@ public sealed partial class MainWindow : Window
                 }
                 catch (Exception error) when (error is JsonException or InvalidOperationException or KeyNotFoundException) { Status.Text = "阅读区域消息无法识别。"; }
             };
-            core.NavigationCompleted += (_, e) =>
+            core.NavigationCompleted += async (_, e) =>
             {
                 if (!e.IsSuccess)
                 {
                     if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled) ShowError("阅读区域加载失败：" + e.WebErrorStatus);
                 }
+                else if (smokePdf && pdf is not null)
+                {
+                    if (!smokePdfReopened)
+                    {
+                        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == pdf.Id && item.Kind == "pdf");
+                        if (recent is null) { FinishSmoke(false, "PDF was not added to recent reading."); return; }
+                        smokePdfReopened = true;
+                        await OpenDocument(recent.Path);
+                    }
+                    else FinishSmoke(true, "restricted local PDF rendered and reopened from recent reading");
+                }
             };
             core.ProcessFailed += (_, e) => ShowError("阅读区域意外关闭，请重新启动。" + e.ProcessFailedKind);
             var argsList = Environment.GetCommandLineArgs();
             var openIndex = Array.IndexOf(argsList, "--open");
-            if (openIndex >= 0 && openIndex + 1 < argsList.Length) await OpenBook(argsList[openIndex + 1]);
+            if (openIndex >= 0 && openIndex + 1 < argsList.Length) await OpenDocument(argsList[openIndex + 1]);
             else core.Navigate(ReaderHostPolicy.StartPage);
         }
         catch (Exception error) { if (!closed) { ShowError("无法启动阅读区域：" + error.Message); FinishSmoke(false, error.GetType().Name); } }
     }
-    private bool AllowsPage(string value) => ReaderHostPolicy.AllowsNavigation(value) || (book is not null && (chapterNavigationPending && value.StartsWith(HtmlDataPrefix, StringComparison.Ordinal) || ReaderHostPolicy.AllowsResource(value) && book.Chapters.Any(c => BookUrl(c.Href) == value.Split('#')[0])));
+    private bool AllowsPage(string value) => ReaderHostPolicy.AllowsNavigation(value) || pdf is not null && value == pdfUrl || (book is not null && (chapterNavigationPending && value.StartsWith(HtmlDataPrefix, StringComparison.Ordinal) || ReaderHostPolicy.AllowsResource(value) && book.Chapters.Any(c => BookUrl(c.Href) == value.Split('#')[0])));
     private bool AllowsMessageSource(string value) => AllowsPage(value) || (book is not null && (value == "about:blank" || value.StartsWith(HtmlDataPrefix, StringComparison.Ordinal)));
     private static string BookUrl(string href) => BookPrefix + string.Join('/', href.Split('/').Select(Uri.EscapeDataString));
     private void Send(string type, object payload) => Reader.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(new { contractVersion = 1, type, payload }, ContractJson.Options));

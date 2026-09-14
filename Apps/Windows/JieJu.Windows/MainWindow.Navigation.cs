@@ -161,10 +161,37 @@ public sealed partial class MainWindow
             var picker = new FileOpenPicker();
             WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
             picker.FileTypeFilter.Add(".epub");
+            picker.FileTypeFilter.Add(".pdf");
             var file = await picker.PickSingleFileAsync();
-            if (file is not null) await OpenBook(file.Path);
+            if (file is not null) await OpenDocument(file.Path);
         }
         catch (Exception e) { ShowError("无法打开文件选择器：" + e.Message); }
+    }
+    private Task OpenDocument(string path) => string.Equals(Path.GetExtension(path), ".pdf", StringComparison.OrdinalIgnoreCase)
+        ? OpenPdf(path) : OpenBook(path);
+
+    private async Task OpenPdf(string path)
+    {
+        if (!OpenButton.IsEnabled) return;
+        OpenButton.IsEnabled = false;
+        try
+        {
+            var loaded = await Task.Run(() => PdfBook.Open(path));
+            if (closed) return;
+            ResetExplanation();
+            pdf = loaded; pdfUrl = new Uri(pdf.Path).AbsoluteUri; book = null; bookPath = path;
+            WelcomePanel.Visibility = Visibility.Collapsed;
+            CloseBookButton.Visibility = Visibility.Visible;
+            ReaderToolbar.Visibility = Visibility.Collapsed;
+            BookTitle.Text = pdf.Title; BookSubtitle.Text = "PDF · 文本型文档";
+            Navigation.SelectedItem = Navigation.MenuItems[0];
+            Status.Text = "PDF 已打开；划词解释将在下一项对齐任务中接入。";
+            device = DeviceStateStore.Remember(device, new RecentBook(pdf.Id, path, pdf.Title, 0, 0, DateTimeOffset.UtcNow, "pdf"));
+            deviceStore.Save(device);
+            Reader.CoreWebView2?.Navigate(pdfUrl);
+        }
+        catch (Exception error) { ShowError("无法打开这份 PDF：" + error.Message); if (smokePdf) FinishSmoke(false, error.Message); }
+        finally { OpenButton.IsEnabled = true; }
     }
     private async Task OpenBook(string path, EpubLocator? preferredLocator = null)
     {
@@ -174,7 +201,7 @@ public sealed partial class MainWindow
         {
             var loaded = await Task.Run(() => EpubBook.Open(path));
             if (closed) return;
-            book = loaded; bookPath = path;
+            book = loaded; pdf = null; pdfUrl = null; bookPath = path;
             var recent = device.RecentBooks.FirstOrDefault(b => b.Id == book.Id);
             chapterIndex = Math.Clamp(recent?.Chapter ?? 0, 0, book.Chapters.Count - 1);
             pendingProgress = Math.Clamp(recent?.Progress ?? 0, 0, 1);
@@ -220,7 +247,7 @@ public sealed partial class MainWindow
     private void NextChapter_Click(object sender, RoutedEventArgs args) { if (book is not null && chapterIndex + 1 < book.Chapters.Count) ChapterPicker.SelectedIndex++; }
     private void CloseBook_Click(object sender, RoutedEventArgs args)
     {
-        book = null; bookPath = null; WelcomePanel.Visibility = Visibility.Visible;
+        book = null; pdf = null; pdfUrl = null; bookPath = null; WelcomePanel.Visibility = Visibility.Visible;
         CloseBookButton.Visibility = ReaderToolbar.Visibility = Visibility.Collapsed;
         BookTitle.Text = "回到阅读"; BookSubtitle.Text = "从一本喜欢的书开始，在阅读中慢慢理解。";
         Reader.CoreWebView2?.Navigate(ReaderHostPolicy.StartPage); RefreshRecentBooks();
@@ -237,8 +264,9 @@ public sealed partial class MainWindow
         if (device.RecentBooks.Length == 0) RecentBooksPanel.Children.Add(new TextBlock { Text = "还没有最近阅读的书籍。", Opacity = .5 });
         foreach (var recent in device.RecentBooks)
         {
-            var button = new Button { Content = $"{recent.Title}  ·  第 {recent.Chapter + 1} 章", HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(16, 12, 16, 12) };
-            button.Click += async (_, _) => await OpenBook(recent.Path); RecentBooksPanel.Children.Add(button);
+            var position = recent.Kind == "pdf" ? "PDF" : $"第 {recent.Chapter + 1} 章";
+            var button = new Button { Content = $"{recent.Title}  ·  {position}", HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(16, 12, 16, 12) };
+            button.Click += async (_, _) => await OpenDocument(recent.Path); RecentBooksPanel.Children.Add(button);
         }
     }
     private void LoadSettingsControls()

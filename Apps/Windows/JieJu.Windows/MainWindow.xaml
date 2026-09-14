@@ -15,7 +15,7 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
      <StackPanel Spacing="4"><TextBlock x:Name="BookTitle" Text="回到阅读" FontSize="24" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock x:Name="BookSubtitle" Text="从一本喜欢的书开始，在阅读中慢慢理解。" FontSize="12" Opacity="0.6"/></StackPanel>
-     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button x:Name="CloseBookButton" Content="关闭书籍" Click="CloseBook_Click" Visibility="Collapsed"/><Button x:Name="OpenButton" Content="打开 EPUB" Click="OpenBook_Click" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="reader.open"/></StackPanel>
+     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><Button x:Name="CloseBookButton" Content="关闭书籍" Click="CloseBook_Click" Visibility="Collapsed"/><Button x:Name="OpenButton" Content="打开 PDF 或 EPUB" Click="OpenBook_Click" Style="{StaticResource AccentButtonStyle}" AutomationProperties.AutomationId="reader.open"/></StackPanel>
     </Grid>
     <Grid Grid.Row="1" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition x:Name="ExplanationColumn" Width="0"/></Grid.ColumnDefinitions>
      <Border CornerRadius="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"><WebView2 x:Name="Reader" Loaded="Reader_Loaded" AutomationProperties.Name="阅读区域"/></Border>
@@ -37,7 +37,7 @@
      </Border>
      <ScrollViewer x:Name="WelcomePanel" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="36"><StackPanel MaxWidth="640" HorizontalAlignment="Center" Spacing="24" Margin="0,64,0,24">
        <TextBlock Text="让阅读，成为学习的起点。" FontSize="30" FontWeight="SemiBold" TextWrapping="Wrap"/>
-       <TextBlock Text="打开一本 EPUB，在原文中停留、理解、积累。&#xA;不用赶进度，也不必记住每个词。" Opacity="0.65" FontSize="15" TextWrapping="Wrap"/>
+       <TextBlock Text="打开一份 PDF 或一本 EPUB，在原文中停留、理解、积累。&#xA;不用赶进度，也不必记住每个词。" Opacity="0.65" FontSize="15" TextWrapping="Wrap"/>
        <Button Content="打开一本书" Click="OpenBook_Click" Style="{StaticResource AccentButtonStyle}"/>
        <TextBlock Text="最近阅读" FontSize="17" FontWeight="SemiBold" Margin="0,16,0,0"/><StackPanel x:Name="RecentBooksPanel" Spacing="8"/>
        <TextBlock Text="语言不是一条需要赶完的路。读一点，记一点，忘了也没关系。" Opacity="0.5" FontSize="12" TextWrapping="Wrap" Margin="0,24,0,0"/>

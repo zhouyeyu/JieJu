@@ -358,7 +358,8 @@ public sealed partial class MainWindow
             ExplanationPane.VerticalAlignment = VerticalAlignment.Stretch; ExplanationPane.Margin = new Thickness(0);
         }
     }
-    private void CloseExplanation_Click(object sender, RoutedEventArgs args)
+    private void CloseExplanation_Click(object sender, RoutedEventArgs args) => ResetExplanation();
+    private void ResetExplanation()
     {
         explanationCancellation?.Cancel(); selectionRequest = null; completedExplanation = null; completedWordExplanation = null; selectionLocator = null; selectionSentence = ""; boundarySuggestion = null;
         BoundarySuggestionPanel.Visibility = Visibility.Collapsed;

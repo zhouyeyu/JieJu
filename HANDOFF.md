@@ -4,7 +4,7 @@
 
 - 日期：2026-09-14
 - Agent：Codex
-- 阶段：Windows 第一阶段已完成；完整对齐路线已写入 TODO，下一项为 `WIN-401` 文本型 PDF 阅读
+- 阶段：`WIN-401` PDF 阅读基础完成；下一项为 `WIN-402` PDF 文本选择、上下文与页码 locator
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -30,8 +30,10 @@
   API Key 仅保存在 Windows 凭据管理器，未使用真实云端凭据或产生推理流量
 - 随手温习：收藏生词自动生成识别卡，旧 Windows v5 生词自动补卡；先回想再揭示答案，支持空格、
   数字 1～4 评分、返回最近原文、10 张温和暂停和 `jieju-interval-v1` 只追加日志
-- 验证：Solution 0 警告；C# 96 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
-  `152.0.4191.66` 完成识别卡正面、答案、评分持久化和温和暂停冒烟
+- PDF 基础：文件选择、签名/大小校验、WebView2 内置阅读、内容哈希去重、关闭及最近阅读重开已
+  完成；PDF 选区、上下文和页码定位尚未接入
+- 验证：Solution 0 警告；C# 100 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
+  `152.0.4191.66` 完成 PDF 受限打开和最近阅读重开，并保持 EPUB 选区冒烟通过
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
 - 测试入口：`./scripts/test-windows.ps1`；加 `-Smoke` 会依次验证欢迎页和生成的最小 EPUB
@@ -42,8 +44,8 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：执行 `WIN-401`，先完成文本型 PDF 的受限打开、显示、最近阅读与重新打开；PDF 选区和
-  解句分别留给 `WIN-402`、`WIN-403`，避免一次任务同时引入阅读、定位和 AI 三类风险
+- 下一步：执行 `WIN-402`，为 PDF 建立可测试的文本层、选择事件、所在句/有限上下文和页码 locator；
+  完成前不把 PDF 选区接入 AI 或学习资料，后者由 `WIN-403` 单独验证
 
 ### 2026-09-09 macOS 基线交接
 
