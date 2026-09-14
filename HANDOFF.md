@@ -4,7 +4,7 @@
 
 - 日期：2026-09-14
 - Agent：Codex
-- 阶段：Windows 解释、注音与随手温习已对齐 macOS；可继续梳理下一项平台差异
+- 阶段：Windows 第一阶段已完成；完整对齐路线已写入 TODO，下一项为 `WIN-401` 文本型 PDF 阅读
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -42,7 +42,8 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：再次按 macOS 当前实现逐页盘点 Windows 差异，选择一个边界明确的未对齐功能继续实现
+- 下一步：执行 `WIN-401`，先完成文本型 PDF 的受限打开、显示、最近阅读与重新打开；PDF 选区和
+  解句分别留给 `WIN-402`、`WIN-403`，避免一次任务同时引入阅读、定位和 AI 三类风险
 
 ### 2026-09-09 macOS 基线交接
 
