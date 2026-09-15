@@ -16,3 +16,4 @@ Apps/Windows/**/bin/
 Apps/Windows/**/obj/
 Apps/Windows/.vs/
 *.user
+tmp/

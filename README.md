@@ -19,6 +19,18 @@ JieJu 是一款本地优先、面向语言学习的 PDF / EPUB 阅读器。阅�
 
 > 语言学习是一场缓慢而长久的相遇。今天记住一点，忘记一点，也仍然是在向前走。
 
+<p align="center">
+  <img src="Docs/Assets/README/jieju-macos.jpg" alt="JieJu macOS：EPUB 阅读、日语注音与分层解句" width="100%">
+  <br>
+  <sub>macOS · EPUB 阅读、日语注音与分层解句</sub>
+</p>
+
+<p align="center">
+  <img src="Docs/Assets/README/jieju-windows.png" alt="JieJu Windows：EPUB 阅读与弹出式深入解析" width="100%">
+  <br>
+  <sub>Windows · EPUB 阅读、注音与弹出式深入解析</sub>
+</p>
+
 项目处于 **0.1 Alpha**。macOS 已具备较完整的阅读与学习闭环；Windows 提供可运行的开发预览版。当前尚未发布签名安装包，请从源码构建。
 
 ## 为什么做 JieJu

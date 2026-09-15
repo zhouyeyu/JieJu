@@ -10,7 +10,7 @@ namespace JieJu.Windows;
 
 public sealed partial class MainWindow : Window
 {
-    private bool initialized, closed, changingChapter, chapterNavigationPending, settingsControlsLoaded;
+    private bool initialized, closed, changingChapter, chapterNavigationPending, settingsControlsLoaded, smokeFinished;
     private readonly string? smokeResult;
     private readonly bool smokeSelection;
     private readonly bool smokeInference;
@@ -22,6 +22,7 @@ public sealed partial class MainWindow : Window
     private readonly bool smokeReadingSettings;
     private readonly bool smokeReview;
     private readonly bool smokePdf;
+    private readonly int? smokePdfPage;
     private bool smokePdfReopened;
     private readonly DeviceStateStore deviceStore;
     private readonly ILearningLibraryStore libraryStore;
@@ -34,8 +35,9 @@ public sealed partial class MainWindow : Window
     private EpubBook? book;
     private PdfBook? pdf;
     private string? pdfUrl;
+    private string? lastPdfRequest;
     private string? bookPath;
-    private int chapterIndex;
+    private int chapterIndex, pdfPageIndex, pdfNavigationGeneration, pdfReadyGeneration, pdfOutlineCount;
     private double pendingProgress;
     private string section = "reader";
     private const string BookPrefix = "https://reader.jieju.invalid/book/";
@@ -62,6 +64,9 @@ public sealed partial class MainWindow : Window
         smokeReadingSettings = arguments.Contains("--smoke-reading-settings");
         smokeReview = arguments.Contains("--smoke-review");
         smokePdf = arguments.Contains("--smoke-pdf");
+        var smokePdfPageIndex = Array.IndexOf(arguments, "--smoke-pdf-page");
+        smokePdfPage = smokePdfPageIndex >= 0 && smokePdfPageIndex + 1 < arguments.Length && int.TryParse(arguments[smokePdfPageIndex + 1], out var requestedSmokePage)
+            ? Math.Max(0, requestedSmokePage) : null;
         var dataIndex = Array.IndexOf(arguments, "--data-directory");
         var dataDirectory = dataIndex >= 0 && dataIndex + 1 < arguments.Length
             ? Path.GetFullPath(arguments[dataIndex + 1])
@@ -102,7 +107,26 @@ public sealed partial class MainWindow : Window
             core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
             core.WebResourceRequested += async (_, e) =>
             {
-                if (e.Request.Uri.StartsWith(BookPrefix, StringComparison.Ordinal))
+                if (e.Request.Uri.Contains("current.pdf", StringComparison.OrdinalIgnoreCase)) lastPdfRequest = e.Request.Uri;
+                if (Uri.TryCreate(e.Request.Uri, UriKind.Absolute, out var requestedUri) &&
+                    requestedUri.Host == "document.jieju.invalid" && requestedUri.AbsolutePath == "/current.pdf" && pdf is not null)
+                {
+                    var deferral = e.GetDeferral();
+                    try
+                    {
+                        var stream = await FileRandomAccessStream.OpenAsync(pdf.Path, global::Windows.Storage.FileAccessMode.Read);
+                        e.Response = environment.CreateWebResourceResponse(stream, 200, "OK",
+                            $"Content-Type: application/pdf\r\nContent-Length: {pdf.Length}\r\nAccess-Control-Allow-Origin: https://reader.jieju.invalid\r\nX-Content-Type-Options: nosniff\r\nCache-Control: no-store");
+                    }
+                    catch (Exception error)
+                    {
+                        ShowError("PDF 载入失败：" + error.Message);
+                        e.Response = environment.CreateWebResourceResponse(null, 500, "Read failed", "");
+                        if (smokePdf) FinishSmoke(false, "PDF response failed: " + error);
+                    }
+                    finally { deferral.Complete(); }
+                }
+                else if (e.Request.Uri.StartsWith(BookPrefix, StringComparison.Ordinal))
                 {
                     var deferral = e.GetDeferral();
                     try
@@ -135,10 +159,50 @@ public sealed partial class MainWindow : Window
                     switch (root.GetProperty("type").GetString())
                     {
                         case "ready":
-                            Status.Text = book is null ? "选择一本 EPUB，开始阅读。" : $"第 {chapterIndex + 1} / {book.Chapters.Count} 章";
+                            if (pdf is not null)
+                            {
+                                pdfReadyGeneration = pdfNavigationGeneration;
+                                var readyPayload = root.GetProperty("payload");
+                                pdfOutlineCount = readyPayload.TryGetProperty("outlineCount", out var outlineCount) && outlineCount.TryGetInt32(out var count) ? count : 0;
+                                BookSubtitle.Text = pdfOutlineCount > 0 ? $"PDF · {pdfOutlineCount} 个目录条目" : "PDF · 无目录";
+                            }
+                            Status.Text = pdf is not null ? $"PDF · 第 {pdfPageIndex + 1} 页" : book is null ? "选择一本 EPUB，开始阅读。" : $"第 {chapterIndex + 1} / {book.Chapters.Count} 章";
                             ApplyReadingSettings();
                             if (book is not null) Send("restoreLocation", new { locator = new EpubLocator(book.Chapters[chapterIndex].Href, TextAnchor: JsonSerializer.Serialize(new { progress = pendingProgress })) });
-                            if (smokeReadingSettings && book is not null)
+                            else if (pdf is not null) Send("restoreLocation", new { locator = new PdfLocator(pdfPageIndex) });
+                            if (smokePdf && pdf is not null)
+                            {
+                                if (!smokePdfReopened)
+                                {
+                                    var recent = device.RecentBooks.FirstOrDefault(item => item.Id == pdf.Id && item.Kind == "pdf");
+                                    if (recent is null) { FinishSmoke(false, "PDF was not added to recent reading."); return; }
+                                    smokePdfReopened = true;
+                                    await OpenDocument(recent.Path);
+                                }
+                                else
+                                {
+                                    await core.ExecuteScriptAsync($"window.__jiejuSmokeZoom?.({(smokePdfPage ?? 0) + 1}); true");
+                                    var zoomReady = false;
+                                    for (var attempt = 0; attempt < 70 && !zoomReady; attempt++)
+                                    {
+                                        await Task.Delay(100);
+                                        zoomReady = await core.ExecuteScriptAsync("window.__jiejuSmokeZoomResult === true") == "true";
+                                    }
+                                    if (!zoomReady)
+                                    {
+                                        var zoomState = await core.ExecuteScriptAsync($"(()=>{{const c=document.querySelector('.page[data-page-number=\"{(smokePdfPage ?? 0) + 1}\"] canvas');return c?{{width:c.width,height:c.height,clientWidth:c.clientWidth,clientHeight:c.clientHeight,dpr:devicePixelRatio}}:null}})()");
+                                        FinishSmoke(false, "PDF canvas did not rerender sharply at 400% zoom: " + zoomState); return;
+                                    }
+                                    await core.ExecuteScriptAsync($"window.__jiejuSmokeSelect?.({(smokePdfPage ?? 0) + 1}); true");
+                                    for (var attempt = 0; attempt < 60 && !smokeFinished; attempt++) await Task.Delay(100);
+                                    if (!smokeFinished)
+                                    {
+                                        var layerState = await core.ExecuteScriptAsync("JSON.stringify({pages:document.querySelectorAll('.page').length,layers:document.querySelectorAll('.textLayer').length,spans:[...document.querySelectorAll('.textLayer span')].slice(0,3).map(x=>x.textContent),pageNumbers:[...document.querySelectorAll('.page')].slice(0,3).map(x=>x.dataset.pageNumber)})");
+                                        FinishSmoke(false, "PDF text layer did not become selectable: " + layerState);
+                                    }
+                                }
+                            }
+                            else if (smokeReadingSettings && book is not null)
                             {
                                 ThemePicker.SelectedIndex = 2;
                                 FontSlider.Value = 27;
@@ -177,12 +241,26 @@ public sealed partial class MainWindow : Window
                             else FinishSmoke(true, environment.BrowserVersionString);
                             break;
                         case "locationChanged":
+                            if (pdf is not null)
+                            {
+                                var pdfLocator = root.GetProperty("payload").GetProperty("locator");
+                                if (pdfLocator.TryGetProperty("pageIndex", out var page) && page.TryGetInt32(out var index)) RememberPdf(index);
+                                var locationPayload = root.GetProperty("payload");
+                                if (locationPayload.TryGetProperty("chapterTitle", out var chapterTitle) && chapterTitle.ValueKind == JsonValueKind.String)
+                                    BookSubtitle.Text = $"PDF · {chapterTitle.GetString()}";
+                                break;
+                            }
                             if (book is null) break;
                             var locator = root.GetProperty("payload").GetProperty("locator");
                             if (locator.GetProperty("chapterHref").GetString() != book.Chapters[chapterIndex].Href) break;
                             using (var anchor = JsonDocument.Parse(locator.GetProperty("textAnchor").GetString() ?? "{}")) Remember(anchor.RootElement.GetProperty("progress").GetDouble());
                             break;
                         case "selectionChanged": HandleSelection(root.GetProperty("payload")); break;
+                        case "error":
+                            var readerError = root.GetProperty("payload").GetProperty("message").GetString() ?? "未知错误";
+                            ShowError("阅读区域错误：" + readerError);
+                            if (smokePdf) FinishSmoke(false, readerError + " | request=" + (lastPdfRequest ?? "none"));
+                            break;
                     }
                 }
                 catch (Exception error) when (error is JsonException or InvalidOperationException or KeyNotFoundException) { Status.Text = "阅读区域消息无法识别。"; }
@@ -195,14 +273,13 @@ public sealed partial class MainWindow : Window
                 }
                 else if (smokePdf && pdf is not null)
                 {
-                    if (!smokePdfReopened)
+                    var generation = pdfNavigationGeneration;
+                    await Task.Delay(5000);
+                    if (generation == pdfNavigationGeneration && pdfReadyGeneration != generation)
                     {
-                        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == pdf.Id && item.Kind == "pdf");
-                        if (recent is null) { FinishSmoke(false, "PDF was not added to recent reading."); return; }
-                        smokePdfReopened = true;
-                        await OpenDocument(recent.Path);
+                        var detail = await core.ExecuteScriptAsync("document.querySelector('#message')?.textContent || document.body?.innerText?.slice(0,200) || location.href");
+                        FinishSmoke(false, "PDF reader did not become ready: " + detail);
                     }
-                    else FinishSmoke(true, "restricted local PDF rendered and reopened from recent reading");
                 }
             };
             core.ProcessFailed += (_, e) => ShowError("阅读区域意外关闭，请重新启动。" + e.ProcessFailedKind);
@@ -220,5 +297,5 @@ public sealed partial class MainWindow : Window
     private void ApplyReadingSettings() => ApplyReadingSettings(device.Settings);
     private void ApplyReadingSettings(ReadingSettings s) => Send("configure", new { s.FontSize, s.LineHeight, s.HorizontalMargin, s.Theme, s.ShowsFurigana });
     private void ShowError(string text) { Notice.Message = text; Notice.Severity = InfoBarSeverity.Error; Notice.IsOpen = true; }
-    private void FinishSmoke(bool ready, string detail) { if (smokeResult is null) return; File.WriteAllText(smokeResult, JsonSerializer.Serialize(new { ready, detail })); DispatcherQueue.TryEnqueue(Close); }
+    private void FinishSmoke(bool ready, string detail) { if (smokeResult is null || smokeFinished) return; smokeFinished = true; File.WriteAllText(smokeResult, JsonSerializer.Serialize(new { ready, detail })); DispatcherQueue.TryEnqueue(Close); }
 }

@@ -7,3 +7,7 @@ copyright notices and license terms remain applicable to those components.
 Windows builds include MeCab.DotNet and its bundled IPADic dictionary, licensed
 under GPL-2.0-only OR LGPL-2.1-only. Copyright (c) 2001-2008 Taku Kudo and NTT;
 Copyright (c) 2015 Tsuyoshi Komuta; portions Copyright (c) 2019-2021 Kouji Matsui.
+
+Windows builds include Mozilla PDF.js 5.6.205, licensed under Apache License 2.0.
+Copyright 2012 Mozilla Foundation. The full license is included at
+Apps/Windows/JieJu.Windows/ReaderHost/vendor/pdfjs/LICENSE.
