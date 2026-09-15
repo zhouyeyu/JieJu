@@ -2,6 +2,9 @@
 
 ## 本次交接
 
+- 中英文 README 已使用用户明确授权公开的两张实机图：`Docs/Assets/README/jieju-macos.jpg`
+  为首图，`jieju-windows.png` 紧随其后
+
 ### 2026-09-15 中英双语开源首页
 
 - 分支：`codex/bilingual-readme`，基于 `origin/main` 的 `c517465`。

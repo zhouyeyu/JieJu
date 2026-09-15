@@ -19,6 +19,18 @@ JieJu is a local-first PDF and EPUB reader designed for language learning. Selec
 
 > Language learning is a slow, lifelong encounter. Remember a little, forget a little—you are still moving forward.
 
+<p align="center">
+  <img src="Docs/Assets/README/jieju-macos.jpg" alt="JieJu on macOS with EPUB reading, Japanese furigana, and layered explanations" width="100%">
+  <br>
+  <sub>macOS · EPUB reading, Japanese furigana, and layered explanations</sub>
+</p>
+
+<p align="center">
+  <img src="Docs/Assets/README/jieju-windows.png" alt="JieJu on Windows with EPUB reading and popover syntax analysis" width="100%">
+  <br>
+  <sub>Windows · EPUB reading, furigana, and popover syntax analysis</sub>
+</p>
+
 The project is currently at **0.1 Alpha**. The macOS app provides the most complete reading and learning loop; Windows is available as a runnable development preview. Signed installers are not available yet, so please build from source.
 
 ## Why JieJu
