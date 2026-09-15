@@ -20,7 +20,8 @@ Windows 版本已完成 `WIN-001` 及 `WIN-101`～`WIN-105` 阅读界面。本�
 
 - UI：WinUI 3 + C#（Windows App SDK）
 - EPUB：WebView2 加载 `Shared/ReaderWeb` 的同一构建产物
-- PDF：首个原型使用 PDF.js；是否与 macOS 统一待垂直闭环评测
+- PDF：随包携带本地 PDF.js，提供受控渲染、文字选择、上下文和页码 locator；保存闭环继续按
+  `WIN-403` 实施
 - AI：按 `Shared/Contracts/v1` 与 `v4` 实现句子和单词解释，首版连接 Ollama
 - 密钥：Windows Credential Manager，不写设置 JSON
 - 数据：读取 v1～v5，新增数据写为当前 `learning-library` v5；引入 SQLite 时保留 JSON 导入器

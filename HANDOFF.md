@@ -15,9 +15,11 @@
 - 后续公开首页最明显的缺口是 `OSS-007`：使用自编或公有领域素材制作脱敏截图和短演示。修改
   产品能力或安装说明时必须同步 `README.md` 与 `README.en.md`。
 
-- 日期：2026-09-14
+### 2026-09-15 Windows PDF 阅读
+
+- 日期：2026-09-15
 - Agent：Codex
-- 阶段：`WIN-401` PDF 阅读基础完成；下一项为 `WIN-402` PDF 文本选择、上下文与页码 locator
+- 阶段：`WIN-402` PDF 文字选择、上下文与页码 locator 完成；下一项为 `WIN-403` PDF 解释保存与返回原文
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -52,10 +54,11 @@
   920 / 760 最大内容宽度；学习记录及云端设置冒烟会检查内容没有被居中推离左边缘
 - 阅读设置：主题、字号、行距和左右边距调整时实时更新设置页 EPUB 正文预览与当前 EPUB；点击
   “保存设置”后写入设备状态并跨启动保留。专用冒烟会同时检查原生预览属性与书页计算样式
-- PDF 基础：文件选择、签名/大小校验、WebView2 内置阅读、内容哈希去重、关闭及最近阅读重开已
-  完成；PDF 选区、上下文和页码定位尚未接入
-- 验证：Solution 0 警告；C# 102 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
-  `152.0.4191.66` 完成 PDF 受限打开和最近阅读重开；EPUB 注音冒烟检查生成与实际可见状态，解释
+- PDF 阅读：本地 PDF.js 提供受控画布与文字层，支持翻页、页码、缩放、适合宽度、选区、所在句、
+  有限上下文、页码/偏移/hash locator 及最近页恢复；当前解释可运行，但保存和返回 PDF 原文留给
+  `WIN-403`。1895 页竖排日文《白い巨塔》第 101 页已做真实文字层选择验证
+- 验证：Solution 0 警告；C# 102 项、Node 契约/Bridge 14 项通过；WinUI + WebView2
+  `152.0.4191.66` 完成 PDF.js 受限打开、最近阅读重开、文字选择和页码 locator；EPUB 注音冒烟检查生成与实际可见状态，解释
   冒烟检查从侧边栏即时切换弹出式且不压缩阅读栏；所有 App 冒烟使用临时设备目录
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
@@ -67,8 +70,8 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：执行 `WIN-402`，为 PDF 建立可测试的文本层、选择事件、所在句/有限上下文和页码 locator；
-  完成前不把 PDF 选区接入 AI 或学习资料，后者由 `WIN-403` 单独验证
+- 下一步：执行 `WIN-403`，允许 PDF 解释和生词保存共享 v5 locator，并从学习记录、生词来源和
+  温习卡返回正确 PDF 页；增加离线端到端后再完成 `WIN-404`
 
 ### 2026-09-09 macOS 基线交接
 

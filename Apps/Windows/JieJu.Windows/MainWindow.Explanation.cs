@@ -15,7 +15,7 @@ public sealed partial class MainWindow
     private string selectionSentence = "";
     private SelectionKind selectionKind = SelectionKind.Ambiguous;
     private SelectionBoundarySuggestion? boundarySuggestion;
-    private EpubLocator? selectionLocator;
+    private DocumentLocator? selectionLocator;
     private CancellationTokenSource? explanationCancellation;
     private bool draggingExplanation;
     private global::Windows.Foundation.Point explanationDragStart;
@@ -52,7 +52,14 @@ public sealed partial class MainWindow
         SaveVocabularyButton.Visibility = Visibility.Collapsed; SaveVocabularyButton.IsEnabled = false;
         PresentExplanationPane();
         ExplainButton.IsEnabled = true;
-        if (smokeWord) ExplainWord_Click(this, new RoutedEventArgs());
+        if (smokePdf)
+        {
+            var expectedPage = smokePdfPage ?? 0;
+            var valid = selectionLocator is PdfLocator locator && locator.PageIndex == expectedPage && locator.TextHash?.Length == 64 &&
+                (smokePdfPage is not null ? selectionRequest.TargetText.Length > 0 : selectionRequest.TargetText.Contains("JieJu PDF smoke", StringComparison.Ordinal));
+            FinishSmoke(valid, valid ? "restricted PDF.js reader reopened with selectable text and page locator" : "PDF selection or locator was incomplete");
+        }
+        else if (smokeWord) ExplainWord_Click(this, new RoutedEventArgs());
         else if (smokeInference) ExplainSelection_Click(this, new RoutedEventArgs());
         else if (smokeSelection)
         {
@@ -154,7 +161,7 @@ public sealed partial class MainWindow
         if (result.BriefMeaning != result.ContextualMeaning) AddSection("简明释义", result.BriefMeaning);
         if (!string.IsNullOrWhiteSpace(result.Inflection)) AddSection("词形", result.Inflection);
         foreach (var item in result.Collocations) AddSection(item.Text, item.Meaning);
-        SaveVocabularyButton.Visibility = Visibility.Visible; SaveVocabularyButton.IsEnabled = true;
+        SaveVocabularyButton.Visibility = book is null ? Visibility.Collapsed : Visibility.Visible; SaveVocabularyButton.IsEnabled = book is not null;
         if (smokeWord) FinishSmoke(true, "Local Ollama word: " + result.ContextualMeaning);
     }
 
@@ -165,7 +172,7 @@ public sealed partial class MainWindow
         AddSection("翻译", result.Translation); AddSection("句子主干", result.SentenceCore);
         foreach (var point in result.GrammarPoints) AddSection(point.Text, point.Explanation);
         foreach (var phrase in result.KeyPhrases) AddSection(phrase.Text, phrase.Meaning);
-        SaveExplanationButton.Visibility = Visibility.Visible; SaveExplanationButton.IsEnabled = true;
+        SaveExplanationButton.Visibility = book is null ? Visibility.Collapsed : Visibility.Visible; SaveExplanationButton.IsEnabled = book is not null;
         AnalyzeDeepButton.Visibility = Visibility.Visible; AnalyzeDeepButton.IsEnabled = true;
         if (smokeDeep) AnalyzeDeep_Click(this, new RoutedEventArgs());
         else if (smokeInference) FinishSmoke(true, "Local Ollama: " + result.Translation);
@@ -243,6 +250,7 @@ public sealed partial class MainWindow
         card.Children.Add(CreateFuriganaView(word.Text, 17));
         card.Children.Add(new TextBlock { Text = $"原形：{word.BaseForm}　{word.GrammaticalFunction}\n{word.InflectionType}", Opacity = .75, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
         var save = new Button { Content = "加入生词本", HorizontalAlignment = HorizontalAlignment.Left };
+        save.Visibility = book is null ? Visibility.Collapsed : Visibility.Visible;
         save.Click += async (_, _) => await SaveJapaneseWordAsync(word, save);
         card.Children.Add(save); DeepAnalysisContent.Children.Add(card);
     }
@@ -295,10 +303,10 @@ public sealed partial class MainWindow
         foreach (var phrase in preview.KeyPhrases) AddSection(phrase.Text, phrase.Meaning);
     }
 
-    private static EpubLocator? ReadLocator(JsonElement payload)
+    private static DocumentLocator? ReadLocator(JsonElement payload)
     {
         if (!payload.TryGetProperty("locator", out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) return null;
-        try { return JsonSerializer.Deserialize<DocumentLocator>(value.GetRawText(), ContractJson.Options) as EpubLocator; }
+        try { return JsonSerializer.Deserialize<DocumentLocator>(value.GetRawText(), ContractJson.Options); }
         catch (JsonException) { return null; }
     }
 

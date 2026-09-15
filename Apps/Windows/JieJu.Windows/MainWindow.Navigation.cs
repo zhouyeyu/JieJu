@@ -179,16 +179,19 @@ public sealed partial class MainWindow
             var loaded = await Task.Run(() => PdfBook.Open(path));
             if (closed) return;
             ResetExplanation();
-            pdf = loaded; pdfUrl = new Uri(pdf.Path).AbsoluteUri; book = null; bookPath = path;
+            pdf = loaded; pdfUrl = ReaderHostPolicy.CurrentPdf; book = null; bookPath = path;
+            var recent = device.RecentBooks.FirstOrDefault(item => item.Id == pdf.Id && item.Kind == "pdf");
+            pdfPageIndex = Math.Max(0, recent?.Chapter ?? 0);
             WelcomePanel.Visibility = Visibility.Collapsed;
             CloseBookButton.Visibility = Visibility.Visible;
             ReaderToolbar.Visibility = Visibility.Collapsed;
             BookTitle.Text = pdf.Title; BookSubtitle.Text = "PDF · 文本型文档";
             Navigation.SelectedItem = Navigation.MenuItems[0];
-            Status.Text = "PDF 已打开；划词解释将在下一项对齐任务中接入。";
-            device = DeviceStateStore.Remember(device, new RecentBook(pdf.Id, path, pdf.Title, 0, 0, DateTimeOffset.UtcNow, "pdf"));
+            Status.Text = "正在载入 PDF 文字层…";
+            device = DeviceStateStore.Remember(device, new RecentBook(pdf.Id, path, pdf.Title, pdfPageIndex, 0, DateTimeOffset.UtcNow, "pdf"));
             deviceStore.Save(device);
-            Reader.CoreWebView2?.Navigate(pdfUrl);
+            pdfNavigationGeneration++;
+            Reader.CoreWebView2?.Navigate(ReaderHostPolicy.PdfPage);
         }
         catch (Exception error) { ShowError("无法打开这份 PDF：" + error.Message); if (smokePdf) FinishSmoke(false, error.Message); }
         finally { OpenButton.IsEnabled = true; }
@@ -271,6 +274,14 @@ public sealed partial class MainWindow
         if (book is null || bookPath is null || !double.IsFinite(progress)) return;
         device = DeviceStateStore.Remember(device, new RecentBook(book.Id, bookPath, book.Title, chapterIndex, Math.Clamp(progress, 0, 1), DateTimeOffset.UtcNow));
         try { deviceStore.Save(device); } catch (Exception e) { ShowError("无法保存阅读位置：" + e.Message); }
+    }
+    private void RememberPdf(int pageIndex)
+    {
+        if (pdf is null || bookPath is null || pageIndex < 0 || pageIndex == pdfPageIndex) return;
+        pdfPageIndex = pageIndex;
+        Status.Text = $"PDF · 第 {pageIndex + 1} 页";
+        device = DeviceStateStore.Remember(device, new RecentBook(pdf.Id, bookPath, pdf.Title, pageIndex, 0, DateTimeOffset.UtcNow, "pdf"));
+        try { deviceStore.Save(device); } catch (Exception error) { ShowError("无法保存 PDF 阅读位置：" + error.Message); }
     }
     private void RefreshRecentBooks()
     {
