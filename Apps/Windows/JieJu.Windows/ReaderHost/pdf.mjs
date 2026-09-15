@@ -7,9 +7,10 @@ import { resolvePdfOutline, outlineIndexForPage } from './pdf-outline.mjs';
 GlobalWorkerOptions.workerSrc = './vendor/pdfjs/build/pdf.worker.min.mjs';
 const eventBus = new EventBus();
 const linkService = new PDFLinkService({ eventBus });
-const viewer = new PDFViewer({ container:document.querySelector('#viewerContainer'), viewer:document.querySelector('#viewer'), eventBus, linkService, textLayerMode:1 });
+const maxCanvasPixels = 2 ** 25;
+const viewer = new PDFViewer({ container:document.querySelector('#viewerContainer'), viewer:document.querySelector('#viewer'), eventBus, linkService, textLayerMode:1, maxCanvasPixels, maxCanvasDim:32767, capCanvasAreaFactor:-1, enableDetailCanvas:true });
 linkService.setViewer(viewer);
-const pageNumber = document.querySelector('#pageNumber'), pageCount = document.querySelector('#pageCount'), outline = document.querySelector('#outline'), message = document.querySelector('#message');
+const pageNumber = document.querySelector('#pageNumber'), pageCount = document.querySelector('#pageCount'), outline = document.querySelector('#outline'), zoomValue = document.querySelector('#zoomValue'), message = document.querySelector('#message');
 let documentProxy, selectionTimer, outlineEntries = [];
 const pageTexts = new Map();
 
@@ -23,6 +24,7 @@ pageNumber.addEventListener('change', () => setPage(pageNumber.value));
 outline.addEventListener('change', () => { const entry = outlineEntries[Number(outline.value)]; if (entry) setPage(entry.pageIndex + 1); });
 
 eventBus.on('pagesinit', () => { viewer.currentScaleValue = 'page-width'; });
+eventBus.on('scalechanging', event => { zoomValue.textContent = `${Math.round(event.scale * 100)}%`; });
 eventBus.on('pagechanging', event => {
   pageNumber.value = String(event.pageNumber);
   const outlineIndex = outlineIndexForPage(outlineEntries, event.pageNumber - 1);
@@ -60,7 +62,7 @@ installCommandListener(command => {
 });
 
 try {
-  const task = getDocument({ url:'https://document.jieju.invalid/current.pdf', cMapUrl:'./vendor/pdfjs/cmaps/', cMapPacked:true, standardFontDataUrl:'./vendor/pdfjs/standard_fonts/', disableRange:true, disableStream:true });
+  const task = getDocument({ url:'https://document.jieju.invalid/current.pdf', cMapUrl:'./vendor/pdfjs/cmaps/', cMapPacked:true, standardFontDataUrl:'./vendor/pdfjs/standard_fonts/', disableRange:true, disableStream:true, enableHWA:true });
   documentProxy = await task.promise;
   outlineEntries = await resolvePdfOutline(documentProxy, await documentProxy.getOutline());
   outline.replaceChildren();
@@ -92,4 +94,22 @@ window.__jiejuSmokeSelect = async (page = 1) => {
   const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
   document.dispatchEvent(new Event('selectionchange'));
   return true;
+};
+
+window.__jiejuSmokeZoomResult = null;
+window.__jiejuSmokeZoom = async (page = 1) => {
+  window.__jiejuSmokeZoomResult = null;
+  setPage(page); viewer.currentScale = 4;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    setPage(page);
+    const canvas = document.querySelector(`.page[data-page-number="${page}"] canvas`);
+    if (canvas?.clientWidth > 0 && canvas?.clientHeight > 0) {
+      const pixelRatio = Math.min(devicePixelRatio || 1, 1);
+      if (canvas.width >= canvas.clientWidth * pixelRatio * .98 && canvas.height >= canvas.clientHeight * pixelRatio * .98) {
+        window.__jiejuSmokeZoomResult = true; return;
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  window.__jiejuSmokeZoomResult = false;
 };

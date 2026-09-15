@@ -181,6 +181,18 @@ public sealed partial class MainWindow : Window
                                 }
                                 else
                                 {
+                                    await core.ExecuteScriptAsync($"window.__jiejuSmokeZoom?.({(smokePdfPage ?? 0) + 1}); true");
+                                    var zoomReady = false;
+                                    for (var attempt = 0; attempt < 70 && !zoomReady; attempt++)
+                                    {
+                                        await Task.Delay(100);
+                                        zoomReady = await core.ExecuteScriptAsync("window.__jiejuSmokeZoomResult === true") == "true";
+                                    }
+                                    if (!zoomReady)
+                                    {
+                                        var zoomState = await core.ExecuteScriptAsync($"(()=>{{const c=document.querySelector('.page[data-page-number=\"{(smokePdfPage ?? 0) + 1}\"] canvas');return c?{{width:c.width,height:c.height,clientWidth:c.clientWidth,clientHeight:c.clientHeight,dpr:devicePixelRatio}}:null}})()");
+                                        FinishSmoke(false, "PDF canvas did not rerender sharply at 400% zoom: " + zoomState); return;
+                                    }
                                     await core.ExecuteScriptAsync($"window.__jiejuSmokeSelect?.({(smokePdfPage ?? 0) + 1}); true");
                                     for (var attempt = 0; attempt < 60 && !smokeFinished; attempt++) await Task.Delay(100);
                                     if (!smokeFinished)
