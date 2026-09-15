@@ -260,6 +260,7 @@ EPUB 注入跳过已有 `<ruby>`、脚本和样式；同一章节出现多个读
 - [x] `OSS-004` 增加 Changelog 与手工签名、公证、发布检查清单
 - [x] `OSS-005` 增加缺陷、功能、模型质量和 EPUB 兼容性 Issue 模板及 PR 模板
 - [x] `OSS-006` 建立公开截图、测试文档和版权材料规范
+- [x] `OSS-011` 建立中英双语 README、平台状态矩阵、统一快速开始及双语同步维护规则
 - [ ] `OSS-007` 使用自编或公有领域文档制作 README 截图和短演示
 - [ ] `OSS-008` 配置远程仓库后启用 Private Vulnerability Reporting，并替换 README 的源码获取说明
 - [ ] `OSS-009` 审核第三方依赖许可证，生成随发布包分发的 attribution 清单
