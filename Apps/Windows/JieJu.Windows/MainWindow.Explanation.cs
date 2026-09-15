@@ -56,7 +56,7 @@ public sealed partial class MainWindow
         {
             var expectedPage = smokePdfPage ?? 0;
             var valid = selectionLocator is PdfLocator locator && locator.PageIndex == expectedPage && locator.TextHash?.Length == 64 &&
-                (smokePdfPage is not null ? selectionRequest.TargetText.Length > 0 : selectionRequest.TargetText.Contains("JieJu PDF smoke", StringComparison.Ordinal));
+                (smokePdfPage is not null ? selectionRequest.TargetText.Length > 0 && pdfOutlineCount >= 40 : selectionRequest.TargetText.Contains("JieJu PDF smoke", StringComparison.Ordinal));
             FinishSmoke(valid, valid ? "restricted PDF.js reader reopened with selectable text and page locator" : "PDF selection or locator was incomplete");
         }
         else if (smokeWord) ExplainWord_Click(this, new RoutedEventArgs());

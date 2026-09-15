@@ -2,14 +2,15 @@ import { getDocument, GlobalWorkerOptions } from './vendor/pdfjs/build/pdf.mjs';
 import { EventBus, PDFLinkService, PDFViewer } from './vendor/pdfjs/web/pdf_viewer.mjs';
 import { postToNative, installCommandListener } from './bridge.mjs';
 import { cleanPdfText, pdfSelectionContext } from './pdf-selection.mjs';
+import { resolvePdfOutline, outlineIndexForPage } from './pdf-outline.mjs';
 
 GlobalWorkerOptions.workerSrc = './vendor/pdfjs/build/pdf.worker.min.mjs';
 const eventBus = new EventBus();
 const linkService = new PDFLinkService({ eventBus });
 const viewer = new PDFViewer({ container:document.querySelector('#viewerContainer'), viewer:document.querySelector('#viewer'), eventBus, linkService, textLayerMode:1 });
 linkService.setViewer(viewer);
-const pageNumber = document.querySelector('#pageNumber'), pageCount = document.querySelector('#pageCount'), message = document.querySelector('#message');
-let documentProxy, selectionTimer;
+const pageNumber = document.querySelector('#pageNumber'), pageCount = document.querySelector('#pageCount'), outline = document.querySelector('#outline'), message = document.querySelector('#message');
+let documentProxy, selectionTimer, outlineEntries = [];
 const pageTexts = new Map();
 
 function setPage(value) { if (documentProxy) viewer.currentPageNumber = Math.max(1, Math.min(documentProxy.numPages, Number(value) || 1)); }
@@ -19,11 +20,14 @@ document.querySelector('#zoomOut').addEventListener('click', () => viewer.decrea
 document.querySelector('#zoomIn').addEventListener('click', () => viewer.increaseScale());
 document.querySelector('#fit').addEventListener('click', () => viewer.currentScaleValue = 'page-width');
 pageNumber.addEventListener('change', () => setPage(pageNumber.value));
+outline.addEventListener('change', () => { const entry = outlineEntries[Number(outline.value)]; if (entry) setPage(entry.pageIndex + 1); });
 
 eventBus.on('pagesinit', () => { viewer.currentScaleValue = 'page-width'; });
 eventBus.on('pagechanging', event => {
   pageNumber.value = String(event.pageNumber);
-  postToNative('locationChanged', { locator:{ kind:'pdf', pageIndex:event.pageNumber - 1 } });
+  const outlineIndex = outlineIndexForPage(outlineEntries, event.pageNumber - 1);
+  outline.value = outlineIndex >= 0 ? String(outlineIndex) : '';
+  postToNative('locationChanged', { locator:{ kind:'pdf', pageIndex:event.pageNumber - 1 }, chapterTitle:outlineIndex >= 0 ? outlineEntries[outlineIndex].title : null });
 });
 eventBus.on('pagerendered', async event => {
   if (!pageTexts.has(event.pageNumber)) {
@@ -58,12 +62,16 @@ installCommandListener(command => {
 try {
   const task = getDocument({ url:'https://document.jieju.invalid/current.pdf', cMapUrl:'./vendor/pdfjs/cmaps/', cMapPacked:true, standardFontDataUrl:'./vendor/pdfjs/standard_fonts/', disableRange:true, disableStream:true });
   documentProxy = await task.promise;
+  outlineEntries = await resolvePdfOutline(documentProxy, await documentProxy.getOutline());
+  outline.replaceChildren();
+  if (outlineEntries.length) outlineEntries.forEach((entry, index) => outline.add(new Option(`${'　'.repeat(entry.level)}${entry.title} · ${entry.pageIndex + 1}`, String(index))));
+  else { outline.add(new Option('无目录', '')); outline.disabled = true; }
   pageCount.textContent = String(documentProxy.numPages);
   pageNumber.max = String(documentProxy.numPages);
   linkService.setDocument(documentProxy);
   viewer.setDocument(documentProxy);
   message.textContent = `${documentProxy.numPages} 页 · 可选择文字`;
-  postToNative('ready', { readerKind:'pdf', pageCount:documentProxy.numPages });
+  postToNative('ready', { readerKind:'pdf', pageCount:documentProxy.numPages, outlineCount:outlineEntries.length });
 } catch (error) {
   message.textContent = 'PDF 载入失败';
   postToNative('error', { message:String(error?.message ?? error) });

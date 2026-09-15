@@ -37,7 +37,7 @@ public sealed partial class MainWindow : Window
     private string? pdfUrl;
     private string? lastPdfRequest;
     private string? bookPath;
-    private int chapterIndex, pdfPageIndex, pdfNavigationGeneration, pdfReadyGeneration;
+    private int chapterIndex, pdfPageIndex, pdfNavigationGeneration, pdfReadyGeneration, pdfOutlineCount;
     private double pendingProgress;
     private string section = "reader";
     private const string BookPrefix = "https://reader.jieju.invalid/book/";
@@ -159,7 +159,13 @@ public sealed partial class MainWindow : Window
                     switch (root.GetProperty("type").GetString())
                     {
                         case "ready":
-                            if (pdf is not null) pdfReadyGeneration = pdfNavigationGeneration;
+                            if (pdf is not null)
+                            {
+                                pdfReadyGeneration = pdfNavigationGeneration;
+                                var readyPayload = root.GetProperty("payload");
+                                pdfOutlineCount = readyPayload.TryGetProperty("outlineCount", out var outlineCount) && outlineCount.TryGetInt32(out var count) ? count : 0;
+                                BookSubtitle.Text = pdfOutlineCount > 0 ? $"PDF · {pdfOutlineCount} 个目录条目" : "PDF · 无目录";
+                            }
                             Status.Text = pdf is not null ? $"PDF · 第 {pdfPageIndex + 1} 页" : book is null ? "选择一本 EPUB，开始阅读。" : $"第 {chapterIndex + 1} / {book.Chapters.Count} 章";
                             ApplyReadingSettings();
                             if (book is not null) Send("restoreLocation", new { locator = new EpubLocator(book.Chapters[chapterIndex].Href, TextAnchor: JsonSerializer.Serialize(new { progress = pendingProgress })) });
@@ -227,6 +233,9 @@ public sealed partial class MainWindow : Window
                             {
                                 var pdfLocator = root.GetProperty("payload").GetProperty("locator");
                                 if (pdfLocator.TryGetProperty("pageIndex", out var page) && page.TryGetInt32(out var index)) RememberPdf(index);
+                                var locationPayload = root.GetProperty("payload");
+                                if (locationPayload.TryGetProperty("chapterTitle", out var chapterTitle) && chapterTitle.ValueKind == JsonValueKind.String)
+                                    BookSubtitle.Text = $"PDF · {chapterTitle.GetString()}";
                                 break;
                             }
                             if (book is null) break;
