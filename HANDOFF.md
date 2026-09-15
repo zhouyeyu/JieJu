@@ -2,6 +2,19 @@
 
 ## 本次交接
 
+### 2026-09-15 中英双语开源首页
+
+- 分支：`codex/bilingual-readme`，基于 `origin/main` 的 `c517465`。
+- 重写公开中文首页并新增 `README.en.md`；两份 README 对齐产品理念、功能矩阵、macOS/Windows
+  启动方式、AI 与隐私边界、架构、测试、限制和贡献入口。
+- 新增 `CONTRIBUTING.en.md`，中文贡献指南加入语言切换，并把默认 PR 模板改为中英双语。
+- `CHANGELOG.md` 已修正“没有 Windows 客户端”的过期描述；`TODO.md` 新增并完成 `OSS-011`。
+- 验证：Markdown 相对链接和 `git diff --check` 通过；共享 Node 11 项、语言包 65 项、macOS 单元
+  测试 77 项通过。`./scripts/test-all.sh` 的 UI 阶段被系统认证会话阻塞，错误为
+  `The test runner failed to initialize for UI testing`，没有执行 UI 产品断言。
+- 后续公开首页最明显的缺口是 `OSS-007`：使用自编或公有领域素材制作脱敏截图和短演示。修改
+  产品能力或安装说明时必须同步 `README.md` 与 `README.en.md`。
+
 - 日期：2026-09-14
 - Agent：Codex
 - 阶段：`WIN-401` PDF 阅读基础完成；下一项为 `WIN-402` PDF 文本选择、上下文与页码 locator
