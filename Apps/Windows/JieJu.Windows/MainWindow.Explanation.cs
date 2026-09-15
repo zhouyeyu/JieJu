@@ -55,9 +55,10 @@ public sealed partial class MainWindow
         if (smokePdf)
         {
             var expectedPage = smokePdfPage ?? 0;
+            var selectionMethod = Read("selectionMethod");
             var valid = selectionLocator is PdfLocator locator && locator.PageIndex == expectedPage && locator.TextHash?.Length == 64 &&
-                (smokePdfPage is not null ? selectionRequest.TargetText.Length > 0 && pdfOutlineCount >= 40 : selectionRequest.TargetText.Contains("JieJu PDF smoke", StringComparison.Ordinal));
-            FinishSmoke(valid, valid ? "restricted PDF.js reader reopened with selectable text and page locator" : "PDF selection or locator was incomplete");
+                (smokePdfPage is not null ? selectionRequest.TargetText.Length > 1 && pdfOutlineCount >= 40 && selectionMethod == "vertical-assisted" : selectionRequest.TargetText.Contains("JieJu PDF smoke", StringComparison.Ordinal));
+            FinishSmoke(valid, valid ? (smokePdfPage is not null ? "vertical PDF word selection excludes ruby and keeps page locator" : "restricted PDF.js reader reopened with selectable text and page locator") : "PDF selection or locator was incomplete");
         }
         else if (smokeWord) ExplainWord_Click(this, new RoutedEventArgs());
         else if (smokeInference) ExplainSelection_Click(this, new RoutedEventArgs());

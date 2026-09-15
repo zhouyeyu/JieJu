@@ -19,7 +19,7 @@
 
 - 日期：2026-09-15
 - Agent：Codex
-- 阶段：`WIN-402` PDF 文字选择、上下文与页码 locator 完成；下一项为 `WIN-403` PDF 解释保存与返回原文
+- 阶段：`WIN-402C` 竖排 PDF 点按选词完成；下一项为 `WIN-403` PDF 解释保存与返回原文
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -57,10 +57,12 @@
 - PDF 阅读：本地 PDF.js 提供受控画布与文字层，支持翻页、页码、缩放、适合宽度、选区、所在句、
   有限上下文、页码/偏移/hash locator 及最近页恢复；当前解释可运行，但保存和返回 PDF 原文留给
   `WIN-403`。内置 outline 显示为章节下拉目录并随页码同步；1895 页竖排日文《白い巨塔》识别
-  42 项目录，第 101 页已做真实文字层选择验证。画布显式使用 3355 万像素上限和硬件加速，400%
+  42 项目录。竖排页根据文字层坐标从右到左重建正文，以主字号过滤交错的振假名，并提供点击完整
+  词高亮；第 101 页已做真实点按选词验证。画布显式使用 3355 万像素上限和硬件加速，400%
   高清重绘由真机冒烟检查
-- 验证：Solution 0 警告；C# 104 项、Node 契约/Bridge 16 项通过；WinUI + WebView2
-  `152.0.4191.66` 完成 PDF.js 受限打开、最近阅读重开、文字选择和页码 locator；EPUB 注音冒烟检查生成与实际可见状态，解释
+- 验证：Solution 0 警告；C# 104 项、Node 契约/Bridge 19 项通过；WinUI + WebView2
+  `152.0.4191.66` 完成 PDF.js 受限打开、最近阅读重开、横排文字选择和页码 locator；真实《白い巨塔》
+  第 101 页完成竖排正文识别、点按选词、Ruby 排除和 locator 冒烟；EPUB 注音冒烟检查生成与实际可见状态，解释
   冒烟检查从侧边栏即时切换弹出式且不压缩阅读栏；所有 App 冒烟使用临时设备目录
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio

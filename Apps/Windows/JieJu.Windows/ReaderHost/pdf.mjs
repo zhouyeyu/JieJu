@@ -3,6 +3,7 @@ import { EventBus, PDFLinkService, PDFViewer } from './vendor/pdfjs/web/pdf_view
 import { postToNative, installCommandListener } from './bridge.mjs';
 import { cleanPdfText, pdfSelectionContext } from './pdf-selection.mjs';
 import { resolvePdfOutline, outlineIndexForPage } from './pdf-outline.mjs';
+import { buildVerticalTextModel, verticalWordAt } from './pdf-vertical-selection.mjs';
 
 GlobalWorkerOptions.workerSrc = './vendor/pdfjs/build/pdf.worker.min.mjs';
 const eventBus = new EventBus();
@@ -10,9 +11,10 @@ const linkService = new PDFLinkService({ eventBus });
 const maxCanvasPixels = 2 ** 25;
 const viewer = new PDFViewer({ container:document.querySelector('#viewerContainer'), viewer:document.querySelector('#viewer'), eventBus, linkService, textLayerMode:1, maxCanvasPixels, maxCanvasDim:32767, capCanvasAreaFactor:-1, enableDetailCanvas:true });
 linkService.setViewer(viewer);
-const pageNumber = document.querySelector('#pageNumber'), pageCount = document.querySelector('#pageCount'), outline = document.querySelector('#outline'), zoomValue = document.querySelector('#zoomValue'), message = document.querySelector('#message');
-let documentProxy, selectionTimer, outlineEntries = [];
+const pageNumber = document.querySelector('#pageNumber'), pageCount = document.querySelector('#pageCount'), outline = document.querySelector('#outline'), zoomValue = document.querySelector('#zoomValue'), selectionHint = document.querySelector('#selectionHint'), message = document.querySelector('#message');
+let documentProxy, selectionTimer, outlineEntries = [], suppressNativeSelectionUntil = 0;
 const pageTexts = new Map();
+const verticalModels = new Map();
 
 function setPage(value) { if (documentProxy) viewer.currentPageNumber = Math.max(1, Math.min(documentProxy.numPages, Number(value) || 1)); }
 document.querySelector('#previous').addEventListener('click', () => setPage(viewer.currentPageNumber - 1));
@@ -29,6 +31,7 @@ eventBus.on('pagechanging', event => {
   pageNumber.value = String(event.pageNumber);
   const outlineIndex = outlineIndexForPage(outlineEntries, event.pageNumber - 1);
   outline.value = outlineIndex >= 0 ? String(outlineIndex) : '';
+  selectionHint.hidden = !verticalModels.has(event.pageNumber);
   postToNative('locationChanged', { locator:{ kind:'pdf', pageIndex:event.pageNumber - 1 }, chapterTitle:outlineIndex >= 0 ? outlineEntries[outlineIndex].title : null });
 });
 eventBus.on('pagerendered', async event => {
@@ -37,12 +40,27 @@ eventBus.on('pagerendered', async event => {
     pageTexts.set(event.pageNumber, cleanPdfText(content.items.map(item => item.str + (item.hasEOL ? '\n' : ' ')).join('')));
   }
 });
+eventBus.on('textlayerrendered', event => {
+  const pageElement = document.querySelector(`.page[data-page-number="${event.pageNumber}"]`);
+  const spans = [...(pageElement?.querySelectorAll('.textLayer span') ?? [])];
+  const records = spans.map((element, sourceIndex) => {
+    const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
+    return { text:element.textContent, centerX:rect.left + rect.width / 2, top:rect.top, fontSize:parseFloat(style.fontSize), element, sourceIndex };
+  });
+  const model = buildVerticalTextModel(records);
+  if (model) {
+    verticalModels.set(event.pageNumber, model);
+    pageTexts.set(event.pageNumber, cleanPdfText(model.pageText));
+  } else verticalModels.delete(event.pageNumber);
+  if (event.pageNumber === viewer.currentPageNumber) selectionHint.hidden = !model;
+});
 
 async function sha256(value) {
   const bytes = new TextEncoder().encode(value), digest = await crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
 }
 document.addEventListener('selectionchange', () => {
+  if (Date.now() < suppressNativeSelectionUntil) return;
   clearTimeout(selectionTimer);
   selectionTimer = setTimeout(async () => {
     const selection = getSelection();
@@ -55,10 +73,31 @@ document.addEventListener('selectionchange', () => {
   }, 120);
 });
 
+function clearAssistedSelection() { document.querySelectorAll('.jieju-assisted-selection').forEach(element => element.classList.remove('jieju-assisted-selection')); }
+
+async function postAssistedSelection(page, result) {
+  clearTimeout(selectionTimer);
+  suppressNativeSelectionUntil = Date.now() + 300;
+  getSelection()?.removeAllRanges();
+  clearAssistedSelection();
+  result.records.forEach(record => record.element?.classList.add('jieju-assisted-selection'));
+  const context = pdfSelectionContext(pageTexts.get(page) ?? '', result.targetText);
+  postToNative('selectionChanged', { ...context, selectionMethod:'vertical-assisted', locator:{ kind:'pdf', pageIndex:page - 1, textOffset:context.textOffset, textHash:await sha256(context.targetText) } });
+}
+
+document.querySelector('#viewerContainer').addEventListener('click', event => {
+  const span = event.target.closest?.('.textLayer span'), pageElement = span?.closest('.page');
+  if (!span || !pageElement || !getSelection()?.isCollapsed) return;
+  const page = Number(pageElement.dataset.pageNumber), model = verticalModels.get(page);
+  if (!model) return;
+  const spans = [...pageElement.querySelectorAll('.textLayer span')], result = verticalWordAt(model, spans.indexOf(span));
+  if (result) void postAssistedSelection(page, result);
+});
+
 installCommandListener(command => {
   if (command.type === 'restoreLocation') setPage((command.payload.locator?.pageIndex ?? 0) + 1);
   if (command.type === 'turnPage') setPage(viewer.currentPageNumber + Math.sign(command.payload.delta));
-  if (command.type === 'clearSelection') getSelection()?.removeAllRanges();
+  if (command.type === 'clearSelection') { getSelection()?.removeAllRanges(); clearAssistedSelection(); }
 });
 
 try {
@@ -84,6 +123,11 @@ window.__jiejuSmokeSelect = async (page = 1) => {
   let spans = [];
   for (let attempt = 0; attempt < 40; attempt++) {
     setPage(page);
+    const model = verticalModels.get(page);
+    if (model) {
+      const candidate = model.columns.flatMap(column => column.records).find(record => verticalWordAt(model, record.sourceIndex)?.targetText.length > 1);
+      if (candidate) { await postAssistedSelection(page, verticalWordAt(model, candidate.sourceIndex)); return true; }
+    }
     spans = [...document.querySelectorAll(`.page[data-page-number="${page}"] .textLayer span`)];
     if (spans.some(item => item.textContent?.trim())) break;
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -94,6 +138,27 @@ window.__jiejuSmokeSelect = async (page = 1) => {
   const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
   document.dispatchEvent(new Event('selectionchange'));
   return true;
+};
+
+window.__jiejuSmokeVerticalSelectResult = null;
+window.__jiejuSmokeVerticalSelect = async (page = 1) => {
+  window.__jiejuSmokeVerticalSelectResult = null;
+  setPage(page);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    setPage(page);
+    const model = verticalModels.get(page);
+    if (model) {
+      const candidate = model.columns.flatMap(column => column.records).find(record => verticalWordAt(model, record.sourceIndex)?.targetText.length > 1);
+      if (candidate) {
+        const result = verticalWordAt(model, candidate.sourceIndex);
+        await postAssistedSelection(page, result);
+        window.__jiejuSmokeVerticalSelectResult = { targetText:result.targetText, highlighted:result.records.length, pageText:pageTexts.get(page) };
+        return;
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  window.__jiejuSmokeVerticalSelectResult = false;
 };
 
 window.__jiejuSmokeZoomResult = null;

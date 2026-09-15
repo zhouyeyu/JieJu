@@ -9,10 +9,12 @@ html,body { width:100%; height:100%; margin:0; overflow:hidden; background:#d8d9
 #toolbar .divider { width:1px; height:24px; margin:0 3px; background:#c5c6c7; }
 #message { margin-left:auto; overflow:hidden; color:#626662; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
 #zoomValue { min-width:48px; color:#626662; font-size:12px; text-align:center; }
+#selectionHint { padding:4px 8px; border-radius:999px; background:#dfe9e1; color:#31583a; font-size:12px; white-space:nowrap; }
 #viewerContainer { position:absolute; inset:var(--toolbar-height) 0 0; overflow:auto; outline:none; }
 .pdfViewer { padding:16px 0 30px; }
 .pdfViewer .page { margin:0 auto 16px; box-shadow:0 2px 14px #0003; }
 .textLayer ::selection { background:#89ad90aa; }
+.textLayer span.jieju-assisted-selection { background:#74a87f99; border-radius:2px; }
 @media (prefers-color-scheme:dark) {
   :root { --toolbar:#202226; --toolbar-text:#e8e9ea; }
   html,body { background:#303238; }
@@ -20,4 +22,5 @@ html,body { width:100%; height:100%; margin:0; overflow:hidden; background:#d8d9
   #toolbar button,#toolbar input,#toolbar select { background:#292c31; color:#e8e9ea; border-color:#555960; }
   #toolbar button:hover { background:#363a40; }
   #message,#zoomValue { color:#aeb2b7; }
+  #selectionHint { background:#304738; color:#b9ddc1; }
 }
