@@ -18,6 +18,7 @@
 - macOS 与 Windows 一键 Release 构建、便携开发预览 ZIP 和 SHA-256 校验脚本。
 - Windows PDF 选区解释、生词/学习记录保存，以及从来源返回 PDF 原页。
 - Windows EPUB 横向分页、页内进度、键盘翻页与实时重排状态。
+- Windows Alpha ZIP 的当前用户安装/卸载脚本、第三方归属摘要、SHA-256 与自动发布包验证。
 
 ### Known limitations
 

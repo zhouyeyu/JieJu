@@ -15,7 +15,10 @@ Windows 版本已完成 `WIN-001` 及 `WIN-101`～`WIN-105` 阅读界面。本�
 
 安装对应 .NET SDK 后，在仓库根目录运行 `.\scripts\build-windows.ps1`，Release 程序会输出到
 `artifacts\windows\win-x64\JieJu`。运行 `.\scripts\package-windows.ps1 -Version 0.1.0-alpha`
-可生成便携 ZIP 与 SHA-256；完整说明见 [`Docs/BUILDING.md`](../../Docs/BUILDING.md)。开发验证仍使用
+可生成带当前用户安装/卸载脚本、第三方归属摘要与 SHA-256 的 Alpha ZIP；解压后可直接运行，或
+执行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1` 安装并创建开始菜单快捷方式。
+完整说明见 [`Docs/BUILDING.md`](../../Docs/BUILDING.md)。发布包可用
+`.\scripts\test-windows-package.ps1 -Version 0.1.0-alpha` 完整验证。开发验证仍使用
 `.\scripts\test-windows.ps1`，追加 `-Smoke` 会启动最小测试文档检查 WebView2 阅读链路。
 追加 `-PdfLearningSmoke` 会使用本地生成的两页 PDF 验证选区、学习记录/生词保存及返回原页，
 不连接 Ollama 或云端服务。

@@ -92,14 +92,15 @@ cd JieJu
 
 ### Windows
 
-Windows 客户端使用 WinUI 3、.NET 和 WebView2，目前面向开发者提供源码预览。请先阅读 [Windows 开发指南](Apps/Windows/README.md)，再在 PowerShell 中运行：
+Windows 客户端使用 WinUI 3、.NET 和 WebView2，目前提供未签名的 Alpha 开发预览。请先阅读 [Windows 开发指南](Apps/Windows/README.md)，再在 PowerShell 中运行：
 
 ```powershell
 .\scripts\build-windows.ps1
 ```
 
 生成的程序位于 `artifacts\windows\win-x64\JieJu\JieJu.Windows.exe`。需要便携 ZIP 和 SHA-256 时
-运行 `.\scripts\package-windows.ps1 -Version 0.1.0-alpha`。完整参数、离线还原方式和签名边界见
+运行 `.\scripts\package-windows.ps1 -Version 0.1.0-alpha`。ZIP 内附当前用户安装/卸载脚本、第三方
+归属摘要和校验说明。完整参数、离线还原方式和签名边界见
 [构建与打包指南](Docs/BUILDING.md)。
 
 ## AI Provider 与隐私
@@ -159,7 +160,7 @@ swift run JieJuAILab explain --stream --text "彼は本を読みながら、音�
 - 复杂 EPUB 排版、脚注、内部链接和跨阅读器稳定定位仍在完善。
 - 本地小模型的速度与讲解质量取决于设备、模型和文本复杂度。
 - Windows EPUB 的稳定文本锚点、脚注和书内链接尚未完全对齐 macOS。
-- 尚无签名、公证并提供校验和的 Alpha 安装包。
+- Windows Alpha 包已可本地生成并校验，但尚未代码签名或作为 GitHub Release 正式发布。
 
 近期计划公开维护在 [TODO.md](TODO.md)。项目不会把社交竞争、强制提醒或打卡机制列入学习体验。
 

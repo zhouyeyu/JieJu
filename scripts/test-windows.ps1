@@ -20,6 +20,19 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $windowsRoot = Join-Path $projectRoot 'Apps/Windows'
 
+function Remove-DirectoryWithRetry([string]$Path) {
+    for ($attempt = 1; $attempt -le 40; $attempt++) {
+        try {
+            if ([System.IO.Directory]::Exists($Path)) { [System.IO.Directory]::Delete($Path, $true) }
+            return
+        }
+        catch {
+            if ($attempt -eq 40) { throw }
+            Start-Sleep -Milliseconds 250
+        }
+    }
+}
+
 function New-SmokeEpub([string]$Path, [bool]$Japanese = $false, [bool]$Long = $false) {
     $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::CreateNew)
     try {
@@ -92,7 +105,7 @@ function Invoke-AppSmoke([string]$Exe, [string]$Result, [string[]]$ExtraArgument
             $resolvedAutomaticDirectory = [System.IO.Path]::GetFullPath($automaticDataDirectory)
             $resolvedTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
             if ($resolvedAutomaticDirectory.StartsWith($resolvedTemp, [System.StringComparison]::OrdinalIgnoreCase) -and [System.IO.Directory]::Exists($resolvedAutomaticDirectory)) {
-                [System.IO.Directory]::Delete($resolvedAutomaticDirectory, $true)
+                Remove-DirectoryWithRetry $resolvedAutomaticDirectory
             }
         }
     }

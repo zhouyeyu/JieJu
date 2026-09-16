@@ -75,6 +75,7 @@ public sealed partial class MainWindow : Window
         var dataDirectory = dataIndex >= 0 && dataIndex + 1 < arguments.Length
             ? Path.GetFullPath(arguments[dataIndex + 1])
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "JieJu");
+        Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(dataDirectory, "WebView2"));
         deviceStore = new DeviceStateStore(dataDirectory);
         libraryStore = new JsonLearningLibraryStore(dataDirectory);
         try { device = deviceStore.Load(); }

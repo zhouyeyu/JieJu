@@ -91,14 +91,15 @@ For local explanations, install the default model with `ollama pull qwen2.5:1.5b
 
 ### Windows
 
-The Windows client uses WinUI 3, .NET, and WebView2 and is currently offered as a source-level developer preview. Read the [Windows development guide](Apps/Windows/README.md), then run from PowerShell:
+The Windows client uses WinUI 3, .NET, and WebView2 and is currently offered as an unsigned Alpha development preview. Read the [Windows development guide](Apps/Windows/README.md), then run from PowerShell:
 
 ```powershell
 .\scripts\build-windows.ps1
 ```
 
 The runnable app is written to `artifacts\windows\win-x64\JieJu\JieJu.Windows.exe`. Run
-`.\scripts\package-windows.ps1 -Version 0.1.0-alpha` to create a portable ZIP and SHA-256 file. See the
+`.\scripts\package-windows.ps1 -Version 0.1.0-alpha` to create a ZIP with current-user install/uninstall scripts,
+third-party notices, and a SHA-256 file. See the
 [build and packaging guide](Docs/BUILDING.md) for all options, cached/offline restores, and signing boundaries.
 
 ## AI providers and privacy
@@ -158,7 +159,7 @@ swift run JieJuAILab explain --stream --text "彼は本を読みながら、音�
 - Complex EPUB layout, footnotes, internal links, and cross-reader stable locations are still being improved.
 - Local-model latency and explanation quality depend on the device, model, and text complexity.
 - Stable EPUB text anchors, footnotes, and in-book links on Windows have not yet reached macOS parity.
-- There is no signed, notarized, checksum-published Alpha installer yet.
+- The Windows Alpha package can be built and verified locally, but it is not code-signed or published as a GitHub Release yet.
 
 The public roadmap is maintained in [TODO.md](TODO.md). Social competition, forced reminders, and streak mechanics are intentionally outside the learning experience.
 

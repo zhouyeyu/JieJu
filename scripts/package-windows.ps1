@@ -40,19 +40,26 @@ Get-ChildItem -LiteralPath $publishDirectory | Where-Object { $_.Name -notlike '
 
 Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination (Join-Path $stagingDirectory 'LICENSE.txt') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'NOTICE') -Destination (Join-Path $stagingDirectory 'NOTICE.txt') -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot 'Packaging/Windows/THIRD-PARTY-NOTICES.txt') -Destination $stagingDirectory -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot 'Packaging/Windows/install.ps1') -Destination $stagingDirectory -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot 'Packaging/Windows/uninstall.ps1') -Destination $stagingDirectory -Force
 $commit = (& git -C $projectRoot rev-parse --short HEAD 2>$null)
 if (-not $commit) { $commit = 'unknown' }
 @"
 JieJu Windows development preview $Version
 
-Run JieJu.Windows.exe. Windows 10 version 1809 or later and Microsoft Edge WebView2 Runtime are required.
+Run JieJu.Windows.exe directly, or install it for the current user with:
+  powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+
+Windows 10 version 1809 or later and Microsoft Edge WebView2 Runtime are required.
 Ollama is optional and is only needed for local AI explanations.
 
-This is a portable package. To uninstall it, close JieJu and delete the extracted JieJu folder.
-Reading data stored under %LOCALAPPDATA%\JieJu is not removed automatically.
+To uninstall an installed copy, run its uninstall.ps1. Local reading data under
+%LOCALAPPDATA%\JieJu is kept unless uninstall.ps1 is run with -RemoveUserData.
 
 Build commit: $commit
-This is an unsigned development preview. See LICENSE.txt and NOTICE.txt for licensing information.
+This is an unsigned development preview. See LICENSE.txt, NOTICE.txt, and
+THIRD-PARTY-NOTICES.txt for licensing information.
 "@ | Set-Content -LiteralPath (Join-Path $stagingDirectory 'PACKAGE-README.txt') -Encoding UTF8
 
 if (Test-Path -LiteralPath $archivePath) { Remove-Item -LiteralPath $archivePath -Force }

@@ -18,6 +18,9 @@ The repository provides repeatable command-line entry points. All outputs are wr
 
 # 生成 ZIP 和对应 SHA-256 文件
 .\scripts\package-windows.ps1 -Version 0.1.0-alpha
+
+# 验证校验和、包内容、安装、启动、卸载和用户数据策略
+.\scripts\test-windows-package.ps1 -Version 0.1.0-alpha
 ```
 
 可运行目录位于 `artifacts/windows/win-x64/JieJu/`，压缩包位于 `artifacts/packages/`。首次成功还原
@@ -27,11 +30,19 @@ The runnable folder is created at `artifacts/windows/win-x64/JieJu/`, and ZIP/ch
 under `artifacts/packages/`. Use `-NoRestore` after dependencies are cached or `-SkipBuild` to package an
 existing build.
 
-打包脚本会在 ZIP 内创建单独的 `JieJu` 文件夹，并使用独立暂存目录，只收集发布文件；即使曾从发布目录运行应用，也不会把 WebView2 用户数据或缓存写入 ZIP。每次正常构建会先清理仓库 `artifacts/` 下对应输出目录，避免旧版本文件残留。关闭 JieJu 后删除解压出的文件夹即可卸载便携包；`%LOCALAPPDATA%\JieJu` 下的本地阅读数据会保留，需由用户另行删除。
+打包脚本会在 ZIP 内创建单独的 `JieJu` 文件夹，并使用独立暂存目录，只收集发布文件；即使曾从发布目录运行应用，也不会把 WebView2 用户数据或缓存写入 ZIP。每次正常构建会先清理仓库 `artifacts/` 下对应输出目录，避免旧版本文件残留。解压后既可直接运行，也可执行以下命令安装到当前用户的 `%LOCALAPPDATA%\Programs\JieJu` 并创建开始菜单快捷方式：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+安装目录中的 `uninstall.ps1` 会删除程序与快捷方式并保留 `%LOCALAPPDATA%\JieJu` 阅读数据；明确追加
+`-RemoveUserData` 才会删除这些数据。WebView2 数据也位于该用户数据目录，不会污染或锁住程序目录。
 
 The ZIP contains one top-level `JieJu` folder. Packaging uses an isolated staging directory so WebView2
-user data created by local smoke tests cannot enter the archive. Close JieJu and delete the extracted
-folder to remove the portable app. Reading data under `%LOCALAPPDATA%\JieJu` remains until removed separately.
+user data created by local smoke tests cannot enter the archive. Run `install.ps1` to install for the current
+user and create a Start menu shortcut. The installed `uninstall.ps1` keeps reading data under
+`%LOCALAPPDATA%\JieJu` unless `-RemoveUserData` is explicitly supplied.
 
 ## macOS
 

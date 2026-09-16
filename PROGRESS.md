@@ -8,6 +8,13 @@
 
 ## 已完成
 
+- **2026-09-16 Windows Alpha 安装流程（WIN-481）**：Windows ZIP 现在附带当前用户安装/卸载脚本、
+  开始菜单快捷方式、第三方归属摘要、包内说明与 SHA-256。卸载默认保留阅读数据，只有显式
+  `-RemoveUserData` 才会清除；WebView2 用户目录迁至 `%LOCALAPPDATA%\JieJu`，程序目录可可靠更新
+  和删除。新增发布包验证脚本，从最终 ZIP 实际完成校验、内容检查、安装、WebView2 启动、普通卸载、
+  重新安装及带数据清除的卸载；共享测试 21 项、Windows 单元测试 107 项、EPUB 分页和 PDF 学习
+  联合冒烟通过，全程使用缓存依赖且未访问外网。`test-all.sh` 在完成共享 21 项后因 Windows 没有
+  Swift 工具链停止。公开发布仍需代码签名并完成 `OSS-009` 的完整许可证审核。
 - **2026-09-16 Windows EPUB 横向分页（WIN-411）**：Windows EPUB 从连续滚动改为按视口宽度
   横向分页，工具栏加入页内前后翻页，支持方向键、PageUp/PageDown 和空格。Reader Web 通过现有
   `paginationChanged` 报告本章页码、页数和重排状态；字号、边距、注音或窗口变化时以章节进度
