@@ -12,7 +12,8 @@ param(
     [switch]$CloudSettingsSmoke,
     [switch]$SettingsPreviewSmoke,
     [switch]$ReviewSmoke,
-    [switch]$PdfSmoke
+    [switch]$PdfSmoke,
+    [switch]$PdfLearningSmoke
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
@@ -40,13 +41,16 @@ function New-SmokeEpub([string]$Path, [bool]$Japanese = $false) {
 
 function New-SmokePdf([string]$Path) {
     $encoding = [System.Text.Encoding]::ASCII
-    $content = "BT /F1 24 Tf 72 720 Td (JieJu PDF smoke) Tj ET"
+    $firstPage = "BT /F1 24 Tf 72 720 Td (JieJu PDF smoke page one) Tj ET"
+    $secondPage = "BT /F1 24 Tf 72 720 Td (JieJu PDF learning smoke page two) Tj ET"
     $objects = @(
         '<< /Type /Catalog /Pages 2 0 R >>',
-        '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 7 0 R >>',
         '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-        ("<< /Length {0} >>`nstream`n{1}`nendstream" -f $content.Length, $content)
+        ("<< /Length {0} >>`nstream`n{1}`nendstream" -f $firstPage.Length, $firstPage),
+        ("<< /Length {0} >>`nstream`n{1}`nendstream" -f $secondPage.Length, $secondPage)
     )
     $pdf = "%PDF-1.4`n"
     $offsets = @()
@@ -55,9 +59,9 @@ function New-SmokePdf([string]$Path) {
         $pdf += ("{0} 0 obj`n{1}`nendobj`n" -f ($index + 1), $objects[$index])
     }
     $xref = $encoding.GetByteCount($pdf)
-    $pdf += "xref`n0 6`n0000000000 65535 f `n"
+    $pdf += "xref`n0 8`n0000000000 65535 f `n"
     foreach ($offset in $offsets) { $pdf += ("{0:D10} 00000 n `n" -f $offset) }
-    $pdf += ("trailer`n<< /Size 6 /Root 1 0 R >>`nstartxref`n{0}`n%%EOF`n" -f $xref)
+    $pdf += ("trailer`n<< /Size 8 /Root 1 0 R >>`nstartxref`n{0}`n%%EOF`n" -f $xref)
     [System.IO.File]::WriteAllBytes($Path, $encoding.GetBytes($pdf))
 }
 
@@ -127,14 +131,16 @@ try {
                 }
             }
         }
-        if ($PdfSmoke) {
+        if ($PdfSmoke -or $PdfLearningSmoke) {
             $pdf = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-pdf-smoke-{0}.pdf" -f [guid]::NewGuid())
             $pdfResult = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-pdf-smoke-{0}.json" -f [guid]::NewGuid())
             $pdfDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-pdf-data-{0}" -f [guid]::NewGuid())
             try {
                 [System.IO.Directory]::CreateDirectory($pdfDirectory) | Out-Null
                 New-SmokePdf $pdf
-                Invoke-AppSmoke $exe $pdfResult @('--open', ('"{0}"' -f $pdf), '--smoke-pdf', '--data-directory', ('"{0}"' -f $pdfDirectory)) 'Restricted local PDF reader'
+                $pdfArguments = @('--open', ('"{0}"' -f $pdf), '--smoke-pdf', '--data-directory', ('"{0}"' -f $pdfDirectory))
+                if ($PdfLearningSmoke) { $pdfArguments += @('--smoke-pdf-learning', '--smoke-pdf-page', '1') }
+                Invoke-AppSmoke $exe $pdfResult $pdfArguments ($PdfLearningSmoke ? 'PDF learning save and source-return flow' : 'Restricted local PDF reader')
             }
             finally {
                 if (Test-Path $pdf) { Remove-Item -LiteralPath $pdf }

@@ -114,9 +114,7 @@ public sealed partial class MainWindow
 
     private async Task ReturnToSourceAsync(SavedExplanation record)
     {
-        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == record.Document.Id && File.Exists(item.Path));
-        if (recent is null) { ShowError("找不到原书，请先从阅读页重新打开这本 EPUB。"); return; }
-        await OpenBook(recent.Path, record.Locator as EpubLocator);
+        await ReturnToSourceAsync(record.Document, record.Locator);
     }
 
     private void ShowVocabularyDetail(VocabularyEntry entry)
@@ -150,9 +148,14 @@ public sealed partial class MainWindow
 
     private async Task ReturnToSourceAsync(VocabularySource source)
     {
-        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == source.Document.Id && File.Exists(item.Path));
-        if (recent is null) { ShowError("找不到原书，请先从阅读页重新打开这本 EPUB。"); return; }
-        await OpenBook(recent.Path, source.Locator as EpubLocator);
+        await ReturnToSourceAsync(source.Document, source.Locator);
+    }
+    private async Task ReturnToSourceAsync(Document document, DocumentLocator? locator)
+    {
+        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == document.Id && File.Exists(item.Path));
+        if (recent is null) { ShowError("找不到原文档，请先从阅读页重新打开这份 PDF 或 EPUB。"); return; }
+        if (locator is PdfLocator || recent.Kind == "pdf") await OpenPdf(recent.Path, locator as PdfLocator);
+        else await OpenBook(recent.Path, locator as EpubLocator);
     }
     private async void OpenBook_Click(object sender, RoutedEventArgs args)
     {
@@ -170,7 +173,7 @@ public sealed partial class MainWindow
     private Task OpenDocument(string path) => string.Equals(Path.GetExtension(path), ".pdf", StringComparison.OrdinalIgnoreCase)
         ? OpenPdf(path) : OpenBook(path);
 
-    private async Task OpenPdf(string path)
+    private async Task OpenPdf(string path, PdfLocator? preferredLocator = null)
     {
         if (!OpenButton.IsEnabled) return;
         OpenButton.IsEnabled = false;
@@ -181,7 +184,7 @@ public sealed partial class MainWindow
             ResetExplanation();
             pdf = loaded; pdfUrl = ReaderHostPolicy.CurrentPdf; book = null; bookPath = path;
             var recent = device.RecentBooks.FirstOrDefault(item => item.Id == pdf.Id && item.Kind == "pdf");
-            pdfPageIndex = Math.Max(0, recent?.Chapter ?? 0);
+            pdfPageIndex = Math.Max(0, preferredLocator?.PageIndex ?? recent?.Chapter ?? 0);
             WelcomePanel.Visibility = Visibility.Collapsed;
             CloseBookButton.Visibility = Visibility.Visible;
             ReaderToolbar.Visibility = Visibility.Collapsed;

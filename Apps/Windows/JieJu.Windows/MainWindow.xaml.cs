@@ -22,8 +22,9 @@ public sealed partial class MainWindow : Window
     private readonly bool smokeReadingSettings;
     private readonly bool smokeReview;
     private readonly bool smokePdf;
+    private readonly bool smokePdfLearning;
     private readonly int? smokePdfPage;
-    private bool smokePdfReopened;
+    private bool smokePdfReopened, smokePdfLearningReturning;
     private readonly DeviceStateStore deviceStore;
     private readonly ILearningLibraryStore libraryStore;
     private readonly Func<ReadingSettings, IStreamingReadingAI> readingAIFactory;
@@ -64,6 +65,7 @@ public sealed partial class MainWindow : Window
         smokeReadingSettings = arguments.Contains("--smoke-reading-settings");
         smokeReview = arguments.Contains("--smoke-review");
         smokePdf = arguments.Contains("--smoke-pdf");
+        smokePdfLearning = arguments.Contains("--smoke-pdf-learning");
         var smokePdfPageIndex = Array.IndexOf(arguments, "--smoke-pdf-page");
         smokePdfPage = smokePdfPageIndex >= 0 && smokePdfPageIndex + 1 < arguments.Length && int.TryParse(arguments[smokePdfPageIndex + 1], out var requestedSmokePage)
             ? Math.Max(0, requestedSmokePage) : null;
@@ -170,7 +172,17 @@ public sealed partial class MainWindow : Window
                             ApplyReadingSettings();
                             if (book is not null) Send("restoreLocation", new { locator = new EpubLocator(book.Chapters[chapterIndex].Href, TextAnchor: JsonSerializer.Serialize(new { progress = pendingProgress })) });
                             else if (pdf is not null) Send("restoreLocation", new { locator = new PdfLocator(pdfPageIndex) });
-                            if (smokePdf && pdf is not null)
+                            if (smokePdfLearningReturning && pdf is not null)
+                            {
+                                await Task.Delay(200);
+                                var actualPageJson = await core.ExecuteScriptAsync("document.querySelector('#pageNumber')?.value ?? ''");
+                                var actualPage = JsonSerializer.Deserialize<string>(actualPageJson);
+                                var expectedPage = (smokePdfPage ?? 0) + 1;
+                                FinishSmoke(actualPage == expectedPage.ToString(), actualPage == expectedPage.ToString()
+                                    ? "PDF explanation and vocabulary saved with page locator and returned to source"
+                                    : $"PDF source return restored page {actualPage} instead of {expectedPage}");
+                            }
+                            else if (smokePdf && pdf is not null)
                             {
                                 if (!smokePdfReopened)
                                 {
