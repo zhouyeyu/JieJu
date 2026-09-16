@@ -139,7 +139,7 @@ try {
                 [System.IO.Directory]::CreateDirectory($pdfDirectory) | Out-Null
                 New-SmokePdf $pdf
                 $pdfArguments = @('--open', ('"{0}"' -f $pdf), '--smoke-pdf', '--data-directory', ('"{0}"' -f $pdfDirectory))
-                if ($PdfLearningSmoke) { $pdfArguments += @('--smoke-pdf-learning', '--smoke-pdf-page', '1') }
+                if ($PdfLearningSmoke) { $pdfArguments += @('--smoke-pdf-learning', '--smoke-mock-ai', '--smoke-pdf-page', '1') }
                 Invoke-AppSmoke $exe $pdfResult $pdfArguments ($PdfLearningSmoke ? 'PDF learning save and source-return flow' : 'Restricted local PDF reader')
             }
             finally {

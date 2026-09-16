@@ -377,29 +377,26 @@ public sealed partial class MainWindow
         try
         {
             var document = CurrentDocument() ?? throw new InvalidOperationException("PDF document reference is missing.");
-            completedExplanation = new Explanation
-            {
-                Translation = "PDF 测试译文",
-                SentenceCore = selectionRequest!.TargetText,
-                GrammarPoints = [],
-                KeyPhrases = []
-            };
+            var request = selectionRequest ?? throw new InvalidOperationException("PDF selection request is missing.");
+            completedExplanation = await readingAIFactory(device.Settings).ExplainAsync(request);
             var record = await PersistExplanationAsync(document);
-            completedWordExplanation = new WordExplanation
+            completedWordExplanation = await vocabularyAIFactory(device.Settings).ExplainWordAsync(new WordExplanationRequest
             {
-                Surface = selectionRequest.TargetText,
-                Lemma = selectionRequest.TargetText,
-                PartOfSpeech = "smoke",
-                ContextualMeaning = "PDF 测试词义",
-                BriefMeaning = "PDF 测试词义",
-                Collocations = []
-            };
+                SelectedText = request.TargetText,
+                SentenceContext = selectionSentence,
+                PrecedingContext = request.PrecedingContext,
+                FollowingContext = request.FollowingContext,
+                SourceLanguage = request.SourceLanguage,
+                ExplanationLanguage = request.ExplanationLanguage
+            });
             await PersistVocabularyAsync(document);
 
             var saved = await libraryStore.LoadAsync();
             var explanation = saved.SavedExplanations.Single(item => item.Id == record.Id);
             var vocabulary = saved.VocabularyEntries.Single(item => item.Sources.Any(source => source.Document.Id == document.Id));
-            if (explanation.Document != document || explanation.Locator is not PdfLocator explanationLocator ||
+            if (explanation.Document != document || explanation.Explanation.Translation != "离线测试译文" ||
+                explanation.Locator is not PdfLocator explanationLocator ||
+                vocabulary.Senses.Single().Meaning != "离线测试词义" ||
                 vocabulary.Sources.Single().Locator is not PdfLocator vocabularyLocator ||
                 explanationLocator.PageIndex != vocabularyLocator.PageIndex)
                 throw new InvalidDataException("Saved PDF learning sources did not preserve their page locator.");

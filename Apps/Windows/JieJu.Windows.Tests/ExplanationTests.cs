@@ -93,6 +93,26 @@ public sealed class ExplanationTests
         Assert.Empty(DeepAnalysisValidation.Parse(json, ExplanationValidation.Normalize(Request)).Components);
     }
 
+    [Fact]
+    public async Task SmokeProviderProducesDeterministicOfflineResults()
+    {
+        var provider = new SmokeReadingAI();
+
+        var explanation = await provider.ExplainAsync(Request);
+        var word = await provider.ExplainWordAsync(new WordExplanationRequest
+        {
+            SelectedText = "book",
+            SentenceContext = "She opened the book.",
+            SourceLanguage = "English",
+            ExplanationLanguage = "Chinese"
+        });
+
+        Assert.Equal("离线测试译文", explanation.Translation);
+        Assert.Equal(Request.TargetText, explanation.SentenceCore);
+        Assert.Equal("book", word.Surface);
+        Assert.Equal("离线测试词义", word.ContextualMeaning);
+    }
+
     private sealed class StubHandler(params string[] responses) : HttpMessageHandler
     {
         public string Body { get; private set; } = "";

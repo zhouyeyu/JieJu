@@ -2,11 +2,11 @@
 
 ## 本次交接
 
-- `WIN-403` 已在本地完成，尚未推送：PDF 解释结果、生词和深入解析词形均可保存，学习记录、
+- `WIN-403` / `WIN-404` 已在本地完成，尚未推送：PDF 解释结果、生词和深入解析词形均可保存，学习记录、
   生词本与复习来源可按 `PdfLocator` 重开 PDF 并返回原页。两页 PDF 离线冒烟已在第 2 页验证
-  “选择 → 保存解释/词语 → 重开 → 返回第 2 页”；Windows 单元测试增至 106 项。
-- 下一项仍为 `WIN-404`：使用可公开 PDF 和可预测 Mock 覆盖完整“本地解释 → 保存 → 返回”路径；
-  当前 `WIN-403` 冒烟刻意使用内置假解释，因此不产生 Ollama 或 VPN 流量。
+  “选择 → Mock 句子/词语解释 → 保存 → 重开 → 返回第 2 页”；Windows 单元测试增至 107 项。
+  Mock 仅由 `--smoke-mock-ai` 显式启用，不产生 Ollama、云端或 VPN 流量。下一项建议 `WIN-411`：
+  将 Windows EPUB 从连续滚动升级为横向分页。
 - 分支：`codex/build-packaging`，基于 `main` 的 `1478a78`。
 - 构建入口：Windows 使用 `scripts/build-windows.ps1` / `package-windows.ps1`，macOS 使用
   `scripts/build-macos.sh` / `package-macos.sh`；产物统一在 `artifacts/`，包包含 SHA-256、许可、

@@ -11,9 +11,10 @@
 - **2026-09-16 Windows PDF 学习闭环（WIN-403）**：PDF 选区现可沿用 EPUB 的词语/句子解释，
   并保存到生词本或学习记录；深入解析中的日语词形也可收藏。保存来源写入 `PdfLocator`，从记录、
   生词来源或复习卡返回时会自动重新打开 PDF 并恢复原页，缺失文件提示同时适用于 PDF/EPUB。
-  新增统一学习记录工厂和 2 项 PDF 来源单元测试；两页 PDF 冒烟在第 2 页完成选择、保存解释与词语、
-  重开并返回第 2 页。Reader Bridge 19 项、Windows 单元测试 106 项及 WinUI/PDF/EPUB 冒烟通过，
-  全程未调用 Ollama 或云端服务。
+  新增统一学习记录工厂、可预测离线 Mock Provider 和 3 项相关单元测试；两页 PDF 真机冒烟在第 2 页
+  完成选择、调用句子/词语解释接口、保存两类结果、重开并返回第 2 页，同时完成 `WIN-404`。
+  Reader Bridge 19 项、Windows 单元测试 107 项及 WinUI/PDF/EPUB 冒烟通过，全程未调用 Ollama
+  或云端服务。
 - **2026-09-16 双平台构建与开发预览打包（REL-001）**：新增 macOS / Windows Release 构建和
   打包脚本，统一输出到 `artifacts/`；Windows 生成自包含 x64 运行目录，macOS 生成未签名 `.app`，
   两平台打包时均附带许可、构建提交、使用说明、ZIP 和 SHA-256。中英文 README、Windows 指南和

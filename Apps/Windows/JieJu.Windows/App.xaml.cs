@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using JieJu.Domain;
 using JieJu.Windows.Infrastructure;
 
 namespace JieJu.Windows;
@@ -12,11 +13,12 @@ public partial class App : Application
     {
         var japanese = new MeCabJapaneseMorphology();
         var credentials = new WindowsCredentialStore();
+        var smokeAI = Environment.GetCommandLineArgs().Contains("--smoke-mock-ai") ? new SmokeReadingAI() : null;
         window = new MainWindow(
-            settings => new LocalJapaneseReadingAI(settings.Provider == "cloud"
+            settings => (IStreamingReadingAI?)smokeAI ?? new LocalJapaneseReadingAI(settings.Provider == "cloud"
                 ? new OpenAICompatibleReadingAI(http, settings.CloudUrl, credentials.Load(), settings.CloudModel)
                 : new OllamaReadingAI(http, settings.OllamaUrl, settings.Model), japanese),
-            settings => new LocalJapaneseVocabularyAI(settings.Provider == "cloud"
+            settings => (IVocabularyAI?)smokeAI ?? new LocalJapaneseVocabularyAI(settings.Provider == "cloud"
                 ? new OpenAICompatibleVocabularyAI(http, settings.CloudUrl, credentials.Load(), settings.CloudModel)
                 : new OllamaVocabularyAI(http, settings.OllamaUrl, settings.Model), japanese),
             japanese, credentials);
