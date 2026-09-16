@@ -21,12 +21,20 @@ JieJu 当前尚未提供公开安装包。本清单用于未来手工发布，CI
 
 ## 构建与分发
 
-- [ ] 使用 Release 配置构建归档。
+- [x] 提供 `scripts/build-{macos,windows}` 与 `package-{macos,windows}` 可重复 Release 构建入口；
+      开发预览统一生成 ZIP 和 SHA-256，详见 [BUILDING.md](BUILDING.md)。
+- [x] Windows Alpha ZIP 附带当前用户安装/卸载脚本、第三方归属摘要、包内说明和 SHA-256；
+      `test-windows-package.ps1` 实际验证安装后启动、默认保留数据和显式清除数据。
 - [ ] 使用项目所有者的 Developer ID 签名；不要在仓库保存证书或密码。
 - [ ] 开启 Hardened Runtime，并检查 App Sandbox / entitlement 是否与实际文件访问一致。
 - [ ] 向 Apple 提交公证并执行 stapling。
 - [ ] 在干净的受支持 macOS 账户上验证首次启动和 Gatekeeper。
 - [ ] 生成校验和并随安装包发布。
+
+Windows 开发预览包由 `package-windows.ps1` 生成，包含自包含 .NET / Windows App SDK、当前用户
+安装/卸载脚本、第三方归属摘要、许可说明、构建提交和校验和；目标机器仍需 WebView2 Runtime。
+macOS 脚本默认关闭签名，公开发布时不得把未签名预览
+冒充已完成 Developer ID 签名和 Apple 公证的正式包。
 
 正式发布前必须补充稳定的签名、公证和升级策略；未经这些步骤的构建应明确标为开发预览，不建议普通用户绕过系统安全提示。
 

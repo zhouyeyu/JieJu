@@ -48,7 +48,7 @@ JieJu 是一款本地优先、面向语言学习的 PDF / EPUB 阅读器。阅�
 | 能力 | macOS | Windows 开发预览版 |
 | --- | :---: | :---: |
 | PDF 阅读 | ✅ | ◐ |
-| 可重排 EPUB 阅读 | ✅ 分页 | ✅ 连续阅读 |
+| 可重排 EPUB 阅读 | ✅ 分页 | ✅ 分页 |
 | 单词 / 表达 / 句子选区识别 | ✅ | ✅ |
 | 流式翻译与分层语法讲解 | ✅ | ✅ |
 | 日语分词、原形、活用与假名注音 | ✅ | ✅ |
@@ -82,21 +82,26 @@ JieJu 是一款本地优先、面向语言学习的 PDF / EPUB 阅读器。阅�
 ```bash
 git clone https://github.com/zhouyeyu/JieJu.git
 cd JieJu
-ollama pull qwen2.5:1.5b-instruct
-open JieJu.xcodeproj
+./scripts/build-macos.sh
 ```
 
-在 Xcode 中选择 `JieJu` scheme 后运行应用。启动 Ollama，并在 JieJu 设置中检查本地服务连接。`0.5B` 模型可以用于实验，但复杂语法的稳定性明显弱于默认的 `1.5B`。
+生成的应用位于 `artifacts/macos/JieJu.app`。需要 ZIP 和 SHA-256 时运行
+`./scripts/package-macos.sh 0.1.0-alpha`。也可以打开 `JieJu.xcodeproj`，在 Xcode 中选择
+`JieJu` scheme 运行。启动 Ollama，并在 JieJu 设置中检查本地服务连接；默认模型可用
+`ollama pull qwen2.5:1.5b-instruct` 安装。
 
 ### Windows
 
-Windows 客户端使用 WinUI 3、.NET 和 WebView2，目前面向开发者提供源码预览。请先阅读 [Windows 开发指南](Apps/Windows/README.md)，再在 PowerShell 中运行：
+Windows 客户端使用 WinUI 3、.NET 和 WebView2，目前提供未签名的 Alpha 开发预览。请先阅读 [Windows 开发指南](Apps/Windows/README.md)，再在 PowerShell 中运行：
 
 ```powershell
-.\scripts\test-windows.ps1
+.\scripts\build-windows.ps1
 ```
 
-Windows 的实际 SDK 版本、启动方式和可选冒烟测试均记录在该指南中。
+生成的程序位于 `artifacts\windows\win-x64\JieJu\JieJu.Windows.exe`。需要便携 ZIP 和 SHA-256 时
+运行 `.\scripts\package-windows.ps1 -Version 0.1.0-alpha`。ZIP 内附当前用户安装/卸载脚本、第三方
+归属摘要和校验说明。完整参数、离线还原方式和签名边界见
+[构建与打包指南](Docs/BUILDING.md)。
 
 ## AI Provider 与隐私
 
@@ -154,8 +159,8 @@ swift run JieJuAILab explain --stream --text "彼は本を読みながら、音�
 - 扫描型 PDF 尚不支持 OCR。
 - 复杂 EPUB 排版、脚注、内部链接和跨阅读器稳定定位仍在完善。
 - 本地小模型的速度与讲解质量取决于设备、模型和文本复杂度。
-- Windows 的 PDF 选区闭环与 EPUB 分页尚未完全对齐 macOS。
-- 尚无签名、公证并提供校验和的 Alpha 安装包。
+- Windows EPUB 的稳定文本锚点、脚注和书内链接尚未完全对齐 macOS。
+- Windows Alpha 包已可本地生成并校验，但尚未代码签名或作为 GitHub Release 正式发布。
 
 近期计划公开维护在 [TODO.md](TODO.md)。项目不会把社交竞争、强制提醒或打卡机制列入学习体验。
 

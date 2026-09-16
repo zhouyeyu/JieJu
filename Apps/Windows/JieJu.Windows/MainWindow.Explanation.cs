@@ -22,6 +22,10 @@ public sealed partial class MainWindow
     private double explanationDragOriginX, explanationDragOriginY;
     private double explanationPopupOffsetX, explanationPopupOffsetY;
 
+    private Document? CurrentDocument() => book is not null
+        ? new Document(book.Id, book.FileName)
+        : pdf is not null ? new Document(pdf.Id, pdf.FileName) : null;
+
     private void HandleSelection(JsonElement payload)
     {
         var target = payload.TryGetProperty("targetText", out var value) ? ExplanationValidation.Clean(value.GetString()) : "";
@@ -52,7 +56,14 @@ public sealed partial class MainWindow
         SaveVocabularyButton.Visibility = Visibility.Collapsed; SaveVocabularyButton.IsEnabled = false;
         PresentExplanationPane();
         ExplainButton.IsEnabled = true;
-        if (smokePdf)
+        if (smokePdfLearning)
+        {
+            var expectedPage = smokePdfPage ?? 0;
+            var valid = selectionLocator is PdfLocator locator && locator.PageIndex == expectedPage && locator.TextHash?.Length == 64;
+            if (!valid) FinishSmoke(false, "PDF learning selection or locator was incomplete");
+            else _ = RunPdfLearningSmokeAsync();
+        }
+        else if (smokePdf)
         {
             var expectedPage = smokePdfPage ?? 0;
             var selectionMethod = Read("selectionMethod");
@@ -162,7 +173,8 @@ public sealed partial class MainWindow
         if (result.BriefMeaning != result.ContextualMeaning) AddSection("简明释义", result.BriefMeaning);
         if (!string.IsNullOrWhiteSpace(result.Inflection)) AddSection("词形", result.Inflection);
         foreach (var item in result.Collocations) AddSection(item.Text, item.Meaning);
-        SaveVocabularyButton.Visibility = book is null ? Visibility.Collapsed : Visibility.Visible; SaveVocabularyButton.IsEnabled = book is not null;
+        var canSave = CurrentDocument() is not null;
+        SaveVocabularyButton.Visibility = canSave ? Visibility.Visible : Visibility.Collapsed; SaveVocabularyButton.IsEnabled = canSave;
         if (smokeWord) FinishSmoke(true, "Local Ollama word: " + result.ContextualMeaning);
     }
 
@@ -173,7 +185,8 @@ public sealed partial class MainWindow
         AddSection("翻译", result.Translation); AddSection("句子主干", result.SentenceCore);
         foreach (var point in result.GrammarPoints) AddSection(point.Text, point.Explanation);
         foreach (var phrase in result.KeyPhrases) AddSection(phrase.Text, phrase.Meaning);
-        SaveExplanationButton.Visibility = book is null ? Visibility.Collapsed : Visibility.Visible; SaveExplanationButton.IsEnabled = book is not null;
+        var canSave = CurrentDocument() is not null;
+        SaveExplanationButton.Visibility = canSave ? Visibility.Visible : Visibility.Collapsed; SaveExplanationButton.IsEnabled = canSave;
         AnalyzeDeepButton.Visibility = Visibility.Visible; AnalyzeDeepButton.IsEnabled = true;
         if (smokeDeep) AnalyzeDeep_Click(this, new RoutedEventArgs());
         else if (smokeInference) FinishSmoke(true, "Local Ollama: " + result.Translation);
@@ -251,14 +264,15 @@ public sealed partial class MainWindow
         card.Children.Add(CreateFuriganaView(word.Text, 17));
         card.Children.Add(new TextBlock { Text = $"原形：{word.BaseForm}　{word.GrammaticalFunction}\n{word.InflectionType}", Opacity = .75, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
         var save = new Button { Content = "加入生词本", HorizontalAlignment = HorizontalAlignment.Left };
-        save.Visibility = book is null ? Visibility.Collapsed : Visibility.Visible;
+        save.Visibility = CurrentDocument() is null ? Visibility.Collapsed : Visibility.Visible;
         save.Click += async (_, _) => await SaveJapaneseWordAsync(word, save);
         card.Children.Add(save); DeepAnalysisContent.Children.Add(card);
     }
 
     private async Task SaveJapaneseWordAsync(JapaneseWord word, Button button)
     {
-        if (selectionRequest is null || book is null) return;
+        var document = CurrentDocument();
+        if (selectionRequest is null || document is null) return;
         button.IsEnabled = false;
         try
         {
@@ -266,7 +280,7 @@ public sealed partial class MainWindow
             var now = DateTimeOffset.UtcNow;
             var entry = new VocabularyEntry(Guid.NewGuid(), selectionRequest.SourceLanguage, word.BaseForm, [word.Text],
                 [new VocabularySense(Guid.NewGuid(), word.GrammaticalFunction, selectionRequest.ExplanationLanguage)],
-                [new VocabularySource(Guid.NewGuid(), new Document(book.Id, book.FileName), selectionSentence, word.Text, now, Locator: selectionLocator)],
+                [new VocabularySource(Guid.NewGuid(), document, selectionSentence, word.Text, now, Locator: selectionLocator)],
                 now, now, word.Reading, word.InflectionType);
             library = LearningLibraryOperations.UpsertVocabulary(library, entry);
             await libraryStore.SaveAsync(library);
@@ -313,24 +327,13 @@ public sealed partial class MainWindow
 
     private async void SaveExplanation_Click(object sender, RoutedEventArgs args)
     {
-        if (selectionRequest is null || completedExplanation is null || book is null) return;
+        var document = CurrentDocument();
+        if (selectionRequest is null || completedExplanation is null || document is null) return;
         SaveExplanationButton.IsEnabled = false;
         ExplanationStatus.Text = "正在保存…";
         try
         {
-            library = await libraryStore.LoadAsync();
-            var now = DateTimeOffset.UtcNow;
-            var record = new SavedExplanation(
-                Guid.NewGuid(), new Document(book.Id, book.FileName), selectionRequest,
-                new PersistedExplanation(
-                    completedExplanation.Translation,
-                    completedExplanation.SentenceCore,
-                    completedExplanation.GrammarPoints.Select(point => new PersistedGrammarPoint(point.Text, point.Explanation)).ToArray(),
-                    completedExplanation.KeyPhrases.Select(phrase => new PersistedKeyPhrase(phrase.Text, phrase.Meaning)).ToArray(),
-                    ActiveModelName()),
-                now, now, Locator: selectionLocator);
-            library = LearningLibraryOperations.UpsertExplanation(library, record);
-            await libraryStore.SaveAsync(library);
+            await PersistExplanationAsync(document);
             ExplanationStatus.Text = "已保存到学习记录。";
             Notice.Message = "解释已保存到学习记录。"; Notice.Severity = InfoBarSeverity.Success; Notice.IsOpen = true;
         }
@@ -340,25 +343,68 @@ public sealed partial class MainWindow
 
     private async void SaveVocabulary_Click(object sender, RoutedEventArgs args)
     {
-        if (completedWordExplanation is null || selectionRequest is null || book is null) return;
+        var document = CurrentDocument();
+        if (completedWordExplanation is null || selectionRequest is null || document is null) return;
         SaveVocabularyButton.IsEnabled = false; ExplanationStatus.Text = "正在收藏…";
         try
         {
-            library = await libraryStore.LoadAsync();
-            var now = DateTimeOffset.UtcNow;
-            var word = completedWordExplanation;
-            var entry = new VocabularyEntry(
-                Guid.NewGuid(), selectionRequest.SourceLanguage, word.Lemma, [word.Surface],
-                [new VocabularySense(Guid.NewGuid(), word.ContextualMeaning, selectionRequest.ExplanationLanguage)],
-                [new VocabularySource(Guid.NewGuid(), new Document(book.Id, book.FileName), selectionSentence, word.Surface, now, Locator: selectionLocator)],
-                now, now, word.Reading, word.PartOfSpeech);
-            library = LearningLibraryOperations.UpsertVocabulary(library, entry);
-            await libraryStore.SaveAsync(library);
+            await PersistVocabularyAsync(document);
             ExplanationStatus.Text = "已收藏到生词本。";
             Notice.Message = "词语已收藏到生词本。"; Notice.Severity = InfoBarSeverity.Success; Notice.IsOpen = true;
         }
         catch (Exception error) { ExplanationStatus.Text = "收藏失败：" + error.Message; }
         finally { SaveVocabularyButton.IsEnabled = completedWordExplanation is not null; }
+    }
+
+    private async Task<SavedExplanation> PersistExplanationAsync(Document document)
+    {
+        var record = LearningRecordFactory.Explanation(document, selectionRequest!, completedExplanation!, ActiveModelName(), selectionLocator, DateTimeOffset.UtcNow);
+        library = LearningLibraryOperations.UpsertExplanation(await libraryStore.LoadAsync(), record);
+        await libraryStore.SaveAsync(library);
+        return record;
+    }
+
+    private async Task<VocabularyEntry> PersistVocabularyAsync(Document document)
+    {
+        var entry = LearningRecordFactory.Vocabulary(document, selectionRequest!, selectionSentence, completedWordExplanation!, selectionLocator, DateTimeOffset.UtcNow);
+        library = LearningLibraryOperations.UpsertVocabulary(await libraryStore.LoadAsync(), entry);
+        await libraryStore.SaveAsync(library);
+        return entry;
+    }
+
+    private async Task RunPdfLearningSmokeAsync()
+    {
+        try
+        {
+            var document = CurrentDocument() ?? throw new InvalidOperationException("PDF document reference is missing.");
+            var request = selectionRequest ?? throw new InvalidOperationException("PDF selection request is missing.");
+            completedExplanation = await readingAIFactory(device.Settings).ExplainAsync(request);
+            var record = await PersistExplanationAsync(document);
+            completedWordExplanation = await vocabularyAIFactory(device.Settings).ExplainWordAsync(new WordExplanationRequest
+            {
+                SelectedText = request.TargetText,
+                SentenceContext = selectionSentence,
+                PrecedingContext = request.PrecedingContext,
+                FollowingContext = request.FollowingContext,
+                SourceLanguage = request.SourceLanguage,
+                ExplanationLanguage = request.ExplanationLanguage
+            });
+            await PersistVocabularyAsync(document);
+
+            var saved = await libraryStore.LoadAsync();
+            var explanation = saved.SavedExplanations.Single(item => item.Id == record.Id);
+            var vocabulary = saved.VocabularyEntries.Single(item => item.Sources.Any(source => source.Document.Id == document.Id));
+            if (explanation.Document != document || explanation.Explanation.Translation != "离线测试译文" ||
+                explanation.Locator is not PdfLocator explanationLocator ||
+                vocabulary.Senses.Single().Meaning != "离线测试词义" ||
+                vocabulary.Sources.Single().Locator is not PdfLocator vocabularyLocator ||
+                explanationLocator.PageIndex != vocabularyLocator.PageIndex)
+                throw new InvalidDataException("Saved PDF learning sources did not preserve their page locator.");
+
+            smokePdfLearningReturning = true;
+            await ReturnToSourceAsync(record);
+        }
+        catch (Exception error) { FinishSmoke(false, "PDF learning flow failed: " + error.Message); }
     }
 
     private void AddSection(string title, string body)

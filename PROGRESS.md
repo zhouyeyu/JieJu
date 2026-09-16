@@ -8,6 +8,32 @@
 
 ## 已完成
 
+- **2026-09-16 Windows Alpha 安装流程（WIN-481）**：Windows ZIP 现在附带当前用户安装/卸载脚本、
+  开始菜单快捷方式、第三方归属摘要、包内说明与 SHA-256。卸载默认保留阅读数据，只有显式
+  `-RemoveUserData` 才会清除；WebView2 用户目录迁至 `%LOCALAPPDATA%\JieJu`，程序目录可可靠更新
+  和删除。新增发布包验证脚本，从最终 ZIP 实际完成校验、内容检查、安装、WebView2 启动、普通卸载、
+  重新安装及带数据清除的卸载；共享测试 21 项、Windows 单元测试 107 项、EPUB 分页和 PDF 学习
+  联合冒烟通过，全程使用缓存依赖且未访问外网。`test-all.sh` 在完成共享 21 项后因 Windows 没有
+  Swift 工具链停止。公开发布仍需代码签名并完成 `OSS-009` 的完整许可证审核。
+- **2026-09-16 Windows EPUB 横向分页（WIN-411）**：Windows EPUB 从连续滚动改为按视口宽度
+  横向分页，工具栏加入页内前后翻页，支持方向键、PageUp/PageDown 和空格。Reader Web 通过现有
+  `paginationChanged` 报告本章页码、页数和重排状态；字号、边距、注音或窗口变化时以章节进度
+  映射到新页数，旧 `{progress}` locator 继续兼容。新增 2 项分页计算测试和长章节 WebView2 冒烟，
+  验证键盘翻页、实时重排及选区解释回归；共享测试 21 项、Windows 单元测试 107 项通过。
+- **2026-09-16 Windows PDF 学习闭环（WIN-403）**：PDF 选区现可沿用 EPUB 的词语/句子解释，
+  并保存到生词本或学习记录；深入解析中的日语词形也可收藏。保存来源写入 `PdfLocator`，从记录、
+  生词来源或复习卡返回时会自动重新打开 PDF 并恢复原页，缺失文件提示同时适用于 PDF/EPUB。
+  新增统一学习记录工厂、可预测离线 Mock Provider 和 3 项相关单元测试；两页 PDF 真机冒烟在第 2 页
+  完成选择、调用句子/词语解释接口、保存两类结果、重开并返回第 2 页，同时完成 `WIN-404`。
+  Reader Bridge 19 项、Windows 单元测试 107 项及 WinUI/PDF/EPUB 冒烟通过，全程未调用 Ollama
+  或云端服务。
+- **2026-09-16 双平台构建与开发预览打包（REL-001）**：新增 macOS / Windows Release 构建和
+  打包脚本，统一输出到 `artifacts/`；Windows 生成自包含 x64 运行目录，macOS 生成未签名 `.app`，
+  两平台打包时均附带许可、构建提交、使用说明、ZIP 和 SHA-256。中英文 README、Windows 指南和
+  发布清单已加入一条命令入口及签名边界；默认脚本不会下载模型或调用云端 AI。Windows ZIP 使用
+  单一顶层目录并排除 WebView2 用户缓存；从最终 ZIP 解压启动验证通过（WebView2 153.0.4234.32），
+  Reader Bridge 19 项、Windows 单元测试 104 项和 WinUI/PDF/EPUB 冒烟全部通过。统一测试入口在
+  Windows 完成 Node 19 项后因没有 Swift 工具链停止；macOS 脚本仍需在 macOS/Xcode 环境验证。
 - **2026-09-15 README 双平台截图**：在中英文 README 中加入用户明确授权公开的 macOS 与
   Windows 实机截图，以 macOS 阅读和分层解句界面作为首图，随后展示 Windows 注音与弹出式深入解析；
   图片保留原始比例和清晰度。

@@ -2,6 +2,30 @@
 
 ## 本次交接
 
+- `WIN-481` 已在本地完成，尚未推送：Windows Alpha ZIP 附带当前用户 `install.ps1` / `uninstall.ps1`、
+  开始菜单快捷方式、第三方归属摘要、包内说明和 SHA-256。WebView2 数据移至应用用户数据目录，
+  不再写入或锁住安装目录。`test-windows-package.ps1` 已从最终 ZIP 实际验证校验和、必需文件、安装后
+  启动、默认保留数据、重新安装及显式清除数据。共享测试 21 项、Windows 单元测试 107 项、EPUB
+  分页及 PDF 学习联合冒烟通过；`test-all.sh` 仅因本机没有 Swift 工具链在共享测试后停止。完整
+  第三方许可证审核 `OSS-009` 与正式代码签名 `OSS-010` 仍开放；不要把当前未签名包描述为正式发布。
+- `WIN-411` 已在本地完成，尚未推送：Windows EPUB 使用横向分页，显示本章页内进度，提供工具栏
+  和键盘翻页；排版变化会显示重排状态并按章节进度恢复。共享 Node 测试增至 21 项，长章节
+  WebView2 分页/键盘/重排冒烟和原有选区冒烟均通过。下一项 EPUB 是 `WIN-412` 稳定文本锚点。
+- `WIN-403` / `WIN-404` 已在本地完成，尚未推送：PDF 解释结果、生词和深入解析词形均可保存，学习记录、
+  生词本与复习来源可按 `PdfLocator` 重开 PDF 并返回原页。两页 PDF 离线冒烟已在第 2 页验证
+  “选择 → Mock 句子/词语解释 → 保存 → 重开 → 返回第 2 页”；Windows 单元测试增至 107 项。
+  Mock 仅由 `--smoke-mock-ai` 显式启用，不产生 Ollama、云端或 VPN 流量。下一项建议 `WIN-411`：
+  将 Windows EPUB 从连续滚动升级为横向分页。
+- 分支：`codex/build-packaging`，基于 `main` 的 `1478a78`。
+- 构建入口：Windows 使用 `scripts/build-windows.ps1` / `package-windows.ps1`，macOS 使用
+  `scripts/build-macos.sh` / `package-macos.sh`；产物统一在 `artifacts/`，包包含 SHA-256、许可、
+  构建提交与使用说明。完整说明见 `Docs/BUILDING.md`。
+- Windows 打包已用缓存依赖运行 `-NoRestore` 验证；最终 ZIP 约 80.8 MiB，结构为单一 `JieJu/`
+  目录，不包含 `JieJu.Windows.exe.WebView2` 用户缓存。解压后的成品启动测试通过，WebView2
+  153.0.4234.32 就绪，SHA-256 匹配。
+- 验证：PowerShell 脚本解析和 `git diff --check` 通过；Reader Bridge 19 项、Windows 单元测试
+  104 项、WinUI/PDF/EPUB 冒烟全部通过。`./scripts/test-all.sh` 在 Windows 完成 Node 19 项后因
+  `swift: command not found` 停止；macOS 构建/打包脚本需在 macOS 14 + Xcode 16 环境继续验证。
 - 中英文 README 已使用用户明确授权公开的两张实机图：`Docs/Assets/README/jieju-macos.jpg`
   为首图，`jieju-windows.png` 紧随其后
 

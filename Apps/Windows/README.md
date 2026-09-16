@@ -13,15 +13,23 @@ Windows 版本已完成 `WIN-001` 及 `WIN-101`～`WIN-105` 阅读界面。本�
 - Microsoft Edge WebView2 Runtime `152.0.4191.66`
 - Visual Studio 未参与本次构建；工程通过 `dotnet` CLI 在 Windows 真机完成构建、测试和启动验证
 
-安装对应 .NET SDK 后，在仓库根目录运行 `./scripts/test-windows.ps1`。追加 `-Smoke` 会分别启动
-欢迎页和最小测试 EPUB，验证 WebView2、章节导航与共享 Reader Bridge。
+安装对应 .NET SDK 后，在仓库根目录运行 `.\scripts\build-windows.ps1`，Release 程序会输出到
+`artifacts\windows\win-x64\JieJu`。运行 `.\scripts\package-windows.ps1 -Version 0.1.0-alpha`
+可生成带当前用户安装/卸载脚本、第三方归属摘要与 SHA-256 的 Alpha ZIP；解压后可直接运行，或
+执行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1` 安装并创建开始菜单快捷方式。
+完整说明见 [`Docs/BUILDING.md`](../../Docs/BUILDING.md)。发布包可用
+`.\scripts\test-windows-package.ps1 -Version 0.1.0-alpha` 完整验证。开发验证仍使用
+`.\scripts\test-windows.ps1`，追加 `-Smoke` 会启动最小测试文档检查 WebView2 阅读链路。
+追加 `-PdfLearningSmoke` 会使用本地生成的两页 PDF 验证选区、学习记录/生词保存及返回原页，
+不连接 Ollama 或云端服务。
+追加 `-PaginationSmoke` 会使用本地长章节验证横向分页、键盘翻页和实时重排。
 
 ## 计划技术栈
 
 - UI：WinUI 3 + C#（Windows App SDK）
 - EPUB：WebView2 加载 `Shared/ReaderWeb` 的同一构建产物
-- PDF：随包携带本地 PDF.js，提供受控渲染、文字选择、上下文和页码 locator；保存闭环继续按
-  `WIN-403` 实施
+- PDF：随包携带本地 PDF.js，提供受控渲染、文字选择、上下文和页码 locator；解释、生词/学习记录
+  保存与返回原页闭环已完成
 - AI：按 `Shared/Contracts/v1` 与 `v4` 实现句子和单词解释，首版连接 Ollama
 - 密钥：Windows Credential Manager，不写设置 JSON
 - 数据：读取 v1～v5，新增数据写为当前 `learning-library` v5；引入 SQLite 时保留 JSON 导入器
