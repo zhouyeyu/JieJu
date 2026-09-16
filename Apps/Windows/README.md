@@ -13,8 +13,10 @@ Windows 版本已完成 `WIN-001` 及 `WIN-101`～`WIN-105` 阅读界面。本�
 - Microsoft Edge WebView2 Runtime `152.0.4191.66`
 - Visual Studio 未参与本次构建；工程通过 `dotnet` CLI 在 Windows 真机完成构建、测试和启动验证
 
-安装对应 .NET SDK 后，在仓库根目录运行 `./scripts/test-windows.ps1`。追加 `-Smoke` 会分别启动
-欢迎页和最小测试 EPUB，验证 WebView2、章节导航与共享 Reader Bridge。
+安装对应 .NET SDK 后，在仓库根目录运行 `.\scripts\build-windows.ps1`，Release 程序会输出到
+`artifacts\windows\win-x64\JieJu`。运行 `.\scripts\package-windows.ps1 -Version 0.1.0-alpha`
+可生成便携 ZIP 与 SHA-256；完整说明见 [`Docs/BUILDING.md`](../../Docs/BUILDING.md)。开发验证仍使用
+`.\scripts\test-windows.ps1`，追加 `-Smoke` 会启动最小测试文档检查 WebView2 阅读链路。
 
 ## 计划技术栈
 

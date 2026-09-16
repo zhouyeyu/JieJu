@@ -2,6 +2,7 @@
 .workbuddy/
 DerivedData/
 build/
+artifacts/
 *.xcuserstate
 xcuserdata/
 .swiftpm/

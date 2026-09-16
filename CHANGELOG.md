@@ -15,6 +15,7 @@
 - Apache-2.0 许可证、贡献指南、安全和隐私文档。
 - 可运行的 Windows WinUI 3 开发预览版。
 - 中英双语项目 README、平台状态矩阵与统一快速开始说明。
+- macOS 与 Windows 一键 Release 构建、便携开发预览 ZIP 和 SHA-256 校验脚本。
 
 ### Known limitations
 

@@ -8,6 +8,13 @@
 
 ## 已完成
 
+- **2026-09-16 双平台构建与开发预览打包（REL-001）**：新增 macOS / Windows Release 构建和
+  打包脚本，统一输出到 `artifacts/`；Windows 生成自包含 x64 运行目录，macOS 生成未签名 `.app`，
+  两平台打包时均附带许可、构建提交、使用说明、ZIP 和 SHA-256。中英文 README、Windows 指南和
+  发布清单已加入一条命令入口及签名边界；默认脚本不会下载模型或调用云端 AI。Windows ZIP 使用
+  单一顶层目录并排除 WebView2 用户缓存；从最终 ZIP 解压启动验证通过（WebView2 153.0.4234.32），
+  Reader Bridge 19 项、Windows 单元测试 104 项和 WinUI/PDF/EPUB 冒烟全部通过。统一测试入口在
+  Windows 完成 Node 19 项后因没有 Swift 工具链停止；macOS 脚本仍需在 macOS/Xcode 环境验证。
 - **2026-09-15 README 双平台截图**：在中英文 README 中加入用户明确授权公开的 macOS 与
   Windows 实机截图，以 macOS 阅读和分层解句界面作为首图，随后展示 Windows 注音与弹出式深入解析；
   图片保留原始比例和清晰度。

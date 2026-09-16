@@ -82,21 +82,24 @@ Requirements: macOS 14+, Xcode 16+, and [Ollama](https://ollama.com/) for local 
 ```bash
 git clone https://github.com/zhouyeyu/JieJu.git
 cd JieJu
-ollama pull qwen2.5:1.5b-instruct
-open JieJu.xcodeproj
+./scripts/build-macos.sh
 ```
 
-Select the `JieJu` scheme in Xcode and run the app. Start Ollama, then verify the local connection in JieJu settings. The `0.5B` model is available for experiments, but it is noticeably less reliable than the default `1.5B` model on complex grammar.
+The app is written to `artifacts/macos/JieJu.app`. Run `./scripts/package-macos.sh 0.1.0-alpha`
+to create a ZIP and SHA-256 file. You can still open `JieJu.xcodeproj` and run the `JieJu` scheme in Xcode.
+For local explanations, install the default model with `ollama pull qwen2.5:1.5b-instruct`.
 
 ### Windows
 
 The Windows client uses WinUI 3, .NET, and WebView2 and is currently offered as a source-level developer preview. Read the [Windows development guide](Apps/Windows/README.md), then run from PowerShell:
 
 ```powershell
-.\scripts\test-windows.ps1
+.\scripts\build-windows.ps1
 ```
 
-The guide records the verified SDK versions, launch instructions, and optional smoke-test modes.
+The runnable app is written to `artifacts\windows\win-x64\JieJu\JieJu.Windows.exe`. Run
+`.\scripts\package-windows.ps1 -Version 0.1.0-alpha` to create a portable ZIP and SHA-256 file. See the
+[build and packaging guide](Docs/BUILDING.md) for all options, cached/offline restores, and signing boundaries.
 
 ## AI providers and privacy
 

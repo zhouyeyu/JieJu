@@ -2,6 +2,16 @@
 
 ## 本次交接
 
+- 分支：`codex/build-packaging`，基于 `main` 的 `1478a78`。
+- 构建入口：Windows 使用 `scripts/build-windows.ps1` / `package-windows.ps1`，macOS 使用
+  `scripts/build-macos.sh` / `package-macos.sh`；产物统一在 `artifacts/`，包包含 SHA-256、许可、
+  构建提交与使用说明。完整说明见 `Docs/BUILDING.md`。
+- Windows 打包已用缓存依赖运行 `-NoRestore` 验证；最终 ZIP 约 80.8 MiB，结构为单一 `JieJu/`
+  目录，不包含 `JieJu.Windows.exe.WebView2` 用户缓存。解压后的成品启动测试通过，WebView2
+  153.0.4234.32 就绪，SHA-256 匹配。
+- 验证：PowerShell 脚本解析和 `git diff --check` 通过；Reader Bridge 19 项、Windows 单元测试
+  104 项、WinUI/PDF/EPUB 冒烟全部通过。`./scripts/test-all.sh` 在 Windows 完成 Node 19 项后因
+  `swift: command not found` 停止；macOS 构建/打包脚本需在 macOS 14 + Xcode 16 环境继续验证。
 - 中英文 README 已使用用户明确授权公开的两张实机图：`Docs/Assets/README/jieju-macos.jpg`
   为首图，`jieju-windows.png` 紧随其后
 
