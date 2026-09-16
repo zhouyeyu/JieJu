@@ -20,6 +20,7 @@ public sealed partial class MainWindow : Window
     private readonly bool smokeFurigana;
     private readonly bool smokeCloudSettings;
     private readonly bool smokeReadingSettings;
+    private readonly bool smokePagination;
     private readonly bool smokeReview;
     private readonly bool smokePdf;
     private readonly bool smokePdfLearning;
@@ -38,7 +39,7 @@ public sealed partial class MainWindow : Window
     private string? pdfUrl;
     private string? lastPdfRequest;
     private string? bookPath;
-    private int chapterIndex, pdfPageIndex, pdfNavigationGeneration, pdfReadyGeneration, pdfOutlineCount;
+    private int chapterIndex, epubPageIndex, epubPageCount = 1, pdfPageIndex, pdfNavigationGeneration, pdfReadyGeneration, pdfOutlineCount;
     private double pendingProgress;
     private string section = "reader";
     private const string BookPrefix = "https://reader.jieju.invalid/book/";
@@ -63,6 +64,7 @@ public sealed partial class MainWindow : Window
         smokeFurigana = arguments.Contains("--smoke-furigana");
         smokeCloudSettings = arguments.Contains("--smoke-cloud-settings");
         smokeReadingSettings = arguments.Contains("--smoke-reading-settings");
+        smokePagination = arguments.Contains("--smoke-pagination");
         smokeReview = arguments.Contains("--smoke-review");
         smokePdf = arguments.Contains("--smoke-pdf");
         smokePdfLearning = arguments.Contains("--smoke-pdf-learning");
@@ -214,6 +216,27 @@ public sealed partial class MainWindow : Window
                                     }
                                 }
                             }
+                            else if (smokePagination && book is not null)
+                            {
+                                await Task.Delay(500);
+                                var beforeJson = await core.ExecuteScriptAsync("JSON.stringify(window.__jiejuPaginationState ?? null)");
+                                using var beforeDocument = JsonDocument.Parse(JsonSerializer.Deserialize<string>(beforeJson) ?? "null");
+                                var before = beforeDocument.RootElement;
+                                await core.ExecuteScriptAsync("dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));true");
+                                await Task.Delay(200);
+                                FontSlider.Value = 26;
+                                await Task.Delay(500);
+                                var afterJson = await core.ExecuteScriptAsync("JSON.stringify(window.__jiejuPaginationState ?? null)");
+                                using var afterDocument = JsonDocument.Parse(JsonSerializer.Deserialize<string>(afterJson) ?? "null");
+                                var after = afterDocument.RootElement;
+                                var ready = before.ValueKind == JsonValueKind.Object && after.ValueKind == JsonValueKind.Object
+                                    && before.GetProperty("pageCount").GetInt32() > 2
+                                    && after.GetProperty("page").GetInt32() > 0
+                                    && after.GetProperty("pageCount").GetInt32() > 1
+                                    && !after.GetProperty("isReflowing").GetBoolean()
+                                    && PreviousPageButton.IsEnabled && Status.Text.Contains("本章", StringComparison.Ordinal);
+                                FinishSmoke(ready, ready ? "horizontal EPUB pagination, keyboard turn, and reflow state" : $"EPUB pagination failed: before={before} after={after} status={Status.Text}");
+                            }
                             else if (smokeReadingSettings && book is not null)
                             {
                                 ThemePicker.SelectedIndex = 2;
@@ -251,6 +274,17 @@ public sealed partial class MainWindow : Window
                             }
                             else if (smokeReview) await RunReviewSmokeAsync();
                             else FinishSmoke(true, environment.BrowserVersionString);
+                            break;
+                        case "paginationChanged":
+                            if (book is null) break;
+                            var pagination = root.GetProperty("payload");
+                            epubPageIndex = pagination.TryGetProperty("pageIndex", out var pageIndexValue) && pageIndexValue.TryGetInt32(out var currentPage) ? Math.Max(0, currentPage) : 0;
+                            epubPageCount = pagination.TryGetProperty("pageCount", out var pageCountValue) && pageCountValue.TryGetInt32(out var totalPages) ? Math.Max(1, totalPages) : 1;
+                            var isReflowing = pagination.TryGetProperty("isReflowing", out var reflowingValue) && reflowingValue.ValueKind == JsonValueKind.True;
+                            Status.Text = isReflowing
+                                ? $"第 {chapterIndex + 1} / {book.Chapters.Count} 章 · 正在重新排版…"
+                                : $"第 {chapterIndex + 1} / {book.Chapters.Count} 章 · 本章 {epubPageIndex + 1} / {epubPageCount} 页";
+                            UpdatePageButtons();
                             break;
                         case "locationChanged":
                             if (pdf is not null)

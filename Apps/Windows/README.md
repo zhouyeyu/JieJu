@@ -19,6 +19,7 @@ Windows 版本已完成 `WIN-001` 及 `WIN-101`～`WIN-105` 阅读界面。本�
 `.\scripts\test-windows.ps1`，追加 `-Smoke` 会启动最小测试文档检查 WebView2 阅读链路。
 追加 `-PdfLearningSmoke` 会使用本地生成的两页 PDF 验证选区、学习记录/生词保存及返回原页，
 不连接 Ollama 或云端服务。
+追加 `-PaginationSmoke` 会使用本地长章节验证横向分页、键盘翻页和实时重排。
 
 ## 计划技术栈
 

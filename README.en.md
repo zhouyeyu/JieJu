@@ -48,7 +48,7 @@ Many reading workflows scatter translation, dictionaries, grammar, and notes acr
 | Capability | macOS | Windows preview |
 | --- | :---: | :---: |
 | PDF reading | ✅ | ◐ |
-| Reflowable EPUB reading | ✅ Paginated | ✅ Continuous |
+| Reflowable EPUB reading | ✅ Paginated | ✅ Paginated |
 | Word / expression / sentence selection | ✅ | ✅ |
 | Streaming translation and layered grammar | ✅ | ✅ |
 | Japanese morphology and furigana | ✅ | ✅ |
@@ -157,7 +157,7 @@ swift run JieJuAILab explain --stream --text "彼は本を読みながら、音�
 - Scanned PDFs do not yet support OCR.
 - Complex EPUB layout, footnotes, internal links, and cross-reader stable locations are still being improved.
 - Local-model latency and explanation quality depend on the device, model, and text complexity.
-- Windows PDF selection and EPUB pagination have not yet reached macOS parity.
+- Stable EPUB text anchors, footnotes, and in-book links on Windows have not yet reached macOS parity.
 - There is no signed, notarized, checksum-published Alpha installer yet.
 
 The public roadmap is maintained in [TODO.md](TODO.md). Social competition, forced reminders, and streak mechanics are intentionally outside the learning experience.

@@ -11,6 +11,7 @@ param(
     [switch]$JapaneseDeepSmoke,
     [switch]$CloudSettingsSmoke,
     [switch]$SettingsPreviewSmoke,
+    [switch]$PaginationSmoke,
     [switch]$ReviewSmoke,
     [switch]$PdfSmoke,
     [switch]$PdfLearningSmoke
@@ -19,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
 $windowsRoot = Join-Path $projectRoot 'Apps/Windows'
 
-function New-SmokeEpub([string]$Path, [bool]$Japanese = $false) {
+function New-SmokeEpub([string]$Path, [bool]$Japanese = $false, [bool]$Long = $false) {
     $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::CreateNew)
     try {
         $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create, $true)
@@ -27,7 +28,9 @@ function New-SmokeEpub([string]$Path, [bool]$Japanese = $false) {
             $files = [ordered]@{
                 'META-INF/container.xml' = '<container><rootfiles><rootfile full-path="OPS/package.opf"/></rootfiles></container>'
                 'OPS/package.opf' = if ($Japanese) { '<package><metadata><title>Windows EPUB Smoke</title><language>ja</language></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="one"/></spine></package>' } else { '<package><metadata><title>Windows EPUB Smoke</title><language>zh-CN</language></metadata><manifest><item id="one" href="one.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="one"/></spine></package>' }
-                'OPS/one.xhtml' = if ($Japanese) { '<html xmlns="http://www.w3.org/1999/xhtml" lang="ja"><head><title>第一章</title></head><body><h1>第一章</h1><p>彼女は学校で本を読んでいます。</p></body></html>' } else { '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章</title></head><body><h1>第一章</h1><p>她正在<ruby>读书<rt>どくしょ</rt></ruby>。</p></body></html>' }
+                'OPS/one.xhtml' = if ($Long) {
+                    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章</title></head><body><h1>第一章</h1>' + ((1..180 | ForEach-Object { "<p>Pagination paragraph $_ keeps enough text on every page for stable reflow verification.</p>" }) -join '') + '</body></html>'
+                } elseif ($Japanese) { '<html xmlns="http://www.w3.org/1999/xhtml" lang="ja"><head><title>第一章</title></head><body><h1>第一章</h1><p>彼女は学校で本を読んでいます。</p></body></html>' } else { '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>第一章</title></head><body><h1>第一章</h1><p>她正在<ruby>读书<rt>どくしょ</rt></ruby>。</p></body></html>' }
             }
             foreach ($pair in $files.GetEnumerator()) {
                 $writer = [System.IO.StreamWriter]::new($archive.CreateEntry($pair.Key).Open(), [System.Text.UTF8Encoding]::new($false))
@@ -153,17 +156,18 @@ try {
         }
         $epub = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.epub" -f [guid]::NewGuid())
         try {
-            New-SmokeEpub $epub ($FuriganaSmoke -or $JapaneseDeepSmoke)
+            New-SmokeEpub $epub ($FuriganaSmoke -or $JapaneseDeepSmoke) $PaginationSmoke
             $epubResult = Join-Path ([System.IO.Path]::GetTempPath()) ("jieju-epub-smoke-{0}.json" -f [guid]::NewGuid())
             $epubArguments = @('--open', ('"{0}"' -f $epub), '--smoke-selection')
             if ($PopupSmoke) { $epubArguments += '--smoke-popup' }
             if ($SettingsPreviewSmoke) { $epubArguments += '--smoke-reading-settings' }
+            if ($PaginationSmoke) { $epubArguments += '--smoke-pagination' }
             if ($FuriganaSmoke) { $epubArguments += '--smoke-furigana' }
             if ($JapaneseDeepSmoke) { $epubArguments += @('--smoke-inference', '--smoke-deep') }
             if ($VocabularySmoke) { $epubArguments += '--smoke-word' }
             elseif ($DeepSmoke) { $epubArguments += @('--smoke-inference', '--smoke-deep') }
             elseif ($OllamaSmoke) { $epubArguments += '--smoke-inference' }
-            $label = $SettingsPreviewSmoke ? 'EPUB live reading settings and preview' : ($FuriganaSmoke ? 'EPUB local Japanese furigana' : ($JapaneseDeepSmoke ? 'EPUB local Japanese deep analysis' : ($VocabularySmoke ? 'EPUB selection and local Ollama vocabulary inference' : ($DeepSmoke ? 'EPUB selection and local Ollama deep analysis' : ($OllamaSmoke ? 'EPUB selection and local Ollama inference' : ($PopupSmoke ? 'EPUB selection and popup explanation panel' : 'EPUB selection and explanation panel'))))))
+            $label = $PaginationSmoke ? 'EPUB horizontal pagination and reflow' : ($SettingsPreviewSmoke ? 'EPUB live reading settings and preview' : ($FuriganaSmoke ? 'EPUB local Japanese furigana' : ($JapaneseDeepSmoke ? 'EPUB local Japanese deep analysis' : ($VocabularySmoke ? 'EPUB selection and local Ollama vocabulary inference' : ($DeepSmoke ? 'EPUB selection and local Ollama deep analysis' : ($OllamaSmoke ? 'EPUB selection and local Ollama inference' : ($PopupSmoke ? 'EPUB selection and popup explanation panel' : 'EPUB selection and explanation panel')))))))
             Invoke-AppSmoke $exe $epubResult $epubArguments $label
         }
         finally { if (Test-Path $epub) { Remove-Item -LiteralPath $epub } }

@@ -1,10 +1,10 @@
 :root { --paper:#fafaf8; --ink:#292c29; --link:#496d57; --size:18px; --leading:1.75; --margin:54px; }
-html { background:var(--paper)!important; color:var(--ink)!important; }
-body { box-sizing:border-box!important; max-width:960px!important; margin:0 auto!important; padding:40px min(var(--margin),12vw) 80px!important; font-family:Georgia,"Yu Mincho","Microsoft YaHei",serif!important; font-size:var(--size)!important; line-height:var(--leading)!important; background:var(--paper)!important; color:var(--ink)!important; overflow-wrap:break-word; }
+html { width:100%!important; height:100%!important; margin:0!important; padding:0!important; overflow:hidden!important; background:var(--paper)!important; color:var(--ink)!important; }
+body { box-sizing:border-box!important; width:100vw!important; height:100vh!important; min-width:0!important; max-width:none!important; min-height:0!important; max-height:none!important; margin:0!important; padding:32px var(--margin) 38px!important; overflow:visible!important; column-width:calc(100vw - var(--margin) - var(--margin))!important; column-gap:calc(var(--margin) + var(--margin))!important; column-fill:auto!important; font-family:Georgia,"Yu Mincho","Microsoft YaHei",serif!important; font-size:var(--size)!important; line-height:var(--leading)!important; background:var(--paper)!important; color:var(--ink)!important; overflow-wrap:break-word; }
 body * { color:var(--ink)!important; background-color:transparent!important; }
 body p,body li,body blockquote,body dd,body dt { font-size:var(--size)!important; line-height:var(--leading)!important; }
 a,a * { color:var(--link)!important; }
-img,svg { max-width:100%!important; height:auto; max-height:80vh; object-fit:contain; }
+img,svg { max-width:100%!important; height:auto; max-height:80vh; object-fit:contain; break-inside:avoid; }
 rt { font-size:.55em; user-select:none; }
 rp { display:none; user-select:none; }
 html[data-ruby="false"] rt { display:none; }
