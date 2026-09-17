@@ -8,6 +8,21 @@
 
 ## 已完成
 
+- **2026-09-17 PR #6 同步与 README 图标**：将最新 `origin/main`（`13bd75b`）合入
+  `codex/app-icon-integration`，保留双方进展记录与 Windows 新功能；中英文首页使用居中 96×96 图标。
+  新增双语图标尺寸测试；共享 Node 26、语言引擎 65、macOS 单元 77 通过。
+  UI Runner 仍因系统认证状态无法初始化；不重写已发布 v0.0.1 tag/DMG，不直接合并 PR。
+- **2026-09-17 v0.0.1 发布准备**：按用户授权推送独立分支并发布 macOS 开发预览。
+  版本调整为 0.0.1；增加 Release DMG 打包脚本、安装说明和 SHA-256 校验和。
+  仅支持 Apple Silicon / macOS 14+，使用 ad-hoc 签名，未进行 Developer ID 签名及公证。
+  本轮重跑 Node 15、语言引擎 65、macOS 单元 77 通过；UI Runner 仍被系统认证阻塞。
+  发布属于明确披露限制的预览，不表示正式发布关卡全部完成。
+- **2026-09-17 双平台应用图标（OSS-012）**：采用用户确认的 v4 黑白抽象标记，共享原图位于
+  `Shared/Brand/jieju-icon.png`。macOS 使用 ICNS 与显式 Info.plist，已验证构建包内
+  `CFBundleIconFile=AppIcon`；Windows 使用多尺寸 ICO，接入 EXE 和 AppWindow，并复制至发布目录。
+  增加可重现生成脚本与 4 项资源测试。Node 15 项、语言引擎 65 项、macOS 单元 77 项通过，
+  macOS 构建通过；全量测试的 UI Runner 因系统认证正在运行而初始化失败。Windows 当前未真机构建。
+  工作在独立分支 `codex/app-icon-integration`；由于全量验收尚有环境阻塞，暂未提交或推送。
 - **2026-09-16 Windows Alpha 安装流程（WIN-481）**：Windows ZIP 现在附带当前用户安装/卸载脚本、
   开始菜单快捷方式、第三方归属摘要、包内说明与 SHA-256。卸载默认保留阅读数据，只有显式
   `-RemoveUserData` 才会清除；WebView2 用户目录迁至 `%LOCALAPPDATA%\JieJu`，程序目录可可靠更新

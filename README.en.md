@@ -1,6 +1,10 @@
 # JieJu
 
 <p align="center">
+  <img src="Shared/Brand/jieju-icon.png" alt="JieJu application icon" width="96" height="96">
+</p>
+
+<p align="center">
   Understand a sentence in context—and keep a little of the language with you.
 </p>
 

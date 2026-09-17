@@ -1,6 +1,10 @@
 # JieJu（解句）
 
 <p align="center">
+  <img src="Shared/Brand/jieju-icon.png" alt="JieJu 应用图标" width="96" height="96">
+</p>
+
+<p align="center">
   在真实阅读中，读懂一句话，也留住一点语言。
 </p>
 

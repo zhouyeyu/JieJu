@@ -52,6 +52,7 @@ public sealed partial class MainWindow : Window
         this.japaneseMorphology = japaneseMorphology;
         this.apiKeyStore = apiKeyStore;
         InitializeComponent();
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(1280, 860));
         var arguments = Environment.GetCommandLineArgs();
         var index = Array.IndexOf(arguments, "--smoke-result");

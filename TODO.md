@@ -270,6 +270,10 @@ EPUB 注入跳过已有 `<ruby>`、脚本和样式；同一章节出现多个读
 - [ ] `OSS-008` 配置远程仓库后启用 Private Vulnerability Reporting，并替换 README 的源码获取说明
 - [ ] `OSS-009` 审核第三方依赖许可证，生成随发布包分发的 attribution 清单
 - [ ] `OSS-010` 完成首个签名、公证和校验和齐全的 Alpha Release
+- [x] `OSS-012` 接入用户确认的 v4 图标：共享 PNG、macOS ICNS、Windows EXE/窗口 ICO，以及生成脚本和资源测试
+- [ ] `OSS-013` Windows 真机确认新图标在 EXE、窗口及任务栏显示；macOS UI 测试待系统认证解除后重跑
+- [x] `OSS-014` v0.0.1 macOS 开发预览打包脚本与发布说明（Apple Silicon、ad-hoc、未公证）
+- [x] `OSS-015` PR #6 同步最新主分支并解决记录冲突；双语 README 展示固定 96×96 图标及尺寸测试
 
 ## Track K：书架、继续阅读与内容导航
 

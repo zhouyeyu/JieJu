@@ -1,6 +1,19 @@
 # 发布流程
 
-JieJu 当前尚未提供公开安装包。本清单用于未来手工发布，CI 与自动签名另行规划。
+v0.0.1 提供 Apple Silicon macOS 开发预览 DMG，具体限制见 [发布说明](RELEASE-v0.0.1.md)。
+正式签名、公证发布仍按下方清单验收，CI 与自动签名另行规划。
+
+## 开发预览打包
+
+```bash
+xcodebuild build -project JieJu.xcodeproj -scheme JieJu -configuration Release \
+  -derivedDataPath build/macos-v0.0.1 -destination 'platform=macOS,arch=arm64' \
+  ARCHS=arm64 CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES
+bash scripts/package-macos-dmg.sh 0.0.1
+```
+
+产物位于 `build/releases/`（不提交 Git），通过 GitHub Release 附件分发并附 SHA-256。
+ad-hoc 签名只用于开发预览，不能替代 Developer ID 与公证。
 
 ## 版本策略
 

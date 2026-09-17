@@ -118,7 +118,7 @@ if (-not (Get-Command $DotNetPath -ErrorAction SilentlyContinue)) {
 
 Push-Location $windowsRoot
 try {
-    $nodeTests = @(Get-ChildItem "$projectRoot/Shared/Contracts/Tests/*.test.mjs", "$projectRoot/Shared/ReaderWeb/Tests/*.test.mjs" | ForEach-Object FullName)
+    $nodeTests = @(Get-ChildItem "$projectRoot/Shared/Contracts/Tests/*.test.mjs", "$projectRoot/Shared/ReaderWeb/Tests/*.test.mjs", "$projectRoot/scripts/Tests/*.test.mjs" | ForEach-Object FullName)
     & node --test @nodeTests
     if ($LASTEXITCODE -ne 0) { throw 'Shared contract/Bridge tests failed.' }
     & $DotNetPath restore JieJu.Windows.sln --locked-mode

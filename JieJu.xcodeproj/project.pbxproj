@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        AE0000000000000000000001 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = AE0000000000000000000011 /* AppIcon.icns */; };
 		AA0000000000000000000001 /* JieJuApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000011 /* JieJuApp.swift */; };
 		AA0000000000000000000002 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000012 /* WelcomeView.swift */; };
 		AA0000000000000000000003 /* JieJuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000013 /* JieJuTests.swift */; };
@@ -58,6 +59,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+        AE0000000000000000000011 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Resources/AppIcon.icns; sourceTree = "<group>"; };
 		AA0000000000000000000011 /* JieJuApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JieJuApp.swift; sourceTree = "<group>"; };
 		AA0000000000000000000012 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		AA0000000000000000000013 /* JieJuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JieJuTests.swift; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 			isa = PBXGroup;
 			children = (
 				AA0000000000000000000063 /* App */,
+                AE0000000000000000000011 /* AppIcon.icns */,
 				AA0000000000000000000064 /* Features */,
 				AA000000000000000000006B /* Infrastructure */,
 			);
@@ -281,7 +284,7 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		AA0000000000000000000081 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		AA0000000000000000000081 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AE0000000000000000000001 /* AppIcon.icns in Resources */); runOnlyForDeploymentPostprocessing = 0; };
 		AA0000000000000000000082 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AA0000000000000000000046 /* minimal.epub in Resources */, AA0000000000000000000048 /* messy.epub in Resources */, AA0000000000000000000050 /* nocontainer.epub in Resources */); runOnlyForDeploymentPostprocessing = 0; };
 		AA0000000000000000000083 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
@@ -300,8 +303,8 @@
 /* Begin XCBuildConfiguration section */
 		AA00000000000000000000A1 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; ONLY_ACTIVE_ARCH = YES; SDKROOT = macosx; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_VERSION = 5.0;}; name = Debug; };
 		AA00000000000000000000A2 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_VERSION = 5.0;}; name = Release; };
-		AA00000000000000000000B1 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = JieJu; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education"; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.jieju.reader; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES;}; name = Debug; };
-		AA00000000000000000000B2 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = JieJu; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education"; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.jieju.reader; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES;}; name = Release; };
+		AA00000000000000000000B1 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = JieJu; INFOPLIST_FILE = JieJu/Info.plist; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education"; MARKETING_VERSION = 0.0.1; PRODUCT_BUNDLE_IDENTIFIER = com.jieju.reader; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES;}; name = Debug; };
+		AA00000000000000000000B2 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; ENABLE_HARDENED_RUNTIME = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = JieJu; INFOPLIST_FILE = JieJu/Info.plist; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education"; MARKETING_VERSION = 0.0.1; PRODUCT_BUNDLE_IDENTIFIER = com.jieju.reader; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES;}; name = Release; };
 		AA00000000000000000000C1 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.jieju.reader.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/JieJu.app/Contents/MacOS/JieJu";}; name = Debug; };
 		AA00000000000000000000C2 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.jieju.reader.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/JieJu.app/Contents/MacOS/JieJu";}; name = Release; };
 		AA00000000000000000000D1 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.jieju.reader.uitests; PRODUCT_NAME = "$(TARGET_NAME)"; TEST_TARGET_NAME = JieJu;}; name = Debug; };
