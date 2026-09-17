@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self' blob:; style-src 'self'; connect-src https://document.jieju.invalid; font-src 'self' data: blob:; img-src 'self' data: blob:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>JieJu PDF 阅读器</title>
+  <link rel="stylesheet" href="vendor/pdfjs/web/pdf_viewer.css">
+  <link rel="stylesheet" href="pdf.css">
+  <script type="module" src="pdf-loader.mjs"></script>
+</head>
+<body>
+  <header id="toolbar">
+    <button id="previous" type="button" aria-label="上一页">←</button>
+    <label><input id="pageNumber" type="number" min="1" value="1" aria-label="当前页"> / <span id="pageCount">…</span></label>
+    <button id="next" type="button" aria-label="下一页">→</button>
+    <span class="divider"></span>
+    <select id="outline" aria-label="PDF 章节目录"><option value="">正在读取目录…</option></select>
+    <span class="divider"></span>
+    <button id="zoomOut" type="button" aria-label="缩小">−</button>
+    <button id="fit" type="button">适合宽度</button>
+    <button id="zoomIn" type="button" aria-label="放大">＋</button>
+    <span id="zoomValue" aria-live="polite">适合宽度</span>
+    <span id="selectionHint" hidden>竖排：点击文字选词</span>
+    <span id="message">正在载入 PDF…</span>
+  </header>
+  <div id="viewerContainer" tabindex="0"><div id="viewer" class="pdfViewer"></div></div>
+</body>
+</html>

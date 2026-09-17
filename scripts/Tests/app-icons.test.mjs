@@ -13,6 +13,12 @@ test('shared artwork is a square high-resolution PNG', () => {
   assert.ok(image.readUInt32BE(16) >= 1024);
 });
 
+test('both README languages display the shared icon at a compact fixed size', () => {
+  for (const path of ['README.md', 'README.en.md']) {
+    assert.match(read(path).toString(), /<img src="Shared\/Brand\/jieju-icon.png" alt="[^"]+" width="96" height="96">/);
+  }
+});
+
 test('Windows ICO contains valid PNG frames for every supported size', () => {
   const ico = read('Apps/Windows/JieJu.Windows/Assets/AppIcon.ico');
   const sizes = [16, 24, 32, 48, 64, 128, 256];

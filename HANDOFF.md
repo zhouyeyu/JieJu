@@ -1,5 +1,14 @@
 # JieJu Agent Handoff
 
+## 2026-09-17 PR #6 冲突修复
+
+- 用户授权解决 PR 冲突并推送；在 PR 分支合入 `origin/main`（`13bd75b`），主分支不被修改。
+- PROGRESS 冲突保留双方内容，Windows 新代码及图标工程配置均保留。
+- README.md / README.en.md 共用 `Shared/Brand/jieju-icon.png`，居中固定 96×96。
+- Node 26、语言引擎 65、macOS 单元 77 通过；UI Runner 仍被系统认证阻塞。
+  本轮日志：`TestResults/pr6-sync-tests.log`。
+- 已发布 v0.0.1 tag/DMG 不改变；此次合入的 Windows 增量留在 Unreleased。
+
 ## 2026-09-17 v0.0.1 发布交接
 
 - 用户明确授权推送 GitHub 并上传 macOS DMG，版本 v0.0.1。
@@ -33,9 +42,51 @@
 
 ## 本次交接
 
-- 日期：2026-09-14
+- `WIN-481` 已在本地完成，尚未推送：Windows Alpha ZIP 附带当前用户 `install.ps1` / `uninstall.ps1`、
+  开始菜单快捷方式、第三方归属摘要、包内说明和 SHA-256。WebView2 数据移至应用用户数据目录，
+  不再写入或锁住安装目录。`test-windows-package.ps1` 已从最终 ZIP 实际验证校验和、必需文件、安装后
+  启动、默认保留数据、重新安装及显式清除数据。共享测试 21 项、Windows 单元测试 107 项、EPUB
+  分页及 PDF 学习联合冒烟通过；`test-all.sh` 仅因本机没有 Swift 工具链在共享测试后停止。完整
+  第三方许可证审核 `OSS-009` 与正式代码签名 `OSS-010` 仍开放；不要把当前未签名包描述为正式发布。
+- `WIN-411` 已在本地完成，尚未推送：Windows EPUB 使用横向分页，显示本章页内进度，提供工具栏
+  和键盘翻页；排版变化会显示重排状态并按章节进度恢复。共享 Node 测试增至 21 项，长章节
+  WebView2 分页/键盘/重排冒烟和原有选区冒烟均通过。下一项 EPUB 是 `WIN-412` 稳定文本锚点。
+- `WIN-403` / `WIN-404` 已在本地完成，尚未推送：PDF 解释结果、生词和深入解析词形均可保存，学习记录、
+  生词本与复习来源可按 `PdfLocator` 重开 PDF 并返回原页。两页 PDF 离线冒烟已在第 2 页验证
+  “选择 → Mock 句子/词语解释 → 保存 → 重开 → 返回第 2 页”；Windows 单元测试增至 107 项。
+  Mock 仅由 `--smoke-mock-ai` 显式启用，不产生 Ollama、云端或 VPN 流量。下一项建议 `WIN-411`：
+  将 Windows EPUB 从连续滚动升级为横向分页。
+- 分支：`codex/build-packaging`，基于 `main` 的 `1478a78`。
+- 构建入口：Windows 使用 `scripts/build-windows.ps1` / `package-windows.ps1`，macOS 使用
+  `scripts/build-macos.sh` / `package-macos.sh`；产物统一在 `artifacts/`，包包含 SHA-256、许可、
+  构建提交与使用说明。完整说明见 `Docs/BUILDING.md`。
+- Windows 打包已用缓存依赖运行 `-NoRestore` 验证；最终 ZIP 约 80.8 MiB，结构为单一 `JieJu/`
+  目录，不包含 `JieJu.Windows.exe.WebView2` 用户缓存。解压后的成品启动测试通过，WebView2
+  153.0.4234.32 就绪，SHA-256 匹配。
+- 验证：PowerShell 脚本解析和 `git diff --check` 通过；Reader Bridge 19 项、Windows 单元测试
+  104 项、WinUI/PDF/EPUB 冒烟全部通过。`./scripts/test-all.sh` 在 Windows 完成 Node 19 项后因
+  `swift: command not found` 停止；macOS 构建/打包脚本需在 macOS 14 + Xcode 16 环境继续验证。
+- 中英文 README 已使用用户明确授权公开的两张实机图：`Docs/Assets/README/jieju-macos.jpg`
+  为首图，`jieju-windows.png` 紧随其后
+
+### 2026-09-15 中英双语开源首页
+
+- 分支：`codex/bilingual-readme`，基于 `origin/main` 的 `c517465`。
+- 重写公开中文首页并新增 `README.en.md`；两份 README 对齐产品理念、功能矩阵、macOS/Windows
+  启动方式、AI 与隐私边界、架构、测试、限制和贡献入口。
+- 新增 `CONTRIBUTING.en.md`，中文贡献指南加入语言切换，并把默认 PR 模板改为中英双语。
+- `CHANGELOG.md` 已修正“没有 Windows 客户端”的过期描述；`TODO.md` 新增并完成 `OSS-011`。
+- 验证：Markdown 相对链接和 `git diff --check` 通过；共享 Node 11 项、语言包 65 项、macOS 单元
+  测试 77 项通过。`./scripts/test-all.sh` 的 UI 阶段被系统认证会话阻塞，错误为
+  `The test runner failed to initialize for UI testing`，没有执行 UI 产品断言。
+- 后续公开首页最明显的缺口是 `OSS-007`：使用自编或公有领域素材制作脱敏截图和短演示。修改
+  产品能力或安装说明时必须同步 `README.md` 与 `README.en.md`。
+
+### 2026-09-15 Windows PDF 阅读
+
+- 日期：2026-09-15
 - Agent：Codex
-- 阶段：`WIN-401` PDF 阅读基础完成；下一项为 `WIN-402` PDF 文本选择、上下文与页码 locator
+- 阶段：`WIN-402C` 竖排 PDF 点按选词完成；下一项为 `WIN-403` PDF 解释保存与返回原文
 - 分支：`codex/windows-development`
 - 基线：`91222f2 feat: create Windows app foundation`
 - Windows 工程：`Apps/Windows/JieJu.Windows.sln`，依赖方向为 Windows → Domain；Domain 不引用
@@ -70,10 +121,15 @@
   920 / 760 最大内容宽度；学习记录及云端设置冒烟会检查内容没有被居中推离左边缘
 - 阅读设置：主题、字号、行距和左右边距调整时实时更新设置页 EPUB 正文预览与当前 EPUB；点击
   “保存设置”后写入设备状态并跨启动保留。专用冒烟会同时检查原生预览属性与书页计算样式
-- PDF 基础：文件选择、签名/大小校验、WebView2 内置阅读、内容哈希去重、关闭及最近阅读重开已
-  完成；PDF 选区、上下文和页码定位尚未接入
-- 验证：Solution 0 警告；C# 102 项、Node 契约/Bridge 11 项通过；WinUI + WebView2
-  `152.0.4191.66` 完成 PDF 受限打开和最近阅读重开；EPUB 注音冒烟检查生成与实际可见状态，解释
+- PDF 阅读：本地 PDF.js 提供受控画布与文字层，支持翻页、页码、缩放、适合宽度、选区、所在句、
+  有限上下文、页码/偏移/hash locator 及最近页恢复；当前解释可运行，但保存和返回 PDF 原文留给
+  `WIN-403`。内置 outline 显示为章节下拉目录并随页码同步；1895 页竖排日文《白い巨塔》识别
+  42 项目录。竖排页根据文字层坐标从右到左重建正文，以主字号过滤交错的振假名，并提供点击完整
+  词高亮；第 101 页已做真实点按选词验证。画布显式使用 3355 万像素上限和硬件加速，400%
+  高清重绘由真机冒烟检查
+- 验证：Solution 0 警告；C# 104 项、Node 契约/Bridge 19 项通过；WinUI + WebView2
+  `152.0.4191.66` 完成 PDF.js 受限打开、最近阅读重开、横排文字选择和页码 locator；真实《白い巨塔》
+  第 101 页完成竖排正文识别、点按选词、Ruby 排除和 locator 冒烟；EPUB 注音冒烟检查生成与实际可见状态，解释
   冒烟检查从侧边栏即时切换弹出式且不压缩阅读栏；所有 App 冒烟使用临时设备目录
 - 环境：Windows 11 `10.0.26100` x64、.NET SDK `10.0.401` / MSBuild `18.9.11`、Windows App SDK
   WinUI `1.8.260803003`、Windows SDK Build Tools `10.0.26100.9169`；未使用 Visual Studio
@@ -85,8 +141,8 @@
 - 本地模型：Ollama `0.34.0` 位于 `E:\JieJu\Ollama\App`，模型目录由用户环境变量固定为
   `E:\JieJu\Ollama\Models`；启动快捷方式指向 E 盘。1.5B 为 986MB，实测 100% GPU、约
   133.5 tokens/s。安装包保留在 `E:\JieJu\Ollama\Downloads` 供离线重装
-- 下一步：执行 `WIN-402`，为 PDF 建立可测试的文本层、选择事件、所在句/有限上下文和页码 locator；
-  完成前不把 PDF 选区接入 AI 或学习资料，后者由 `WIN-403` 单独验证
+- 下一步：执行 `WIN-403`，允许 PDF 解释和生词保存共享 v5 locator，并从学习记录、生词来源和
+  温习卡返回正确 PDF 页；增加离线端到端后再完成 `WIN-404`
 
 ### 2026-09-09 macOS 基线交接
 

@@ -13,7 +13,7 @@ public sealed record BookResource(byte[] Bytes, string MediaType);
 public sealed class EpubBook
 {
     private const string ReaderOrigin = "https://reader.jieju.invalid";
-    private const string ContentSecurityPolicy = "default-src 'none'; script-src https://reader.jieju.invalid/book.mjs https://reader.jieju.invalid/bridge.mjs; style-src https://reader.jieju.invalid 'unsafe-inline'; img-src https://reader.jieju.invalid data:; font-src https://reader.jieju.invalid; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri https://reader.jieju.invalid; form-action 'none'";
+    private const string ContentSecurityPolicy = "default-src 'none'; script-src https://reader.jieju.invalid/book.mjs https://reader.jieju.invalid/pagination.mjs https://reader.jieju.invalid/bridge.mjs; style-src https://reader.jieju.invalid 'unsafe-inline'; img-src https://reader.jieju.invalid data:; font-src https://reader.jieju.invalid; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri https://reader.jieju.invalid; form-action 'none'";
     public required string Id { get; init; }
     public required string Title { get; init; }
     public required string Language { get; init; }

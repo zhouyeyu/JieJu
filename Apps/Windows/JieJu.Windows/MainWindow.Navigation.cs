@@ -114,9 +114,7 @@ public sealed partial class MainWindow
 
     private async Task ReturnToSourceAsync(SavedExplanation record)
     {
-        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == record.Document.Id && File.Exists(item.Path));
-        if (recent is null) { ShowError("找不到原书，请先从阅读页重新打开这本 EPUB。"); return; }
-        await OpenBook(recent.Path, record.Locator as EpubLocator);
+        await ReturnToSourceAsync(record.Document, record.Locator);
     }
 
     private void ShowVocabularyDetail(VocabularyEntry entry)
@@ -150,9 +148,14 @@ public sealed partial class MainWindow
 
     private async Task ReturnToSourceAsync(VocabularySource source)
     {
-        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == source.Document.Id && File.Exists(item.Path));
-        if (recent is null) { ShowError("找不到原书，请先从阅读页重新打开这本 EPUB。"); return; }
-        await OpenBook(recent.Path, source.Locator as EpubLocator);
+        await ReturnToSourceAsync(source.Document, source.Locator);
+    }
+    private async Task ReturnToSourceAsync(Document document, DocumentLocator? locator)
+    {
+        var recent = device.RecentBooks.FirstOrDefault(item => item.Id == document.Id && File.Exists(item.Path));
+        if (recent is null) { ShowError("找不到原文档，请先从阅读页重新打开这份 PDF 或 EPUB。"); return; }
+        if (locator is PdfLocator || recent.Kind == "pdf") await OpenPdf(recent.Path, locator as PdfLocator);
+        else await OpenBook(recent.Path, locator as EpubLocator);
     }
     private async void OpenBook_Click(object sender, RoutedEventArgs args)
     {
@@ -170,7 +173,7 @@ public sealed partial class MainWindow
     private Task OpenDocument(string path) => string.Equals(Path.GetExtension(path), ".pdf", StringComparison.OrdinalIgnoreCase)
         ? OpenPdf(path) : OpenBook(path);
 
-    private async Task OpenPdf(string path)
+    private async Task OpenPdf(string path, PdfLocator? preferredLocator = null)
     {
         if (!OpenButton.IsEnabled) return;
         OpenButton.IsEnabled = false;
@@ -179,16 +182,19 @@ public sealed partial class MainWindow
             var loaded = await Task.Run(() => PdfBook.Open(path));
             if (closed) return;
             ResetExplanation();
-            pdf = loaded; pdfUrl = new Uri(pdf.Path).AbsoluteUri; book = null; bookPath = path;
+            pdf = loaded; pdfUrl = ReaderHostPolicy.CurrentPdf; book = null; bookPath = path;
+            var recent = device.RecentBooks.FirstOrDefault(item => item.Id == pdf.Id && item.Kind == "pdf");
+            pdfPageIndex = Math.Max(0, preferredLocator?.PageIndex ?? recent?.Chapter ?? 0);
             WelcomePanel.Visibility = Visibility.Collapsed;
             CloseBookButton.Visibility = Visibility.Visible;
             ReaderToolbar.Visibility = Visibility.Collapsed;
             BookTitle.Text = pdf.Title; BookSubtitle.Text = "PDF · 文本型文档";
             Navigation.SelectedItem = Navigation.MenuItems[0];
-            Status.Text = "PDF 已打开；划词解释将在下一项对齐任务中接入。";
-            device = DeviceStateStore.Remember(device, new RecentBook(pdf.Id, path, pdf.Title, 0, 0, DateTimeOffset.UtcNow, "pdf"));
+            Status.Text = "正在载入 PDF 文字层…";
+            device = DeviceStateStore.Remember(device, new RecentBook(pdf.Id, path, pdf.Title, pdfPageIndex, 0, DateTimeOffset.UtcNow, "pdf"));
             deviceStore.Save(device);
-            Reader.CoreWebView2?.Navigate(pdfUrl);
+            pdfNavigationGeneration++;
+            Reader.CoreWebView2?.Navigate(ReaderHostPolicy.PdfPage);
         }
         catch (Exception error) { ShowError("无法打开这份 PDF：" + error.Message); if (smokePdf) FinishSmoke(false, error.Message); }
         finally { OpenButton.IsEnabled = true; }
@@ -204,6 +210,7 @@ public sealed partial class MainWindow
             book = loaded; pdf = null; pdfUrl = null; bookPath = path;
             var recent = device.RecentBooks.FirstOrDefault(b => b.Id == book.Id);
             chapterIndex = Math.Clamp(recent?.Chapter ?? 0, 0, book.Chapters.Count - 1);
+            epubPageIndex = 0; epubPageCount = 1;
             pendingProgress = Math.Clamp(recent?.Progress ?? 0, 0, 1);
             if (preferredLocator is not null)
             {
@@ -234,6 +241,7 @@ public sealed partial class MainWindow
     private void NavigateChapter()
     {
         if (book is null || Reader.CoreWebView2 is null) return;
+        epubPageIndex = 0; epubPageCount = 1; UpdatePageButtons();
         PreviousChapterButton.IsEnabled = chapterIndex > 0; NextChapterButton.IsEnabled = chapterIndex + 1 < book.Chapters.Count;
         chapterNavigationPending = true;
         Reader.NavigateToString(System.Text.Encoding.UTF8.GetString(book.RenderChapter(chapterIndex, japaneseMorphology)));
@@ -245,6 +253,13 @@ public sealed partial class MainWindow
     }
     private void PreviousChapter_Click(object sender, RoutedEventArgs args) { if (chapterIndex > 0) ChapterPicker.SelectedIndex--; }
     private void NextChapter_Click(object sender, RoutedEventArgs args) { if (book is not null && chapterIndex + 1 < book.Chapters.Count) ChapterPicker.SelectedIndex++; }
+    private void PreviousPage_Click(object sender, RoutedEventArgs args) => Send("turnPage", new { delta = -1 });
+    private void NextPage_Click(object sender, RoutedEventArgs args) => Send("turnPage", new { delta = 1 });
+    private void UpdatePageButtons()
+    {
+        PreviousPageButton.IsEnabled = book is not null && epubPageIndex > 0;
+        NextPageButton.IsEnabled = book is not null && epubPageIndex + 1 < epubPageCount;
+    }
     private void FuriganaToolbarToggle_Click(object sender, RoutedEventArgs args)
     {
         var enabled = FuriganaToolbarToggle.IsChecked == true;
@@ -271,6 +286,14 @@ public sealed partial class MainWindow
         if (book is null || bookPath is null || !double.IsFinite(progress)) return;
         device = DeviceStateStore.Remember(device, new RecentBook(book.Id, bookPath, book.Title, chapterIndex, Math.Clamp(progress, 0, 1), DateTimeOffset.UtcNow));
         try { deviceStore.Save(device); } catch (Exception e) { ShowError("无法保存阅读位置：" + e.Message); }
+    }
+    private void RememberPdf(int pageIndex)
+    {
+        if (pdf is null || bookPath is null || pageIndex < 0 || pageIndex == pdfPageIndex) return;
+        pdfPageIndex = pageIndex;
+        Status.Text = $"PDF · 第 {pageIndex + 1} 页";
+        device = DeviceStateStore.Remember(device, new RecentBook(pdf.Id, bookPath, pdf.Title, pageIndex, 0, DateTimeOffset.UtcNow, "pdf"));
+        try { deviceStore.Save(device); } catch (Exception error) { ShowError("无法保存 PDF 阅读位置：" + error.Message); }
     }
     private void RefreshRecentBooks()
     {

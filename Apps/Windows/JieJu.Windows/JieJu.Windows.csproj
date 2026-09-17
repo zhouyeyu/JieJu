@@ -23,5 +23,6 @@
     <Content Include="ReaderHost/**" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets/AppIcon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="../../../Shared/ReaderWeb/Sources/bridge.mjs" Link="ReaderHost/bridge.mjs" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../../Shared/ReaderWeb/Sources/pagination.mjs" Link="ReaderHost/pagination.mjs" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
