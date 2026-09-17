@@ -1,5 +1,36 @@
 # JieJu Agent Handoff
 
+## 2026-09-17 v0.0.1 发布交接
+
+- 用户明确授权推送 GitHub 并上传 macOS DMG，版本 v0.0.1。
+- 分支保持 `codex/app-icon-integration`，不合并或覆盖主分支新增 Windows 工作。
+- MARKETING_VERSION 为 0.0.1；Release arm64 构建位于 `build/macos-v0.0.1`。
+- `scripts/package-macos-dmg.sh` 生成 DMG、附安装说明/许可证/NOTICE，并创建 SHA-256。
+- 发布说明：`Docs/RELEASE-v0.0.1.md`；开发预览为 ad-hoc 签名、未公证，不包含 Ollama/模型。
+- 测试：Node 15、语言引擎 65、macOS 单元 77 通过；全量 UI Runner 系统认证阻塞已明确披露。
+- DMG 已通过 hdiutil verify、只读挂载检查；挂载应用版本 0.0.1 与 codesign 严格验证通过。
+  SHA-256：`b709df798a56b2af9bc9bcf536ea88a4987043fac09d941c146e72c08385eedb`。
+- 发布地址：`https://github.com/zhouyeyu/JieJu/releases/tag/v0.0.1`，通过 GitHub Release
+  分发 DMG 和 `.sha256`，二进制不进入源码 Git。
+- 主分支已更新至 `13bd75b`；本发布分支基于 `c517465`，不包含其后的 Windows 增量。
+- 后续正式版仍需 Developer ID、公证、干净账户 Gatekeeper 验收和完整 UI 回归。
+
+## 2026-09-17 图标接入交接
+
+- 分支：`codex/app-icon-integration`，基于 `origin/main`（`c517465`）；本次改动尚未提交/推送。
+- 用户确认采用 v4 黑白抽象标记；共享主文件 `Shared/Brand/jieju-icon.png`。
+- macOS：`JieJu/Resources/AppIcon.icns` 已加入 Resources；Debug/Release 使用
+  `JieJu/Info.plist` 声明图标。构建后的 Info.plist 已实查为 `CFBundleIconFile=AppIcon`。
+- Windows：`Assets/AppIcon.ico` 嵌入 EXE、复制到构建/发布目录，窗口通过 AppWindow.SetIcon 加载。
+- 生成：`bash scripts/generate-app-icons.sh`（macOS sips/iconutil + Node，无额外 npm 依赖）。
+- 验证：4 项图标测试通过，已纳入两端测试脚本；共享 Node 15、语言引擎 65、macOS 单元 77 通过。
+  `./scripts/test-all.sh` 的 UI Runner 因 System authentication is running 初始化失败；
+  单独 `xcodebuild test ... -skip-testing:JieJuUITests` 通过。日志在 `TestResults/app-icon*.log`。
+- 待验收：解除系统认证阻塞后重跑全量测试；Windows 真机构建并确认窗口、EXE 和任务栏显示。
+  当前 Windows 远程任务未出现在可见列表中，未声称完成真机验证。
+- 旧 `Docs/Brand/` 设计稿保持未跟踪，未删除；只将选定主图作为正式共享资产。
+- 后续 MSIX 打包仍需单独配置 manifest 视觉资产；此任务未改变跨平台契约或学习资料格式。
+
 ## 本次交接
 
 - 日期：2026-09-14

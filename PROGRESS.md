@@ -8,6 +8,17 @@
 
 ## 已完成
 
+- **2026-09-17 v0.0.1 发布准备**：按用户授权推送独立分支并发布 macOS 开发预览。
+  版本调整为 0.0.1；增加 Release DMG 打包脚本、安装说明和 SHA-256 校验和。
+  仅支持 Apple Silicon / macOS 14+，使用 ad-hoc 签名，未进行 Developer ID 签名及公证。
+  本轮重跑 Node 15、语言引擎 65、macOS 单元 77 通过；UI Runner 仍被系统认证阻塞。
+  发布属于明确披露限制的预览，不表示正式发布关卡全部完成。
+- **2026-09-17 双平台应用图标（OSS-012）**：采用用户确认的 v4 黑白抽象标记，共享原图位于
+  `Shared/Brand/jieju-icon.png`。macOS 使用 ICNS 与显式 Info.plist，已验证构建包内
+  `CFBundleIconFile=AppIcon`；Windows 使用多尺寸 ICO，接入 EXE 和 AppWindow，并复制至发布目录。
+  增加可重现生成脚本与 4 项资源测试。Node 15 项、语言引擎 65 项、macOS 单元 77 项通过，
+  macOS 构建通过；全量测试的 UI Runner 因系统认证正在运行而初始化失败。Windows 当前未真机构建。
+  工作在独立分支 `codex/app-icon-integration`；由于全量验收尚有环境阻塞，暂未提交或推送。
 - **2026-09-14 Windows 排版实时生效与预览（WIN-431A）**：设置页新增 EPUB 正文预览，主题、字号、
   行距和左右边距在调整时同步更新预览及当前打开的 EPUB；状态文字明确提示保存后才会跨启动保留。
   新增 WinUI + WebView2 端到端冒烟，实际把字号设为 27、行距设为 2.15、边距设为 88、主题设为

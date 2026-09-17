@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## [0.0.1] - 2026-09-17
+
+- 首个 Apple Silicon macOS 开发预览 DMG（ad-hoc 签名，未公证）。
+- 接入共享黑白应用图标、双平台资源与可复现生成脚本。
+
 ### Added
 
 - macOS 原生 PDF 与可重排 EPUB 阅读器。
